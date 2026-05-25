@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Flame, ArrowLeft, Bell, Camera, Check, Image as ImageIcon } from 'lucide-react'
 import useSWRInfinite from 'swr/infinite'
 import { fetcher, remindStreak, type AuthUser } from '../../lib/api'
+import { vibrateRemind } from '../../lib/haptics'
 import { getLocalToday } from '../../lib/timezone'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
@@ -32,19 +33,6 @@ function getRemindLabel(combo: number) {
   if (combo >= 6) return 'Ещё ещё!'
   if (combo >= 3) return 'Напомнить!'
   return 'Напомнить'
-}
-
-function vibrateRemind(combo: number) {
-  if (typeof navigator === 'undefined' || !navigator.vibrate) return
-  if (combo >= 15) {
-    navigator.vibrate([35, 45, 35, 45, 55, 45, 35])
-  } else if (combo >= 8) {
-    navigator.vibrate([30, 40, 30, 40, 50])
-  } else if (combo >= 4) {
-    navigator.vibrate([25, 35, 25])
-  } else {
-    navigator.vibrate(45)
-  }
 }
 
 function daysLabel(count: number) {
