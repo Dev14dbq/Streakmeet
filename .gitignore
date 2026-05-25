@@ -1,0 +1,23 @@
+node_modules
+dist
+build
+.env
+**/.env
+*.local
+frontend/=*
+
+# Capacitor
+frontend/ios/App/App/public
+frontend/android/app/src/main/assets/public
+
+# Generated
+backend/generated
+
+# Python
+face-service/.venv
+__pycache__
+*.pyc
+
+# Runtime / archives
+uploads/
+*.zip

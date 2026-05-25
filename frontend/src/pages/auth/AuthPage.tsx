@@ -1,0 +1,181 @@
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useGoogleLogin } from '@react-oauth/google'
+import { api, getDeletedAccountInfo, type AuthUser } from '../../lib/api'
+import { getDeviceTimezone } from '../../lib/timezone'
+import { toastError, toastInfo } from '../../lib/toast'
+
+interface Props {
+  onAuth: (user: AuthUser, token: string, fromSignup?: boolean, returnTo?: string) => void
+}
+
+export default function AuthPage({ onAuth }: Props) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo
+
+  // ─── Google ──────────────────────────────────────────────────────────────────
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        // Получаем idToken через userinfo (access_token → id_token через отдельный запрос)
+        // useGoogleLogin возвращает access_token, получаем профиль и отправляем access_token
+        const { data } = await api.post<{ accessToken: string; user: AuthUser }>(
+          '/api/auth/google',
+          { accessToken: tokenResponse.access_token, timezone: getDeviceTimezone() }
+        )
+        localStorage.setItem('accessToken', data.accessToken)
+        onAuth(data.user, data.accessToken, false, returnTo)
+      } catch (err) {
+        const deleted = getDeletedAccountInfo(err)
+        if (deleted) {
+          navigate('/account-deleted', {
+            replace: true,
+            state: {
+              provider: 'google',
+              accessToken: tokenResponse.access_token,
+              email: deleted.email,
+              daysRemaining: deleted.daysRemaining,
+            },
+          })
+          return
+        }
+        toastError('Ошибка входа через Google')
+      }
+    },
+    onError: () => toastInfo('Google авторизация отменена'),
+  })
+
+  // ─── Apple ───────────────────────────────────────────────────────────────────
+  function handleApple() {
+    const clientId = import.meta.env.VITE_APPLE_CLIENT_ID
+    if (!clientId) {
+      toastInfo('Apple Sign In не настроен. Заполните VITE_APPLE_CLIENT_ID в .env')
+      return
+    }
+    const redirectUri = encodeURIComponent(`${window.location.origin}/login`)
+    const state = Math.random().toString(36).slice(2)
+    sessionStorage.setItem('apple_state', state)
+    const url = [
+      'https://appleid.apple.com/auth/authorize',
+      `?client_id=${clientId}`,
+      `&redirect_uri=${redirectUri}`,
+      `&response_type=code id_token`,
+      `&scope=email name`,
+      `&response_mode=form_post`,
+      `&state=${state}`,
+    ].join('')
+    window.location.href = url
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-black">
+      {/* Центральная часть */}
+      <div className="flex flex-1 flex-col items-center justify-center px-6">
+        <div className="mb-3 text-7xl select-none drop-shadow-[0_0_20px_rgba(255,26,79,0.5)]">
+          🔥
+        </div>
+        <h1 className="text-4xl font-extrabold tracking-tight text-white">StreakMeet</h1>
+        <p className="mt-3 text-center text-sm text-[var(--color-on-surface-variant)] leading-relaxed">
+          Встречайся с другом каждый день.
+          <br />
+          Держи серию живой.
+        </p>
+      </div>
+
+      {/* Кнопки внизу */}
+      <div className="flex flex-col gap-3 px-6 pb-12">
+        <AuthButton
+          icon={<AppleIcon />}
+          label="Войти через Apple"
+          onClick={handleApple}
+          className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)]"
+        />
+        <AuthButton
+          icon={<GoogleIcon />}
+          label="Войти через Google"
+          onClick={() => googleLogin()}
+          className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)]"
+        />
+        <AuthButton
+          icon={<MailIcon />}
+          label="Продолжить через почту"
+          onClick={() => navigate('/login/email')}
+          className="bg-[var(--color-brand-primary)] text-white hover:bg-[var(--color-primary-container)] shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
+        />
+
+        <p className="mt-2 text-center text-xs text-zinc-700">
+          Продолжая, вы соглашаетесь с{' '}
+          <a href="/terms" className="underline hover:text-zinc-500">
+            условиями
+          </a>{' '}
+          и{' '}
+          <a href="/privacy" className="underline hover:text-zinc-500">
+            политикой конфиденциальности
+          </a>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function AuthButton({
+  icon,
+  label,
+  onClick,
+  className,
+}: {
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+  className: string
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-4 text-sm font-semibold transition active:scale-95 ${className}`}
+    >
+      {icon}
+      {label}
+    </button>
+  )
+}
+
+function AppleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+    </svg>
+  )
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      />
+    </svg>
+  )
+}
+
+function MailIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-2">
+      <rect x="2" y="4" width="20" height="16" rx="3" />
+      <path d="m2 7 10 7 10-7" />
+    </svg>
+  )
+}

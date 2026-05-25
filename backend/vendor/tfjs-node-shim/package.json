@@ -1,0 +1,6 @@
+{
+  "name": "@tensorflow/tfjs-node",
+  "version": "4.22.0-shim",
+  "main": "index.cjs",
+  "type": "commonjs"
+}

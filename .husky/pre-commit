@@ -1,0 +1,1 @@
+npx prettier --check "**/*.{ts,tsx,js,json,css,md}"

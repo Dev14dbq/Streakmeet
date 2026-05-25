@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String
+  passwordHash  String
+  nickname      String
+  avatarUrl     String?
+  qrCodeId      String    @unique @default(cuid())
+  timezone      String    @default("UTC")
+  gemsBalance   Int       @default(0)
+  faceEnrolled  Boolean   @default(false)
+  faceEmbedding Json?
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  friendshipsA    Friendship[]     @relation("FriendA")
+  friendshipsB    Friendship[]     @relation("FriendB")
+  streaksA        Streak[]         @relation("StreakUserA")
+  streaksB        Streak[]         @relation("StreakUserB")
+  gemTransactions GemTransaction[]
+  meetProofs      MeetProof[]
+
+  @@index([email])
+  @@index([nickname])
+  @@map("users")
+}
+
+model Friendship {
+  id        String           @id @default(cuid())
+  userAId   String
+  userBId   String
+  status    FriendshipStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  userA User @relation("FriendA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("FriendB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@map("friendships")
+}
+
+model Streak {
+  id          String   @id @default(cuid())
+  userAId     String
+  userBId     String
+  count       Int      @default(0)
+  lastMetDate String?  // формат YYYY-MM-DD
+  timezone    String   @default("UTC")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userA      User        @relation("StreakUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB      User        @relation("StreakUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  streakDays StreakDay[]
+
+  @@unique([userAId, userBId])
+  @@map("streaks")
+}
+
+model StreakDay {
+  id       String          @id @default(cuid())
+  streakId String
+  date     String          // формат YYYY-MM-DD
+  status   StreakDayStatus @default(MET)
+
+  streak     Streak      @relation(fields: [streakId], references: [id], onDelete: Cascade)
+  meetProofs MeetProof[]
+
+  @@unique([streakId, date])
+  @@map("streak_days")
+}
+
+model MeetProof {
+  id             String   @id @default(cuid())
+  streakDayId    String
+  uploadedById   String
+  photoUrl       String
+  photoHash      String
+  latitude       Float?
+  longitude      Float?
+  livenessOk     Boolean  @default(false)
+  facesDetected  Int      @default(0)
+  matchScores    Json?
+  createdAt      DateTime @default(now())
+
+  streakDay  StreakDay @relation(fields: [streakDayId], references: [id], onDelete: Cascade)
+  uploadedBy User      @relation(fields: [uploadedById], references: [id])
+
+  @@unique([streakDayId, photoHash])
+  @@index([photoHash])
+  @@map("meet_proofs")
+}
+
+model GemTransaction {
+  id        String          @id @default(cuid())
+  userId    String
+  amount    Int
+  reason    GemReason
+  refId     String?
+  createdAt DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("gem_transactions")
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+enum StreakDayStatus {
+  MET
+  FROZEN
+  MISSED
+}
+
+enum GemReason {
+  MEET_PROOF
+  STREAK_MILESTONE
+  AD_REWARD
+  FREEZE_SPEND
+  RESCUE_FRIEND_SPEND
+  GRACE_RESTORE_SPEND
+  ADMIN_ADJUST
+}
+
+enum StreakNotificationKind {
+  STREAK_1H
+  STREAK_30M
+  STREAK_BURNED
+}
+
+model StreakNotificationLog {
+  id        String                 @id @default(cuid())
+  userId    String
+  streakId  String
+  kind      StreakNotificationKind
+  localDate String
+  sentAt    DateTime               @default(now())
+
+  @@unique([userId, streakId, kind, localDate])
+  @@index([userId, localDate])
+  @@map("streak_notification_logs")
+}
