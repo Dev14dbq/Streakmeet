@@ -4,7 +4,7 @@ import { ArrowLeft, X } from 'lucide-react'
 import { QRCode } from 'react-qr-code'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { profileUrl, parseQrScanTarget, searchUsers, requestFriend } from '../lib/api'
-import { isMobilePhone } from '../lib/device'
+import { shareProfileLink } from '../lib/shareProfile'
 import { toastError, toastSuccess, toastLink } from '../lib/toast'
 
 interface Props {
@@ -21,27 +21,10 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
 
   async function handleShareProfile() {
     const url = profileUrl(nickname)
-    const shareData = {
-      title: 'StreakMeet',
-      text: `Мой профиль в StreakMeet — @${nickname}`,
-      url,
-    }
+    const result = await shareProfileLink(nickname, url)
 
-    if (isMobilePhone() && navigator.share) {
-      try {
-        await navigator.share(shareData)
-      } catch {
-        /* отменено */
-      }
-      return
-    }
-
-    try {
-      await navigator.clipboard.writeText(url)
-      toastSuccess('Ссылка скопирована')
-    } catch {
-      toastError('Не удалось скопировать ссылку')
-    }
+    if (result === 'copied') toastSuccess('Ссылка скопирована')
+    if (result === 'failed') toastError('Не удалось поделиться профилем')
   }
 
   function handleCloseAll() {

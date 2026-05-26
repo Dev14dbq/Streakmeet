@@ -5,6 +5,7 @@ import { io, type Socket } from 'socket.io-client'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
+import CachedImage from '../../components/CachedImage'
 import { MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-react'
 import {
   getFriendLocations,
@@ -25,9 +26,11 @@ import {
   openNavigationRoute,
   reverseGeocode,
 } from '../../lib/mapGeo'
+import { resolveBackendImageUrl } from '../../lib/remoteImageUrl'
+import { useCachedImageSrcMap } from '../../lib/useCachedImageSrc'
 import { toastError } from '../../lib/toast'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+const SHARE_UI_COMPACT_KEY = 'map_share_ui_compact'
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
 const TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
@@ -42,22 +45,24 @@ function formatUpdatedAt(iso: string): string {
   return `${h} ч назад`
 }
 
-function avatarSrc(url: string | null | undefined): string | null {
+function avatarDisplaySrc(
+  url: string | null | undefined,
+  cached: Record<string, string>
+): string | null {
   if (!url) return null
-  if (url.startsWith('http')) return url
-  const base = API_BASE || window.location.origin
-  return `${base}${url}`
+  return cached[url] ?? resolveBackendImageUrl(url)
 }
 
 function userMarkerHtml(opts: {
   nickname: string
-  avatarUrl?: string | null
+  src: string | null
   variant: 'self' | 'friend'
   selected?: boolean
 }): string {
-  const src = avatarSrc(opts.avatarUrl)
   const initial = opts.nickname.slice(0, 1).toUpperCase() || '?'
-  const avatar = src ? `<img src="${src}" alt="" loading="lazy" />` : `<span>${initial}</span>`
+  const avatar = opts.src
+    ? `<img src="${opts.src}" alt="" loading="lazy" />`
+    : `<span>${initial}</span>`
   const classes = [
     'map-user-marker',
     opts.variant === 'self' ? 'map-user-marker--self' : 'map-user-marker--friend',
@@ -99,6 +104,9 @@ export default function MapPage() {
   const [friends, setFriends] = useState<FriendLocation[]>([])
   const [sharing, setSharing] = useState(false)
   const [sharingBusy, setSharingBusy] = useState(false)
+  const [compactShareUi, setCompactShareUi] = useState(
+    () => localStorage.getItem(SHARE_UI_COMPACT_KEY) === '1'
+  )
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<FriendLocation | null>(null)
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
@@ -113,13 +121,22 @@ export default function MapPage() {
     }
   }, [])
 
-  const markerSize = 56
+  const markerSize = 40
   const markerAnchor = markerSize / 2
 
   const onlineCount = useMemo(
     () => friends.filter((f) => Date.now() - new Date(f.updatedAt).getTime() < 5 * 60_000).length,
     [friends]
   )
+
+  const avatarPaths = useMemo(() => {
+    const paths = friends.map((f) => f.avatarUrl).filter(Boolean) as string[]
+    if (me.avatarUrl) paths.push(me.avatarUrl)
+    if (selected?.avatarUrl) paths.push(selected.avatarUrl)
+    return paths
+  }, [friends, me.avatarUrl, selected?.avatarUrl])
+
+  const cachedAvatars = useCachedImageSrcMap(avatarPaths)
 
   const selectedDistance = useMemo(() => {
     if (!selected || !selfPos) return null
@@ -179,7 +196,12 @@ export default function MapPage() {
           getFriendLocations(),
         ])
         if (cancelled) return
-        setSharing(me.sharingLocation || isLocationSharingActive())
+        const active = me.sharingLocation || isLocationSharingActive()
+        setSharing(active)
+        if (active) {
+          setCompactShareUi(true)
+          localStorage.setItem(SHARE_UI_COMPACT_KEY, '1')
+        }
         setFriends(list)
         if (me.latitude != null && me.longitude != null) {
           setSelfPos({ lat: me.latitude, lng: me.longitude })
@@ -267,7 +289,7 @@ export default function MapPage() {
         className: 'map-marker-wrap',
         html: userMarkerHtml({
           nickname: friend.nickname,
-          avatarUrl: friend.avatarUrl,
+          src: avatarDisplaySrc(friend.avatarUrl, cachedAvatars),
           variant: 'friend',
           selected: selected?.id === friend.id,
         }),
@@ -293,7 +315,7 @@ export default function MapPage() {
         markersRef.current.delete(id)
       }
     }
-  }, [friends, selected, markerSize, markerAnchor])
+  }, [friends, selected, markerSize, markerAnchor, cachedAvatars])
 
   useEffect(() => {
     const map = mapRef.current
@@ -303,7 +325,7 @@ export default function MapPage() {
       className: 'map-marker-wrap',
       html: userMarkerHtml({
         nickname: me.nickname || 'Я',
-        avatarUrl: me.avatarUrl,
+        src: avatarDisplaySrc(me.avatarUrl, cachedAvatars),
         variant: 'self',
       }),
       iconSize: [markerSize, markerSize],
@@ -317,21 +339,18 @@ export default function MapPage() {
       selfMarkerRef.current = L.marker([selfPos.lat, selfPos.lng], { icon, zIndexOffset: 1000 })
       selfMarkerRef.current.addTo(map)
     }
-  }, [selfPos, me.nickname, me.avatarUrl, markerSize, markerAnchor])
+  }, [selfPos, me.nickname, me.avatarUrl, markerSize, markerAnchor, cachedAvatars])
 
   useEffect(() => {
     if (!selected || !mapRef.current) return
     mapRef.current.flyTo([selected.latitude, selected.longitude], 15, { duration: 0.8 })
   }, [selected])
 
-  async function toggleSharing() {
-    if (sharingBusy) return
+  async function setSharingEnabled(next: boolean) {
+    if (sharingBusy || sharing === next) return
     setSharingBusy(true)
     try {
-      if (sharing) {
-        await stopLocationSharing()
-        setSharing(false)
-      } else {
+      if (next) {
         await startLocationSharing()
         setSharing(true)
         const pos = await Geolocation.getCurrentPosition({
@@ -341,6 +360,9 @@ export default function MapPage() {
         })
         setSelfPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
         mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15)
+      } else {
+        await stopLocationSharing()
+        setSharing(false)
       }
     } catch (e) {
       const code = (e as Error).message
@@ -355,6 +377,20 @@ export default function MapPage() {
     } finally {
       setSharingBusy(false)
     }
+  }
+
+  function dismissSharePrompt() {
+    setCompactShareUi(true)
+    localStorage.setItem(SHARE_UI_COMPACT_KEY, '1')
+  }
+
+  async function handleStartBroadcast() {
+    dismissSharePrompt()
+    await setSharingEnabled(true)
+  }
+
+  async function toggleSharing() {
+    await setSharingEnabled(!sharing)
   }
 
   async function openRouteToSelected() {
@@ -406,8 +442,8 @@ export default function MapPage() {
             <div className="mb-3 flex items-start gap-3">
               <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-container-high)] ring-2 ring-[var(--color-brand-primary)]">
                 {selected.avatarUrl ? (
-                  <img
-                    src={avatarSrc(selected.avatarUrl) ?? ''}
+                  <CachedImage
+                    path={selected.avatarUrl}
                     alt=""
                     className="h-full w-full object-cover"
                   />
@@ -477,35 +513,56 @@ export default function MapPage() {
         </div>
       )}
 
-      <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
-        <div className="glass-card w-full max-w-md rounded-[28px] border border-white/10 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
-          <div className="mb-3 flex items-center gap-2 text-xs text-[var(--color-on-surface-variant)]">
-            <MapPin size={14} className="text-[var(--color-brand-primary)]" />
-            Точная геолокация · фоновая трансляция, пока не выключишь
-          </div>
+      {compactShareUi && (
+        <div className="map-share-toggle pointer-events-auto">
           <button
             type="button"
             disabled={sharingBusy}
-            onClick={toggleSharing}
-            className={`flex w-full items-center justify-center gap-2 rounded-full py-4 text-base font-black transition active:scale-[0.98] disabled:opacity-60 ${
-              sharing
-                ? 'bg-white/10 text-white ring-2 ring-[var(--color-brand-primary)]'
-                : 'bg-[var(--color-brand-primary)] text-white shadow-[0_12px_36px_rgba(255,26,79,0.45)]'
-            }`}
+            onClick={() => void toggleSharing()}
+            aria-label={sharing ? 'Выключить трансляцию' : 'Включить трансляцию'}
+            aria-pressed={sharing}
+            title={sharing ? 'Трансляция включена' : 'Трансляция выключена'}
+            className={`map-share-toggle__btn ${sharing ? 'map-share-toggle__btn--on' : ''}`}
           >
             <Radio
-              size={20}
-              className={sharing ? 'animate-pulse text-[var(--color-brand-primary)]' : ''}
+              size={18}
+              className={
+                sharing ? 'animate-pulse text-[var(--color-brand-primary)]' : 'text-white/70'
+              }
             />
-            {sharingBusy ? '…' : sharing ? 'Остановить трансляцию' : 'Транслировать геолокацию'}
           </button>
-          {!sharing && (
-            <p className="mt-2 text-center text-[11px] text-[var(--color-on-surface-variant)]">
-              Можно смотреть друзей без своей трансляции
-            </p>
-          )}
         </div>
-      </div>
+      )}
+
+      {!compactShareUi && (
+        <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
+          <div className="glass-card w-full max-w-md rounded-[28px] border border-white/10 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
+            <div className="mb-3 flex items-center gap-2 text-xs text-[var(--color-on-surface-variant)]">
+              <MapPin size={14} className="text-[var(--color-brand-primary)]" />
+              Точная геолокация · друзья увидят тебя на карте
+            </div>
+            <button
+              type="button"
+              disabled={sharingBusy}
+              onClick={() => void handleStartBroadcast()}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-black text-white shadow-[0_12px_36px_rgba(255,26,79,0.45)] transition active:scale-[0.98] disabled:opacity-60"
+            >
+              <Radio size={20} />
+              {sharingBusy ? '…' : 'Транслировать геолокацию'}
+            </button>
+            <p className="mt-2 text-center text-[11px] text-[var(--color-on-surface-variant)]">
+              Можно смотреть друзей без своей трансляции — выключи в любой момент
+            </p>
+            <button
+              type="button"
+              onClick={dismissSharePrompt}
+              className="mt-2 w-full text-center text-xs font-medium text-[var(--color-on-surface-variant)] underline-offset-2 hover:text-white hover:underline"
+            >
+              Позже
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

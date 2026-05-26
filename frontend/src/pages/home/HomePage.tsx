@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import ProfileQrModal from '../../components/ProfileQrModal'
+import Avatar from '../../components/Avatar'
 import { Flame, Search, UserPlus, Clock, QrCode } from 'lucide-react'
 import useSWR from 'swr'
 import {
@@ -16,23 +17,6 @@ import { getLocalToday } from '../../lib/timezone'
 
 interface Props {
   user: AuthUser
-}
-
-const API_BASE = import.meta.env.VITE_API_URL || ''
-
-function Avatar({ url, size = 'md' }: { url?: string | null; size?: 'sm' | 'md' | 'lg' }) {
-  const sizes = { sm: 'w-12 h-12', md: 'w-14 h-14', lg: 'w-16 h-16' }
-  return (
-    <div
-      className={`${sizes[size]} rounded-full bg-[var(--color-surface-container-highest)] flex items-center justify-center shadow-inner border border-white/5 overflow-hidden shrink-0`}
-    >
-      {url ? (
-        <img src={API_BASE + url} alt="" className="w-full h-full object-cover" />
-      ) : (
-        <span className={size === 'lg' ? 'text-2xl' : 'text-xl'}>👤</span>
-      )}
-    </div>
-  )
 }
 
 export default function HomePage({ user }: Props) {
@@ -131,7 +115,7 @@ export default function HomePage({ user }: Props) {
         )}
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3 min-w-0">
-            <Avatar url={s.partner.avatarUrl} />
+            <Avatar path={s.partner.avatarUrl} />
             <div className="min-w-0">
               <h3 className="font-bold text-white text-base tracking-tight truncate">
                 @{s.partner.nickname}
@@ -248,7 +232,7 @@ export default function HomePage({ user }: Props) {
                     }}
                     className="flex items-center gap-3 min-w-0 flex-1 active:opacity-80"
                   >
-                    <Avatar url={u.avatarUrl} size="sm" />
+                    <Avatar path={u.avatarUrl} size="sm" />
                     <span className="font-bold text-white truncate">@{u.nickname}</span>
                   </Link>
                   <button
@@ -281,7 +265,7 @@ export default function HomePage({ user }: Props) {
                     className="flex items-center justify-between glass-card p-4 rounded-2xl border border-[var(--color-brand-primary)]/25"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <Avatar url={f.friend.avatarUrl} size="sm" />
+                      <Avatar path={f.friend.avatarUrl} size="sm" />
                       <span className="font-bold text-white truncate">@{f.friend.nickname}</span>
                     </div>
                     <button
@@ -337,7 +321,7 @@ export default function HomePage({ user }: Props) {
                     className="flex items-center justify-between glass-card p-4 rounded-2xl"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <Avatar url={f.friend.avatarUrl} size="sm" />
+                      <Avatar path={f.friend.avatarUrl} size="sm" />
                       <span className="font-bold text-white truncate">@{f.friend.nickname}</span>
                     </div>
                     <button
@@ -366,7 +350,7 @@ export default function HomePage({ user }: Props) {
                     className="flex items-center justify-between border border-white/5 p-4 rounded-2xl opacity-60"
                   >
                     <div className="flex items-center gap-3">
-                      <Avatar url={f.friend.avatarUrl} size="sm" />
+                      <Avatar path={f.friend.avatarUrl} size="sm" />
                       <span className="font-bold text-white">@{f.friend.nickname}</span>
                     </div>
                     <span className="text-xs text-[var(--color-on-surface-variant)] flex items-center gap-1">

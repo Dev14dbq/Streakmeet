@@ -2,12 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { QrCode, Image as ImageIcon, Settings, X, MapPin, Camera } from 'lucide-react'
 import Webcam from 'react-webcam'
-import ProfileQrModal from '../../components/ProfileQrModal'
 import useSWRInfinite from 'swr/infinite'
+import ProfileQrModal from '../../components/ProfileQrModal'
+import CachedImage from '../../components/CachedImage'
 import { uploadAvatar, fetcher, type AuthUser } from '../../lib/api'
+import { invalidateCachedImage } from '../../lib/remoteImageCache'
 import { toastError } from '../../lib/toast'
-
-const API_BASE = import.meta.env.VITE_API_URL || ''
 
 interface Props {
   user: AuthUser
@@ -44,8 +44,10 @@ export default function ProfilePage({ user: initialUser }: Props) {
 
   async function saveAvatar(base64: string) {
     setUploading(true)
+    const previousAvatar = user.avatarUrl
     try {
       const { data: res } = await uploadAvatar(base64)
+      await invalidateCachedImage(previousAvatar)
       const updatedUser = { ...user, avatarUrl: res.avatarUrl }
       setUser(updatedUser)
       localStorage.setItem('user', JSON.stringify(updatedUser))
@@ -125,8 +127,8 @@ export default function ProfilePage({ user: initialUser }: Props) {
         >
           {user.avatarUrl ? (
             <div className="absolute inset-0 rounded-full blur-xl opacity-60 scale-110 z-0">
-              <img
-                src={API_BASE + user.avatarUrl}
+              <CachedImage
+                path={user.avatarUrl}
                 alt=""
                 className="w-full h-full object-cover rounded-full"
               />
@@ -136,7 +138,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
           )}
           <div className="relative z-10 w-28 h-28 rounded-full bg-[var(--color-surface-container-high)] border-2 border-white/10 overflow-hidden flex items-center justify-center">
             {user.avatarUrl ? (
-              <img src={API_BASE + user.avatarUrl} alt="" className="w-full h-full object-cover" />
+              <CachedImage path={user.avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
               <span className="text-4xl">👤</span>
             )}
@@ -204,8 +206,8 @@ export default function ProfilePage({ user: initialUser }: Props) {
                       key={photo.id}
                       className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_10px_30px_rgba(0,0,0,0.3)] group"
                     >
-                      <img
-                        src={API_BASE + photo.photoUrl}
+                      <CachedImage
+                        path={photo.photoUrl}
                         alt=""
                         className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
                         loading="lazy"

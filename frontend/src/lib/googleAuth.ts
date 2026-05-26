@@ -43,7 +43,7 @@ export async function signInWithGoogleNative(): Promise<GoogleSignInTokens> {
   await initGoogleAuth()
   const response = await SocialLogin.login({
     provider: 'google',
-    options: { scopes: ['email', 'profile'] },
+    options: {},
   })
 
   if (response.result.responseType === 'offline') {

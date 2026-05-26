@@ -4,6 +4,7 @@ import useSWR from 'swr'
 import { Link, useNavigate } from 'react-router-dom'
 import { searchUsers, requestFriend, acceptFriend, createStreak, fetcher } from '../../lib/api'
 import { toastError, toastLink } from '../../lib/toast'
+import Avatar from '../../components/Avatar'
 
 export default function FriendsPage() {
   const navigate = useNavigate()
@@ -103,17 +104,7 @@ export default function FriendsPage() {
                     onClick={() => setQuery('')}
                     className="flex items-center gap-4 min-w-0 flex-1 active:opacity-80"
                   >
-                    <div className="w-12 h-12 rounded-full bg-[var(--color-surface-container-highest)] flex items-center justify-center text-xl shadow-inner border border-white/5 overflow-hidden shrink-0">
-                      {u.avatarUrl ? (
-                        <img
-                          src={import.meta.env.VITE_API_URL + u.avatarUrl}
-                          alt="Avatar"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span>👤</span>
-                      )}
-                    </div>
+                    <Avatar path={u.avatarUrl} size="sm" />
                     <span className="font-bold text-white tracking-tight truncate">
                       @{u.nickname}
                     </span>
@@ -145,17 +136,7 @@ export default function FriendsPage() {
                 className="flex items-center justify-between glass-card p-4 rounded-3xl border border-[var(--color-brand-primary)]/20"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-[var(--color-surface-container-highest)] flex items-center justify-center text-xl shadow-inner border border-white/5 overflow-hidden">
-                    {f.friend.avatarUrl ? (
-                      <img
-                        src={import.meta.env.VITE_API_URL + f.friend.avatarUrl}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span>👤</span>
-                    )}
-                  </div>
+                  <Avatar path={f.friend.avatarUrl} size="sm" />
                   <span className="font-bold text-white tracking-tight">@{f.friend.nickname}</span>
                 </div>
                 <button
@@ -187,17 +168,7 @@ export default function FriendsPage() {
                 className="flex items-center justify-between glass-card p-4 rounded-3xl"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-[var(--color-surface-container-highest)] flex items-center justify-center text-xl shadow-inner border border-white/5 overflow-hidden">
-                    {f.friend.avatarUrl ? (
-                      <img
-                        src={import.meta.env.VITE_API_URL + f.friend.avatarUrl}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span>👤</span>
-                    )}
-                  </div>
+                  <Avatar path={f.friend.avatarUrl} size="sm" />
                   <span className="font-bold text-white tracking-tight">@{f.friend.nickname}</span>
                 </div>
                 <button
@@ -214,17 +185,7 @@ export default function FriendsPage() {
                 className="flex items-center justify-between bg-transparent border border-[var(--color-surface-container-high)] p-4 rounded-3xl opacity-60"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-[var(--color-surface-container-high)] flex items-center justify-center text-xl shadow-inner overflow-hidden">
-                    {f.friend.avatarUrl ? (
-                      <img
-                        src={import.meta.env.VITE_API_URL + f.friend.avatarUrl}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span>👤</span>
-                    )}
-                  </div>
+                  <Avatar path={f.friend.avatarUrl} size="sm" />
                   <span className="font-bold text-white tracking-tight">@{f.friend.nickname}</span>
                 </div>
                 <span className="text-xs text-[var(--color-on-surface-variant)] flex items-center gap-1.5 font-medium uppercase tracking-wider">

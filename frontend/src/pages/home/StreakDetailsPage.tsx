@@ -3,10 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Flame, ArrowLeft, Bell, Camera, Check, Image as ImageIcon } from 'lucide-react'
 import useSWRInfinite from 'swr/infinite'
 import { fetcher, remindStreak, type AuthUser } from '../../lib/api'
+import CachedImage from '../../components/CachedImage'
 import { vibrateRemind } from '../../lib/haptics'
 import { getLocalToday } from '../../lib/timezone'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
 const PARTICLE_EMOJIS = ['🔔', '🔥', '⚡', '💥', '📣', '👋', '❗', '💫']
 
 interface Particle {
@@ -51,22 +51,18 @@ function monthLabel(key: string) {
 }
 
 function DuoAvatar({
-  url,
+  path,
   label,
   onClick,
 }: {
-  url?: string | null
+  path?: string | null
   label?: string
   onClick?: () => void
 }) {
-  const inner = (
-    <>
-      {url ? (
-        <img src={API_BASE + url} alt="" className="w-full h-full object-cover" />
-      ) : (
-        <span className="text-2xl">👤</span>
-      )}
-    </>
+  const inner = path ? (
+    <CachedImage path={path} alt="" className="w-full h-full object-cover" />
+  ) : (
+    <span className="text-2xl">👤</span>
   )
 
   const cls =
@@ -232,13 +228,13 @@ export default function StreakDetailsPage() {
         <div className="absolute inset-0">
           {coverPhoto ? (
             <>
-              <img
-                src={API_BASE + coverPhoto}
+              <CachedImage
+                path={coverPhoto}
                 alt=""
                 className="w-full h-full object-cover scale-110 blur-2xl opacity-50"
               />
-              <img
-                src={API_BASE + coverPhoto}
+              <CachedImage
+                path={coverPhoto}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover opacity-30"
               />
@@ -271,7 +267,7 @@ export default function StreakDetailsPage() {
           {/* Duo row */}
           <div className="flex items-center justify-center gap-3 mb-5">
             <DuoAvatar
-              url={me.avatarUrl}
+              path={me.avatarUrl}
               label="Мой профиль"
               onClick={() => navigate('/profile')}
             />
@@ -291,7 +287,7 @@ export default function StreakDetailsPage() {
               </span>
             </div>
             <DuoAvatar
-              url={partner.avatarUrl}
+              path={partner.avatarUrl}
               label={`Профиль @${partner.nickname}`}
               onClick={() => navigate(`/${partner.nickname}`)}
             />
@@ -427,8 +423,8 @@ export default function StreakDetailsPage() {
                             key={proof.id}
                             className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_10px_30px_rgba(0,0,0,0.35)] group"
                           >
-                            <img
-                              src={API_BASE + proof.photoUrl}
+                            <CachedImage
+                              path={proof.photoUrl}
                               alt=""
                               className="w-full h-full object-cover transition duration-500 group-active:scale-[1.02]"
                               loading="lazy"

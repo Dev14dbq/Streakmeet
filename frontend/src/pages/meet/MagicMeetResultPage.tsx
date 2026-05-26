@@ -1,14 +1,13 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Flame } from 'lucide-react'
 import type { MagicMeetPartner } from '../../lib/api'
+import Avatar from '../../components/Avatar'
 
 export interface MagicMeetResultState {
   photo: string
   message: string
   partners: MagicMeetPartner[]
 }
-
-const API_URL = import.meta.env.VITE_API_URL || ''
 
 export default function MagicMeetResultPage() {
   const navigate = useNavigate()
@@ -62,17 +61,7 @@ export default function MagicMeetResultPage() {
                 key={partner.nickname}
                 className="glass-card rounded-2xl p-4 flex items-center gap-4"
               >
-                <div className="w-12 h-12 rounded-full bg-[var(--color-surface-container-highest)] flex items-center justify-center overflow-hidden border border-white/5 shrink-0">
-                  {partner.avatarUrl ? (
-                    <img
-                      src={API_URL + partner.avatarUrl}
-                      alt={partner.nickname}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-xl">👤</span>
-                  )}
-                </div>
+                <Avatar path={partner.avatarUrl} size="sm" />
                 <div>
                   <p className="font-bold text-white">@{partner.nickname}</p>
                   <p className="text-xs text-[var(--color-brand-primary)] font-medium mt-0.5">

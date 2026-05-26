@@ -24,6 +24,7 @@ import {
   scheduleStreakNotifications,
 } from './lib/streakNotifications'
 import { resumeLocationSharingIfNeeded } from './lib/locationSharing'
+import { pruneStaleImageCache } from './lib/remoteImageCache'
 import { initGoogleAuth } from './lib/googleAuth'
 import { App as CapApp } from '@capacitor/app'
 
@@ -64,6 +65,7 @@ export default function App() {
 
   useEffect(() => {
     void initGoogleAuth()
+    void pruneStaleImageCache()
   }, [])
 
   useEffect(() => {

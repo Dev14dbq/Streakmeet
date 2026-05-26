@@ -13,9 +13,9 @@ import {
   type PublicProfile,
 } from '../../lib/api'
 import { toastError, toastSuccess } from '../../lib/toast'
+import CachedImage from '../../components/CachedImage'
 
 const NICKNAME_RE = /^[a-z0-9_]{3,20}$/
-const API_BASE = import.meta.env.VITE_API_URL || ''
 
 interface Props {
   currentUser: AuthUser | null
@@ -185,8 +185,8 @@ export default function PublicProfilePage({ currentUser }: Props) {
           <div className="mb-4 relative">
             {user.avatarUrl ? (
               <div className="absolute inset-0 rounded-full blur-xl opacity-60 scale-110 z-0">
-                <img
-                  src={API_BASE + user.avatarUrl}
+                <CachedImage
+                  path={user.avatarUrl}
                   alt=""
                   className="w-full h-full object-cover rounded-full"
                 />
@@ -196,11 +196,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
             )}
             <div className="relative z-10 w-28 h-28 rounded-full bg-[var(--color-surface-container-high)] border-2 border-white/10 overflow-hidden flex items-center justify-center">
               {user.avatarUrl ? (
-                <img
-                  src={API_BASE + user.avatarUrl}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
+                <CachedImage path={user.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-4xl">👤</span>
               )}
@@ -259,8 +255,8 @@ export default function PublicProfilePage({ currentUser }: Props) {
                         key={photo.id}
                         className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_10px_30px_rgba(0,0,0,0.3)] group"
                       >
-                        <img
-                          src={API_BASE + photo.photoUrl}
+                        <CachedImage
+                          path={photo.photoUrl}
                           alt=""
                           className="w-full h-full object-cover transition duration-500 group-hover:scale-105"
                           loading="lazy"

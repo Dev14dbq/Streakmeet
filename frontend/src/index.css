@@ -315,6 +315,38 @@ body {
   line-height: 36px !important;
 }
 
+.map-share-toggle {
+  position: absolute;
+  right: 12px;
+  top: calc(50% + 44px);
+  z-index: 15;
+}
+
+.map-share-toggle__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 14px;
+  background: rgba(28, 28, 30, 0.92);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
+}
+
+.map-share-toggle__btn:disabled {
+  opacity: 0.55;
+}
+
+.map-share-toggle__btn--on {
+  background: rgba(28, 28, 30, 0.96);
+  box-shadow:
+    0 0 0 2px rgba(255, 26, 79, 0.85),
+    0 10px 30px rgba(255, 26, 79, 0.25);
+}
+
 .map-marker-wrap {
   background: transparent !important;
   border: none !important;
@@ -322,38 +354,38 @@ body {
 
 .map-user-marker {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 40px;
+  height: 40px;
 }
 
 .map-user-marker__ring {
   position: absolute;
   inset: 0;
   border-radius: 9999px;
-  border: 3px solid #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  border: 2px solid #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
 .map-user-marker--friend .map-user-marker__ring {
   border-color: rgba(255, 26, 79, 0.9);
-  box-shadow: 0 8px 24px rgba(255, 26, 79, 0.35);
+  box-shadow: 0 4px 14px rgba(255, 26, 79, 0.3);
 }
 
 .map-user-marker--self .map-user-marker__ring {
   border-color: #fff;
   box-shadow:
-    0 0 0 2px rgba(255, 26, 79, 0.85),
-    0 8px 24px rgba(255, 26, 79, 0.4);
+    0 0 0 1.5px rgba(255, 26, 79, 0.85),
+    0 4px 14px rgba(255, 26, 79, 0.35);
 }
 
 .map-user-marker--selected .map-user-marker__ring {
   border-color: #fff;
-  box-shadow: 0 0 0 4px rgba(255, 26, 79, 0.45);
+  box-shadow: 0 0 0 3px rgba(255, 26, 79, 0.45);
 }
 
 .map-user-marker__avatar {
   position: absolute;
-  inset: 5px;
+  inset: 3px;
   border-radius: 9999px;
   overflow: hidden;
   background: #292a2e;
@@ -362,7 +394,7 @@ body {
   justify-content: center;
   color: #fff;
   font-weight: 800;
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1;
 }
 
@@ -375,7 +407,7 @@ body {
 
 .map-user-marker__pulse {
   position: absolute;
-  inset: -6px;
+  inset: -4px;
   border-radius: 9999px;
   background: rgba(255, 26, 79, 0.28);
   animation: map-self-pulse 2s ease-out infinite;
