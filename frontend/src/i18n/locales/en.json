@@ -280,7 +280,14 @@
     "sending": "Sending…",
     "sendReply": "Send reply",
     "sendRequest": "Send request",
-    "meetPhoto": "Meet photo"
+    "meetPhoto": "Meet photo",
+    "continue": "Continue",
+    "backToCamera": "Back to camera",
+    "flipCamera": "Flip camera",
+    "torch": "Flashlight",
+    "timerOff": "Timer off",
+    "timer3": "3 second timer",
+    "timer10": "10 second timer"
   },
   "photo": {
     "savedDocuments": "Photo saved to Documents",

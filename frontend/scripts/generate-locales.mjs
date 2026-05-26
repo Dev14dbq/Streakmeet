@@ -293,6 +293,13 @@ const overrides = {
       sending: 'Отправка...',
       sendReply: 'Отправить ответ',
       sendRequest: 'Отправить запрос',
+      continue: 'Продолжить',
+      backToCamera: 'В камеру',
+      flipCamera: 'Перевернуть камеру',
+      torch: 'Фонарик',
+      timerOff: 'Таймер выкл',
+      timer3: 'Таймер 3 сек',
+      timer10: 'Таймер 10 сек',
     },
     photo: {
       savedDocuments: 'Фото сохранено в Документы',

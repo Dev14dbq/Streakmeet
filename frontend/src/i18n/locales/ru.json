@@ -155,7 +155,7 @@
     "partnerProfile": "Профиль @{{nickname}}",
     "selfieMerged": "Селфи объединено! Серия продлена 🎉",
     "selfieRequestSent": "Запрос на селфи отправлен!",
-    "selfieError": "Ошибка при отправке селфie",
+    "selfieError": "Ошибка при отправке селфи",
     "calendarTimezone": "Streak day resets at midnight ({{timezone}})",
     "monster": " — ты монстр 🔔",
     "back": "Назад"
@@ -280,7 +280,14 @@
     "sending": "Отправка...",
     "sendReply": "Отправить ответ",
     "sendRequest": "Отправить запрос",
-    "meetPhoto": "Meet photo"
+    "meetPhoto": "Meet photo",
+    "continue": "Продолжить",
+    "backToCamera": "В камеру",
+    "flipCamera": "Перевернуть камеру",
+    "torch": "Фонарик",
+    "timerOff": "Таймер выкл",
+    "timer3": "Таймер 3 сек",
+    "timer10": "Таймер 10 сек"
   },
   "photo": {
     "savedDocuments": "Фото сохранено в Документы",
