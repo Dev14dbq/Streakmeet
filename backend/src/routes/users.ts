@@ -3,6 +3,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../lib/prisma.js'
 import { saveBase64ImageAsAvif } from '../lib/saveImage.js'
 import { isValidTimezone } from '../lib/timezone.js'
+import { findUserByEmail } from '../lib/accountDeletion.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -41,6 +42,39 @@ router.patch('/settings', async (req: AuthRequest, res: Response) => {
   const user = await prisma.user.update({
     where: { id: req.userId },
     data: { timezone },
+    select: {
+      id: true,
+      email: true,
+      nickname: true,
+      qrCodeId: true,
+      gemsBalance: true,
+      faceEnrolled: true,
+      avatarUrl: true,
+      timezone: true,
+    },
+  })
+  res.json(user)
+})
+
+// PATCH /api/users/email
+router.patch('/email', async (req: AuthRequest, res: Response) => {
+  const { email } = req.body as { email?: string }
+  if (!email || !email.includes('@')) {
+    res.status(400).json({ error: 'Некорректный email' })
+    return
+  }
+
+  const normalizedEmail = email.toLowerCase().trim()
+
+  const existing = await findUserByEmail(normalizedEmail)
+  if (existing && existing.id !== req.userId) {
+    res.status(409).json({ error: 'Этот email уже занят' })
+    return
+  }
+
+  const user = await prisma.user.update({
+    where: { id: req.userId },
+    data: { email: normalizedEmail },
     select: {
       id: true,
       email: true,

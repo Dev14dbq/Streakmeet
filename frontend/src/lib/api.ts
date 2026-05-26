@@ -76,6 +76,8 @@ export function getDeletedAccountInfo(err: unknown): DeletedAccountInfo | null {
 export const searchUsers = (q: string) => api.get<AuthUser[]>(`/api/users/search?q=${q}`)
 export const uploadAvatar = (photoBase64: string) =>
   api.post<{ avatarUrl: string }>('/api/users/avatar', { photoBase64 })
+export const updateEmail = (email: string) => api.patch<AuthUser>('/api/users/email', { email })
+
 export const updateSettings = (timezone: string) =>
   api.patch<AuthUser & { timezone: string }>('/api/users/settings', { timezone })
 

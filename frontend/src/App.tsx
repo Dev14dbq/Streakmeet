@@ -16,6 +16,8 @@ const MapPage = lazy(() => import('./pages/map/MapPage'))
 import MemoriesPage from './pages/memories/MemoriesPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import SettingsPage from './pages/settings/SettingsPage'
+import TermsPage from './pages/legal/TermsPage'
+import PrivacyPage from './pages/legal/PrivacyPage'
 import type { AuthUser } from './lib/api'
 import { getRealtimeServerUrl, syncDeviceTimezone } from './lib/api'
 import { promptEssentialPermissionsOnFirstLaunch } from './lib/nativePermissions'
@@ -289,6 +291,8 @@ export default function App() {
               )
             }
           />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
 
           <Route path="/add/:qrCodeId" element={<LegacyAddRedirect />} />
           <Route

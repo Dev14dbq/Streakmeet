@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   Bell,
-  Globe,
   Shield,
   ScanFace,
   MapPin,
@@ -16,9 +15,14 @@ import {
   Camera,
 } from 'lucide-react'
 import useSWR from 'swr'
-import { fetcher, deleteAccount, syncDeviceTimezone, type AuthUser } from '../../lib/api'
-import { toastError, toastInfo } from '../../lib/toast'
-import { formatTimezoneLabel, getDeviceTimezone } from '../../lib/timezone'
+import {
+  fetcher,
+  deleteAccount,
+  syncDeviceTimezone,
+  updateEmail,
+  type AuthUser,
+} from '../../lib/api'
+import { toastError, toastInfo, toastSuccess } from '../../lib/toast'
 import { scheduleStreakNotifications } from '../../lib/streakNotifications'
 import { stopLocationSharing } from '../../lib/locationSharing'
 
@@ -138,7 +142,6 @@ export default function SettingsPage({ user: initialUser }: Props) {
   const navigate = useNavigate()
   const { data: me, mutate } = useSWR<AuthUser & { timezone?: string }>('/api/users/me', fetcher)
   const [local, setLocal] = useState<LocalSettings>(loadLocalSettings)
-  const deviceTimezone = getDeviceTimezone()
 
   useEffect(() => {
     syncDeviceTimezone()
@@ -185,8 +188,22 @@ export default function SettingsPage({ user: initialUser }: Props) {
 
   const email = me?.email ?? initialUser.email
   const faceEnrolled = me?.faceEnrolled ?? initialUser.faceEnrolled
-  const timezone = me?.timezone && me.timezone !== 'UTC' ? me.timezone : deviceTimezone
-  const timezoneLabel = formatTimezoneLabel(timezone)
+
+  async function handleChangeEmail() {
+    const newEmail = prompt('Введите новый email:', email)
+    if (!newEmail || newEmail === email) return
+    if (!newEmail.includes('@')) {
+      toastError('Некорректный email')
+      return
+    }
+    try {
+      const { data: updated } = await updateEmail(newEmail)
+      mutate({ ...(me ?? initialUser), ...updated }, false)
+      toastSuccess('Email успешно изменён')
+    } catch (e: any) {
+      toastError(e.response?.data?.error || 'Не удалось изменить email')
+    }
+  }
 
   return (
     <div className="flex flex-col px-6 pt-12 pb-8 min-h-screen">
@@ -201,17 +218,12 @@ export default function SettingsPage({ user: initialUser }: Props) {
       </div>
 
       <Section title="Аккаунт">
-        <SettingsRow icon={Mail} label="Email" description={email} />
+        <SettingsRow icon={Mail} label="Email" description={email} onClick={handleChangeEmail} />
         <SettingsRow
           icon={Camera}
           label="Фото профиля"
           description="Изменить аватар"
           onClick={() => navigate('/profile', { state: { openAvatarSheet: true } })}
-        />
-        <SettingsRow
-          icon={Globe}
-          label="Часовой пояс"
-          description={`${timezoneLabel} · определяется автоматически`}
         />
         <SettingsRow
           icon={ScanFace}
@@ -255,12 +267,12 @@ export default function SettingsPage({ user: initialUser }: Props) {
         <SettingsRow
           icon={FileText}
           label="Условия использования"
-          onClick={() => toastInfo('Скоро')}
+          onClick={() => navigate('/terms')}
         />
         <SettingsRow
           icon={Shield}
           label="Политика конфиденциальности"
-          onClick={() => toastInfo('Скоро')}
+          onClick={() => navigate('/privacy')}
         />
         <SettingsRow
           icon={HelpCircle}
