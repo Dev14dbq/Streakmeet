@@ -21,6 +21,7 @@ router.get('/me', async (req: AuthRequest, res: Response) => {
       faceEnrolled: true,
       avatarUrl: true,
       timezone: true,
+      isPublic: true,
     },
   })
   res.json(user)
@@ -51,6 +52,7 @@ router.patch('/settings', async (req: AuthRequest, res: Response) => {
       faceEnrolled: true,
       avatarUrl: true,
       timezone: true,
+      isPublic: true,
     },
   })
   res.json(user)
@@ -84,6 +86,33 @@ router.patch('/email', async (req: AuthRequest, res: Response) => {
       faceEnrolled: true,
       avatarUrl: true,
       timezone: true,
+      isPublic: true,
+    },
+  })
+  res.json(user)
+})
+
+// PATCH /api/users/public
+router.patch('/public', async (req: AuthRequest, res: Response) => {
+  const { isPublic } = req.body as { isPublic?: boolean }
+  if (typeof isPublic !== 'boolean') {
+    res.status(400).json({ error: 'isPublic is required' })
+    return
+  }
+
+  const user = await prisma.user.update({
+    where: { id: req.userId },
+    data: { isPublic },
+    select: {
+      id: true,
+      email: true,
+      nickname: true,
+      qrCodeId: true,
+      gemsBalance: true,
+      faceEnrolled: true,
+      avatarUrl: true,
+      timezone: true,
+      isPublic: true,
     },
   })
   res.json(user)
@@ -131,6 +160,7 @@ router.get('/photos', async (req: AuthRequest, res: Response) => {
       },
     },
     include: {
+      uploadedBy: { select: { id: true, nickname: true } },
       streakDay: {
         select: {
           streak: {

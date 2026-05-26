@@ -19,6 +19,7 @@ model User {
   faceEnrolled  Boolean   @default(false)
   faceEmbedding Json?
   deletedAt     DateTime?
+  isPublic      Boolean   @default(true)
   sharingLocation Boolean  @default(false)
   lastLatitude    Float?
   lastLongitude   Float?
@@ -33,6 +34,8 @@ model User {
   streaksB        Streak[]         @relation("StreakUserB")
   gemTransactions GemTransaction[]
   meetProofs      MeetProof[]
+  remoteSelfiesSent     RemoteSelfieRequest[] @relation("RemoteSelfieSender")
+  remoteSelfiesReceived RemoteSelfieRequest[] @relation("RemoteSelfieReceiver")
 
   @@index([email])
   @@index([nickname])
@@ -68,6 +71,7 @@ model Streak {
   userA      User        @relation("StreakUserA", fields: [userAId], references: [id], onDelete: Cascade)
   userB      User        @relation("StreakUserB", fields: [userBId], references: [id], onDelete: Cascade)
   streakDays StreakDay[]
+  remoteSelfies RemoteSelfieRequest[]
 
   @@unique([userAId, userBId])
   @@map("streaks")
@@ -159,4 +163,28 @@ model StreakNotificationLog {
   @@unique([userId, streakId, kind, localDate])
   @@index([userId, localDate])
   @@map("streak_notification_logs")
+}
+
+model RemoteSelfieRequest {
+  id             String   @id @default(cuid())
+  streakId       String
+  senderId       String
+  receiverId     String
+  senderPhotoUrl String
+  status         RemoteSelfieStatus @default(PENDING)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  streak   Streak @relation(fields: [streakId], references: [id], onDelete: Cascade)
+  sender   User   @relation("RemoteSelfieSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User   @relation("RemoteSelfieReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([receiverId, status])
+  @@map("remote_selfie_requests")
+}
+
+enum RemoteSelfieStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
 }

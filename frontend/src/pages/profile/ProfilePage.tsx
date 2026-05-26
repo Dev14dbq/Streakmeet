@@ -5,6 +5,7 @@ import Webcam from 'react-webcam'
 import useSWRInfinite from 'swr/infinite'
 import ProfileQrModal from '../../components/ProfileQrModal'
 import CachedImage from '../../components/CachedImage'
+import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 import { uploadAvatar, fetcher, type AuthUser } from '../../lib/api'
 import { invalidateCachedImage } from '../../lib/remoteImageCache'
 import { toastError } from '../../lib/toast'
@@ -31,6 +32,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
   const [showCamera, setShowCamera] = useState(false)
   const [showAvatarSheet, setShowAvatarSheet] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoData | null>(null)
   const webcamRef = useRef<Webcam>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -202,9 +204,11 @@ export default function ProfilePage({ user: initialUser }: Props) {
                       ? photo.streakDay.streak.userB
                       : photo.streakDay.streak.userA
                   return (
-                    <div
+                    <button
                       key={photo.id}
-                      className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_10px_30px_rgba(0,0,0,0.3)] group"
+                      type="button"
+                      onClick={() => setSelectedPhoto(photo as PhotoData)}
+                      className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_10px_30px_rgba(0,0,0,0.3)] group text-left"
                     >
                       <CachedImage
                         path={photo.photoUrl}
@@ -226,7 +230,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
                           </div>
                         )}
                       </div>
-                    </div>
+                    </button>
                   )
                 }
               )}
@@ -327,6 +331,10 @@ export default function ProfilePage({ user: initialUser }: Props) {
             </button>
           </div>
         </div>
+      )}
+
+      {selectedPhoto && (
+        <PhotoViewerModal photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
       )}
     </div>
   )

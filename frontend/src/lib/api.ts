@@ -38,6 +38,8 @@ export interface AuthUser {
   gemsBalance?: number
   faceEnrolled: boolean
   avatarUrl?: string
+  timezone?: string
+  isPublic?: boolean
 }
 
 export interface AuthResponse {
@@ -81,6 +83,9 @@ export const updateEmail = (email: string) => api.patch<AuthUser>('/api/users/em
 export const updateSettings = (timezone: string) =>
   api.patch<AuthUser & { timezone: string }>('/api/users/settings', { timezone })
 
+export const updatePublicProfile = (isPublic: boolean) =>
+  api.patch<AuthUser>('/api/users/public', { isPublic })
+
 /** Синхронизирует часовой пояс устройства с профилем */
 export async function syncDeviceTimezone(): Promise<string> {
   const timezone = getDeviceTimezone()
@@ -99,6 +104,15 @@ export const getStreak = (partnerNickname: string) =>
 export const createStreak = (partnerId: string) => api.post('/api/streaks', { partnerId })
 export const remindStreak = (partnerNickname: string) =>
   api.post<{ ok: true }>(`/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}/remind`)
+
+export const initRemoteSelfie = (streakId: string, photoBase64: string) =>
+  api.post(`/api/streaks/${streakId}/remote-selfie/init`, { photoBase64 })
+
+export const replyRemoteSelfie = (streakId: string, requestId: string, photoBase64: string) =>
+  api.post<{ success: boolean; photoUrl: string }>(
+    `/api/streaks/${streakId}/remote-selfie/reply/${requestId}`,
+    { photoBase64 }
+  )
 
 export interface FriendLocation {
   id: string
@@ -144,6 +158,7 @@ export interface PublicUser {
   id: string
   nickname: string
   avatarUrl?: string | null
+  isPublic?: boolean
 }
 
 export type PublicFriendship =

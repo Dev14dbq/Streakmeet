@@ -20,6 +20,7 @@ import {
   deleteAccount,
   syncDeviceTimezone,
   updateEmail,
+  updatePublicProfile,
   type AuthUser,
 } from '../../lib/api'
 import { toastError, toastInfo, toastSuccess } from '../../lib/toast'
@@ -188,6 +189,16 @@ export default function SettingsPage({ user: initialUser }: Props) {
 
   const email = me?.email ?? initialUser.email
   const faceEnrolled = me?.faceEnrolled ?? initialUser.faceEnrolled
+  const isPublic = me?.isPublic ?? initialUser.isPublic ?? true
+
+  async function handleTogglePublic(v: boolean) {
+    try {
+      const { data: updated } = await updatePublicProfile(v)
+      mutate({ ...(me ?? initialUser), ...updated }, false)
+    } catch {
+      toastError('Не удалось обновить настройки профиля')
+    }
+  }
 
   async function handleChangeEmail() {
     const newEmail = prompt('Введите новый email:', email)
@@ -253,6 +264,9 @@ export default function SettingsPage({ user: initialUser }: Props) {
       </Section>
 
       <Section title="Конфиденциальность">
+        <SettingsRow icon={Shield} label="Публичный профиль" description="Доступ к фото по ссылке">
+          <Toggle on={isPublic} onChange={handleTogglePublic} />
+        </SettingsRow>
         <SettingsRow icon={MapPin} label="Геолокация на фото" description="Сохранять место встречи">
           <Toggle on={local.geoOnPhotos} onChange={(v) => updateLocal({ geoOnPhotos: v })} />
         </SettingsRow>

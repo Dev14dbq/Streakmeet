@@ -104,12 +104,14 @@ function authUserPayload(user: {
   email: string
   nickname: string
   faceEnrolled: boolean
+  isPublic: boolean
 }) {
   return {
     id: user.id,
     email: user.email,
     nickname: user.nickname,
     faceEnrolled: user.faceEnrolled,
+    isPublic: user.isPublic,
   }
 }
 

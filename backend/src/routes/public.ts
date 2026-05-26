@@ -9,7 +9,7 @@ const NICKNAME_RE = /^[a-z0-9_]{3,20}$/
 async function findPublicUser(nickname: string) {
   return prisma.user.findFirst({
     where: { nickname: nickname.toLowerCase(), deletedAt: null },
-    select: { id: true, nickname: true, avatarUrl: true },
+    select: { id: true, nickname: true, avatarUrl: true, isPublic: true },
   })
 }
 
@@ -50,6 +50,7 @@ async function getUserPhotos(userId: string, page: number, limit: number) {
       streakDay: { streakId: { in: streakIds } },
     },
     include: {
+      uploadedBy: { select: { id: true, nickname: true } },
       streakDay: {
         select: {
           streak: {
@@ -96,6 +97,14 @@ router.get('/users/:nickname/photos', optionalAuth, async (req: AuthRequest, res
   const user = await findPublicUser(nickname)
   if (!user) {
     res.status(404).json({ error: 'User not found' })
+    return
+  }
+
+  const friendship = await getFriendship(req.userId, user.id)
+  const isFriendOrSelf = friendship?.status === 'ACCEPTED' || friendship?.status === 'SELF'
+
+  if (!user.isPublic && !isFriendOrSelf) {
+    res.status(403).json({ error: 'Private profile' })
     return
   }
 

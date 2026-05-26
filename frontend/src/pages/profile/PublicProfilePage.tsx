@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams, Link, Navigate } from 'react-router-dom'
 import { isAxiosError } from 'axios'
-import { ArrowLeft, Image as ImageIcon, MapPin, UserPlus, Check, Clock } from 'lucide-react'
+import { ArrowLeft, Image as ImageIcon, MapPin, UserPlus, Check, Clock, Shield } from 'lucide-react'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import {
@@ -14,6 +14,7 @@ import {
 } from '../../lib/api'
 import { toastError, toastSuccess } from '../../lib/toast'
 import CachedImage from '../../components/CachedImage'
+import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 
 const NICKNAME_RE = /^[a-z0-9_]{3,20}$/
 
@@ -35,7 +36,13 @@ export default function PublicProfilePage({ currentUser }: Props) {
   } = useSWR<PublicProfile>(isValidNickname ? `/api/public/users/${normalized}` : null, fetcher)
 
   const getKey = (pageIndex: number, previousPageData: unknown[]) => {
-    if (!isValidNickname) return null
+    if (!isValidNickname || !profile) return null
+
+    const isSelf = profile.friendship?.status === 'SELF' || currentUser?.id === profile.user.id
+    const isFriend = profile.friendship?.status === 'ACCEPTED'
+    const canViewPhotos = profile.user.isPublic || isSelf || isFriend
+
+    if (!canViewPhotos) return null
     if (previousPageData && !previousPageData.length) return null
     return `/api/public/users/${normalized}/photos?page=${pageIndex + 1}&limit=12`
   }
@@ -46,6 +53,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
   const isReachingEnd = data && data[data.length - 1]?.length < 12
 
   const [friendLoading, setFriendLoading] = useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoData | null>(null)
 
   if (profileError) {
     if (isAxiosError(profileError) && profileError.response?.status === 404) {
@@ -70,6 +78,8 @@ export default function PublicProfilePage({ currentUser }: Props) {
 
   const { user, friendship } = profile
   const isSelf = friendship?.status === 'SELF' || currentUser?.id === user.id
+  const isFriend = friendship?.status === 'ACCEPTED'
+  const canViewPhotos = user.isPublic || isSelf || isFriend
 
   async function handleAddFriend() {
     if (!currentUser) {
@@ -216,7 +226,17 @@ export default function PublicProfilePage({ currentUser }: Props) {
             Фотографии встреч
           </h2>
 
-          {loadingPhotos ? (
+          {!canViewPhotos ? (
+            <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-white/5">
+              <Shield
+                size={32}
+                className="text-[var(--color-on-surface-variant)] opacity-50 mb-3"
+              />
+              <p className="text-[var(--color-on-surface-variant)] text-sm font-medium">
+                Это приватный профиль. Добавьте пользователя в друзья, чтобы видеть фото.
+              </p>
+            </div>
+          ) : loadingPhotos ? (
             <p className="text-[var(--color-on-surface-variant)] text-sm text-center py-10 opacity-70">
               Загрузка...
             </p>
@@ -251,9 +271,11 @@ export default function PublicProfilePage({ currentUser }: Props) {
                         ? photo.streakDay.streak.userB
                         : photo.streakDay.streak.userA
                     return (
-                      <div
+                      <button
                         key={photo.id}
-                        className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_10px_30px_rgba(0,0,0,0.3)] group"
+                        type="button"
+                        onClick={() => setSelectedPhoto(photo as PhotoData)}
+                        className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_10px_30px_rgba(0,0,0,0.3)] group text-left"
                       >
                         <CachedImage
                           path={photo.photoUrl}
@@ -275,7 +297,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
                             </div>
                           )}
                         </div>
-                      </div>
+                      </button>
                     )
                   }
                 )}
@@ -293,6 +315,9 @@ export default function PublicProfilePage({ currentUser }: Props) {
           )}
         </div>
       </div>
+      {selectedPhoto && (
+        <PhotoViewerModal photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
+      )}
     </div>
   )
 }
