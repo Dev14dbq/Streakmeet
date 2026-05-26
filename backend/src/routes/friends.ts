@@ -69,7 +69,16 @@ router.post('/request', async (req: AuthRequest, res: Response) => {
     },
   })
 
-  notifyUser(friendId, 'notification', { message: 'Новая заявка в друзья!', route: '/' })
+  const requester = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { nickname: true },
+  })
+
+  notifyUser(friendId, 'notification', {
+    type: 'friend_request',
+    message: `@${requester?.nickname ?? 'Кто-то'} хочет добавить тебя в друзья`,
+    route: '/',
+  })
 
   res.json(friendship)
 })
@@ -90,8 +99,14 @@ router.post('/accept', async (req: AuthRequest, res: Response) => {
     data: { status: 'ACCEPTED' },
   })
 
+  const accepter = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { nickname: true },
+  })
+
   notifyUser(friendship.userAId, 'notification', {
-    message: 'Заявка в друзья принята!',
+    type: 'friend_accepted',
+    message: `@${accepter?.nickname ?? 'Кто-то'} принял(а) твою заявку в друзья`,
     route: '/',
   })
 

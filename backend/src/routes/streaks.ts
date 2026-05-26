@@ -365,6 +365,7 @@ router.post('/:partnerNickname/remind', async (req: AuthRequest, res: Response) 
   const message = pings[Math.floor(Math.random() * pings.length)]!
 
   notifyUser(partner.id, 'notification', {
+    type: 'streak_remind',
     message,
     route: `/streaks/${sender.nickname}`,
   })

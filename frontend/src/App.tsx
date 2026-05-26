@@ -17,12 +17,16 @@ import MemoriesPage from './pages/memories/MemoriesPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import SettingsPage from './pages/settings/SettingsPage'
 import type { AuthUser } from './lib/api'
-import { syncDeviceTimezone } from './lib/api'
+import { getRealtimeServerUrl, syncDeviceTimezone } from './lib/api'
 import { promptEssentialPermissionsOnFirstLaunch } from './lib/nativePermissions'
 import {
   registerNotificationTapHandler,
   scheduleStreakNotifications,
 } from './lib/streakNotifications'
+import {
+  showInstantPushNotification,
+  type AppNotificationPayload,
+} from './lib/instantNotifications'
 import { resumeLocationSharingIfNeeded } from './lib/locationSharing'
 import { pruneStaleImageCache } from './lib/remoteImageCache'
 import { initGoogleAuth } from './lib/googleAuth'
@@ -53,6 +57,7 @@ export default function App() {
   }, [user])
 
   const timezoneSynced = useRef(false)
+  const appActiveRef = useRef(true)
   useEffect(() => {
     if (!user || timezoneSynced.current) return
     timezoneSynced.current = true
@@ -84,6 +89,7 @@ export default function App() {
     if (!user) return
     let cleanup: (() => void) | undefined
     void CapApp.addListener('appStateChange', ({ isActive }) => {
+      appActiveRef.current = isActive
       if (isActive) void scheduleStreakNotifications()
     }).then((handle) => {
       cleanup = () => handle.remove()
@@ -97,13 +103,15 @@ export default function App() {
     const token = localStorage.getItem('accessToken')
 
     if (user && token) {
-      socket = io(window.location.origin, {
+      socket = io(getRealtimeServerUrl(), {
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnectionAttempts: 5,
       })
 
-      socket.on('notification', (data: { message: string; route?: string }) => {
+      socket.on('notification', (data: AppNotificationPayload) => {
+        void showInstantPushNotification(data)
+        if (!appActiveRef.current) return
         if (data.route) {
           toastLink(data.message, data.route, navigate)
         } else {

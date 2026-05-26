@@ -9,6 +9,9 @@ import {
 } from './timezone'
 
 const SETTINGS_KEY = 'streakmeet_settings'
+export const NOTIFICATION_CHANNEL_ID = 'streakmeet'
+
+let channelReady: Promise<void> | null = null
 
 interface StreakRow {
   id: string
@@ -38,8 +41,26 @@ export function isNativeNotificationsPlatform(): boolean {
   return Capacitor.isNativePlatform()
 }
 
+export async function ensureNotificationChannel(): Promise<void> {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') return
+  if (channelReady) return channelReady
+
+  channelReady = LocalNotifications.createChannel({
+    id: NOTIFICATION_CHANNEL_ID,
+    name: 'StreakMeet',
+    description: 'Напоминания о сериях, друзьях и встречах',
+    importance: 5,
+    visibility: 1,
+    vibration: true,
+    sound: 'default',
+  }).then(() => undefined)
+
+  return channelReady
+}
+
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) return false
+  await ensureNotificationChannel()
   const current = await LocalNotifications.checkPermissions()
   if (current.display === 'granted') return true
   const requested = await LocalNotifications.requestPermissions()
@@ -111,6 +132,7 @@ export async function scheduleStreakNotifications(): Promise<void> {
         title: 'StreakMeet',
         body: slot.body,
         schedule: { at: slot.at },
+        channelId: NOTIFICATION_CHANNEL_ID,
         extra: { route },
         sound: 'default',
         iconColor: '#FF1A4F',

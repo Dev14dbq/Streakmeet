@@ -10,6 +10,7 @@ import { MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-react'
 import {
   getFriendLocations,
   getMyLocation,
+  getRealtimeServerUrl,
   type AuthUser,
   type FriendLocation,
 } from '../../lib/api'
@@ -224,7 +225,7 @@ export default function MapPage() {
     const token = localStorage.getItem('accessToken')
     if (!token) return
 
-    const socket: Socket = io(window.location.origin, {
+    const socket: Socket = io(getRealtimeServerUrl(), {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
