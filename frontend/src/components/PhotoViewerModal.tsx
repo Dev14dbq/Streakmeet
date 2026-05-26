@@ -122,7 +122,7 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-sm animate-in fade-in duration-200">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 relative z-10">
+      <div className="flex items-center justify-between px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] relative z-10 shrink-0">
         <button
           onClick={onClose}
           className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition"

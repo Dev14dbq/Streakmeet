@@ -13,6 +13,7 @@ import {
   purgeUser,
 } from '../lib/accountDeletion.js'
 import { isValidTimezone, normalizeTimezone } from '../lib/timezone.js'
+import { acceptCurrentLegalForUser } from '../lib/legalDocuments.js'
 
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 
@@ -178,6 +179,7 @@ async function findOrCreateOAuthUser(data: {
         ...(timezone ? { timezone } : {}),
       },
     })
+    await acceptCurrentLegalForUser(user.id)
   } else if (timezone) {
     await syncUserTimezone(user.id, timezone)
   }
@@ -379,6 +381,7 @@ router.post('/register', async (req: Request, res: Response) => {
       timezone: normalizeTimezone(timezone),
     },
   })
+  await acceptCurrentLegalForUser(user.id)
   res.status(201).json({
     ...makeTokens(user.id),
     user: authUserPayload(user),

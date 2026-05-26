@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { io, Socket } from 'socket.io-client'
 import AppLayout from './components/AppLayout'
@@ -18,8 +18,8 @@ import ProfilePage from './pages/profile/ProfilePage'
 import SettingsPage from './pages/settings/SettingsPage'
 import TermsPage from './pages/legal/TermsPage'
 import PrivacyPage from './pages/legal/PrivacyPage'
-import type { AuthUser } from './lib/api'
-import { getRealtimeServerUrl, syncDeviceTimezone } from './lib/api'
+import type { AuthUser, LegalConsentStatus } from './lib/api'
+import { getLegalConsentStatus, getRealtimeServerUrl, syncDeviceTimezone } from './lib/api'
 import { promptEssentialPermissionsOnFirstLaunch } from './lib/nativePermissions'
 import {
   registerNotificationTapHandler,
@@ -39,11 +39,13 @@ import MagicMeetResultPage from './pages/meet/MagicMeetResultPage'
 import PublicProfileRoute from './pages/profile/PublicProfileRoute'
 import LegacyAddRedirect from './pages/profile/LegacyAddRedirect'
 import NotFoundPage from './pages/NotFoundPage'
+import LegalConsentModal from './components/LegalConsentModal'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
 
 export default function App() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [user, setUser] = useState<AuthUser | null>(() => {
     try {
       const stored = localStorage.getItem('user')
@@ -52,6 +54,33 @@ export default function App() {
       return null
     }
   })
+  const [legalStatus, setLegalStatus] = useState<LegalConsentStatus | null>(null)
+  const [legalChecked, setLegalChecked] = useState(false)
+
+  useEffect(() => {
+    if (!user) {
+      setLegalStatus(null)
+      setLegalChecked(false)
+      return
+    }
+
+    let cancelled = false
+    setLegalChecked(false)
+    getLegalConsentStatus()
+      .then(({ data }) => {
+        if (!cancelled) setLegalStatus(data)
+      })
+      .catch(() => {
+        if (!cancelled) setLegalStatus(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLegalChecked(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
 
   useEffect(() => {
     if (user) localStorage.setItem('user', JSON.stringify(user))
@@ -146,6 +175,12 @@ export default function App() {
 
   const isLoggedIn = !!user
   const needsFaceEnrollment = isLoggedIn && !user!.faceEnrolled
+  const needsLegalConsent =
+    isLoggedIn &&
+    legalChecked &&
+    legalStatus?.needsAcceptance &&
+    location.pathname !== '/terms' &&
+    location.pathname !== '/privacy'
 
   function loggedInRedirect() {
     return needsFaceEnrollment ? (
@@ -159,6 +194,19 @@ export default function App() {
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <MobileOnlyGate>
         <AppToaster />
+        {needsLegalConsent && legalStatus && (
+          <LegalConsentModal
+            status={legalStatus}
+            onAccepted={() =>
+              setLegalStatus({
+                ...legalStatus,
+                needsAcceptance: false,
+                terms: { ...legalStatus.terms, accepted: true },
+                privacy: { ...legalStatus.privacy, accepted: true },
+              })
+            }
+          />
+        )}
         <Routes>
           {/* ── Auth (без меню) ─────────────────────────────────────────── */}
           <Route

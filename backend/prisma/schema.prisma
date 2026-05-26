@@ -20,6 +20,8 @@ model User {
   faceEmbedding Json?
   deletedAt     DateTime?
   isPublic      Boolean   @default(true)
+  acceptedTermsVersion   Int @default(0)
+  acceptedPrivacyVersion Int @default(0)
   sharingLocation Boolean  @default(false)
   lastLatitude    Float?
   lastLongitude   Float?
@@ -187,4 +189,21 @@ enum RemoteSelfieStatus {
   PENDING
   COMPLETED
   EXPIRED
+}
+
+enum LegalDocSlug {
+  TERMS
+  PRIVACY
+}
+
+model LegalDocument {
+  id        String       @id @default(cuid())
+  slug      LegalDocSlug @unique
+  title     String
+  version   Int          @default(1)
+  content   String       @db.Text
+  updatedAt DateTime     @updatedAt
+  createdAt DateTime     @default(now())
+
+  @@map("legal_documents")
 }

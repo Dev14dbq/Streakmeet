@@ -9,9 +9,11 @@ import friendsRouter from './routes/friends.js'
 import streaksRouter from './routes/streaks.js'
 import locationRouter from './routes/location.js'
 import publicRouter from './routes/public.js'
+import legalRouter from './routes/legal.js'
 import { initSocket } from './lib/socket.js'
 import { UPLOADS_DIR } from './lib/paths.js'
 import { ensureFaceService } from './lib/face.js'
+import { ensureLegalDocuments } from './lib/legalDocuments.js'
 import { purgeExpiredDeletedUsers } from './lib/accountDeletion.js'
 import { processStreakNotifications } from './lib/streakNotifications.js'
 
@@ -40,9 +42,13 @@ app.use('/api/users', usersRouter)
 app.use('/api/friends', friendsRouter)
 app.use('/api/streaks', streaksRouter)
 app.use('/api/location', locationRouter)
+app.use('/api/legal', legalRouter)
 
 httpServer.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`)
+  void ensureLegalDocuments().catch((e) =>
+    console.error('[legal] Failed to seed legal documents:', e)
+  )
   ensureFaceService()
     .then(() => console.log('[face] InsightFace service connected'))
     .catch((e) =>

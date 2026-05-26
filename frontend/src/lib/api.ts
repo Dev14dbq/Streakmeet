@@ -86,6 +86,28 @@ export const updateSettings = (timezone: string) =>
 export const updatePublicProfile = (isPublic: boolean) =>
   api.patch<AuthUser>('/api/users/public', { isPublic })
 
+export interface LegalDocument {
+  slug: 'terms' | 'privacy'
+  title: string
+  version: number
+  content: string
+  updatedAt: string
+}
+
+export interface LegalConsentStatus {
+  needsAcceptance: boolean
+  terms: { version: number; accepted: boolean; updatedAt: string | null }
+  privacy: { version: number; accepted: boolean; updatedAt: string | null }
+}
+
+export const getLegalDocument = (slug: 'terms' | 'privacy') =>
+  api.get<LegalDocument>(`/api/legal/${slug}`)
+
+export const getLegalConsentStatus = () => api.get<LegalConsentStatus>('/api/legal/status/me')
+
+export const acceptLegalDocuments = () =>
+  api.post<{ ok: true; terms: number; privacy: number }>('/api/legal/accept')
+
 /** Синхронизирует часовой пояс устройства с профилем */
 export async function syncDeviceTimezone(): Promise<string> {
   const timezone = getDeviceTimezone()

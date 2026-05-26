@@ -216,6 +216,33 @@ export default function StreakDetailsPage() {
     }
   }, [nickname, spawnParticles, triggerScreenShake])
 
+  const handleCaptureRemoteSelfie = useCallback(async () => {
+    if (!webcamRef.current || !streakMeta) return
+    const imageSrc = webcamRef.current.getScreenshot()
+    if (!imageSrc) return
+
+    setRemoteSelfieUploading(true)
+    try {
+      if (replyingToRequest) {
+        const { data } = await replyRemoteSelfie(streakMeta.id, replyingToRequest, imageSrc)
+        if (data.success) {
+          toastSuccess('Селфи объединено! Серия продлена 🎉')
+          setSize(1)
+        }
+      } else {
+        await initRemoteSelfie(streakMeta.id, imageSrc)
+        toastSuccess('Запрос на селфи отправлен!')
+        setSize(1)
+      }
+      setShowRemoteSelfieCamera(false)
+      setReplyingToRequest(null)
+    } catch (e: any) {
+      toastError(e.response?.data?.error || 'Ошибка при отправке селфи')
+    } finally {
+      setRemoteSelfieUploading(false)
+    }
+  }, [replyingToRequest, streakMeta, setSize])
+
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -252,33 +279,6 @@ export default function StreakDetailsPage() {
 
   const pendingRemoteSelfie = streakMeta?.remoteSelfies?.[0]
   const isMyRequest = pendingRemoteSelfie?.senderId === me.id
-
-  const handleCaptureRemoteSelfie = useCallback(async () => {
-    if (!webcamRef.current || !streakMeta) return
-    const imageSrc = webcamRef.current.getScreenshot()
-    if (!imageSrc) return
-
-    setRemoteSelfieUploading(true)
-    try {
-      if (replyingToRequest) {
-        const { data } = await replyRemoteSelfie(streakMeta.id, replyingToRequest, imageSrc)
-        if (data.success) {
-          toastSuccess('Селфи объединено! Серия продлена 🎉')
-          setSize(1)
-        }
-      } else {
-        await initRemoteSelfie(streakMeta.id, imageSrc)
-        toastSuccess('Запрос на селфи отправлен!')
-        setSize(1)
-      }
-      setShowRemoteSelfieCamera(false)
-      setReplyingToRequest(null)
-    } catch (e: any) {
-      toastError(e.response?.data?.error || 'Ошибка при отправке селфи')
-    } finally {
-      setRemoteSelfieUploading(false)
-    }
-  }, [replyingToRequest, streakMeta, setSize])
 
   return (
     <div ref={pageRef} className="flex flex-col min-h-full">
