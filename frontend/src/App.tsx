@@ -50,13 +50,21 @@ interface PendingNavigation {
   faceEnrolled: boolean
 }
 
+type BootstrapPhase = 'hidden' | 'loading' | 'leaving'
+
+function initialBootstrapPhase(): BootstrapPhase {
+  return localStorage.getItem('accessToken') ? 'loading' : 'hidden'
+}
+
 export default function App() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
   const pendingNavRef = useRef<PendingNavigation | null>(null)
   const [bootstrapVersion, setBootstrapVersion] = useState(0)
-  const [appReady, setAppReady] = useState(() => !localStorage.getItem('accessToken'))
+  const [bootstrapPhase, setBootstrapPhase] = useState<BootstrapPhase>(initialBootstrapPhase)
   const [user, setUser] = useState<AuthUser | null>(() => {
     try {
       const stored = localStorage.getItem('user')
@@ -88,7 +96,16 @@ export default function App() {
     let cancelled = false
     const hasToken = !!localStorage.getItem('accessToken')
 
-    if (hasToken) setAppReady(false)
+    if (!hasToken) {
+      setBootstrapPhase('hidden')
+      setUser(null)
+      setLegalStatus(null)
+      setLegalChecked(true)
+      setLegalFetchFailed(false)
+      return
+    }
+
+    setBootstrapPhase('loading')
 
     void bootstrapSession().then((result) => {
       if (cancelled) return
@@ -98,8 +115,8 @@ export default function App() {
         setLegalStatus(null)
         setLegalChecked(true)
         setLegalFetchFailed(false)
-        setAppReady(true)
-        navigate('/account-deleted', {
+        setBootstrapPhase('hidden')
+        navigateRef.current('/account-deleted', {
           replace: true,
           state: result.deletedAccount,
         })
@@ -110,7 +127,7 @@ export default function App() {
       setLegalStatus(result.legalStatus)
       setLegalChecked(result.legalChecked)
       setLegalFetchFailed(result.legalFetchFailed)
-      setAppReady(true)
+      setBootstrapPhase('leaving')
 
       const pending = pendingNavRef.current
       if (pending && result.user) {
@@ -122,7 +139,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [bootstrapVersion, navigate])
+  }, [bootstrapVersion])
 
   useEffect(() => {
     if (user) localStorage.setItem('user', JSON.stringify(user))
@@ -152,7 +169,7 @@ export default function App() {
       setUser(null)
       setLegalStatus(null)
       setLegalChecked(false)
-      setAppReady(true)
+      setBootstrapPhase('hidden')
       navigate('/login', { replace: true })
     })
     return () => setUnauthorizedHandler(() => {})
@@ -174,7 +191,7 @@ export default function App() {
     let socket: Socket | null = null
     const token = localStorage.getItem('accessToken')
 
-    if (user && token && appReady) {
+    if (user && token && bootstrapPhase === 'hidden') {
       socket = io(getRealtimeServerUrl(), {
         auth: { token },
         transports: ['websocket', 'polling'],
@@ -198,7 +215,7 @@ export default function App() {
     return () => {
       if (socket) socket.disconnect()
     }
-  }, [user?.id, appReady, navigate])
+  }, [user?.id, bootstrapPhase, navigate])
 
   function handleAuth(authUser: AuthUser, token: string, fromSignup = false, returnTo?: string) {
     localStorage.setItem('accessToken', token)
@@ -212,6 +229,7 @@ export default function App() {
   }
 
   const isLoggedIn = !!user
+  const showApp = bootstrapPhase === 'hidden' || bootstrapPhase === 'leaving'
   const needsFaceEnrollment = isLoggedIn && !user!.faceEnrolled
   const needsLegalConsent =
     isLoggedIn &&
@@ -228,7 +246,7 @@ export default function App() {
     )
   }
 
-  if (!appReady) {
+  if (!showApp) {
     return (
       <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
         <MobileOnlyGate>
@@ -241,6 +259,9 @@ export default function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <MobileOnlyGate>
+        {bootstrapPhase === 'leaving' && (
+          <AppBootstrapScreen leaving onLeaveComplete={() => setBootstrapPhase('hidden')} />
+        )}
         <AppToaster />
         {legalFetchFailed && (
           <div className="fixed top-0 inset-x-0 z-[199] bg-[var(--color-error-container)] px-4 py-3 text-center text-sm text-[var(--color-on-error-container)]">

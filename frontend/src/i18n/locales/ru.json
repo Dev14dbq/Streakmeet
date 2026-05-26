@@ -155,12 +155,15 @@
     "partnerProfile": "Профиль @{{nickname}}",
     "selfieMerged": "Селфи объединено! Серия продлена 🎉",
     "selfieRequestSent": "Запрос на селфи отправлен!",
-    "selfieError": "Ошибка при отправке селфи",
+    "selfieError": "Ошибка при отправке селфie",
     "calendarTimezone": "Streak day resets at midnight ({{timezone}})",
     "monster": " — ты монстр 🔔",
-    "back": "Back"
+    "back": "Назад"
   },
   "map": {
+    "friendsMapTitle": "Карта друзей",
+    "locationLabel": "Местоположение",
+    "route": "Маршрут",
     "loadFailed": "Не удалось загрузить карту",
     "allowAlways": "Выбери «Разрешить всегда», не «При использовании»",
     "locationRequired": "Нужен доступ к геолокации",
@@ -212,7 +215,7 @@
     "notifications": "Уведомления",
     "streakReminders": "Напоминания о серии",
     "streakRemindersDesc": "Утро и вечер, если серия горит",
-    "friends": "Friends",
+    "friends": "Друзья",
     "friendsDesc": "Заявки и принятие",
     "meets": "Встречи",
     "meetsDesc": "Серия продлена, друг на фото",
@@ -321,7 +324,20 @@
     "channelDescription": "Напоминания о сериях, друзьях и встречах",
     "streak1h": "Серия с @{{partner}} сгорит через час!",
     "streak30m": "Серия с @{{partner}} сгорит через 30 минут!",
-    "streakBurned": "Серия с @{{partner}} сгорела 🔥"
+    "streakBurned": "Серия с @{{partner}} сгорела 🔥",
+    "friendRequest": "@{{nickname}} хочет добавить тебя в друзья",
+    "friendAccepted": "@{{nickname}} принял(а) твою заявку в друзья",
+    "meetExtended": "Ты и @{{nickname}} встретились! Серия продлена 🔥",
+    "meetPhotoAdded": "@{{nickname}} добавил(а) новое фото встречи 📸",
+    "streakRemind0": "🔔 @{{nickname}} напоминает: продли серию!",
+    "streakRemind1": "🔥 @{{nickname}}: где ты? Серия горит!",
+    "streakRemind2": "📣 @{{nickname}} пушит — встречаемся сегодня!",
+    "streakRemind3": "⚡ @{{nickname}}: серия не ждёт! Бегом!",
+    "streakRemind4": "💥 @{{nickname}} заспамил напоминание — иди встречайся!",
+    "remoteSelfieRequest": "📸 @{{nickname}} хочет сделать совместное селфи на расстоянии!",
+    "remoteSelfieExtended": "✨ @{{nickname}} ответил(а) на селфи! Серия продлена!",
+    "remoteSelfiePhoto": "✨ @{{nickname}} ответил(а) на селфи! Добавлено новое фото.",
+    "someone": "Кто-то"
   },
   "errors": {
     "generic": "Ошибка",
@@ -378,5 +394,26 @@
     "AVATAR_SAVE_FAILED": "Failed to save avatar",
     "IMAGE_COMBINE_FAILED": "Failed to combine photos",
     "IMAGE_SAVE_FAILED": "Failed to save photo"
+  },
+  "friends": {
+    "title": "Друзья",
+    "searchPlaceholder": "Найти по нику (часть ника) или QR...",
+    "results": "Результаты",
+    "requests": "Запросы",
+    "myFriends": "Мои друзья",
+    "noFriends": "У вас пока нет друзей",
+    "pending": "Ожидает",
+    "requestOrError": "Ошибка или запрос уже отправлен",
+    "streakCreated": "Серия создана! Перейти на главную",
+    "streakExistsOrError": "Серия уже существует или ошибка"
+  },
+  "stub": {
+    "registerSoon": "Регистрация — скоро",
+    "loginSoon": "Вход — скоро"
+  },
+  "meetResult": {
+    "extendedWith": "Продлены серии с: {{list}}",
+    "photosWith": "Добавлены фото с: {{list}}",
+    "skippedDuplicate": "Пропущены (дубликат): {{list}}"
   }
 }

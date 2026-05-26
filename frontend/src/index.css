@@ -425,6 +425,22 @@ body {
   }
 }
 
+@keyframes bootstrap-leave {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+.bootstrap-screen--leaving {
+  animation: bootstrap-leave 0.45s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
 @keyframes bootstrap-progress {
   0% {
     transform: translateX(-100%);

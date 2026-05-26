@@ -161,6 +161,9 @@
     "back": "Back"
   },
   "map": {
+    "friendsMapTitle": "Friends map",
+    "locationLabel": "Location",
+    "route": "Route",
     "loadFailed": "Could not load map",
     "allowAlways": "Choose «Always allow», not «While using»",
     "locationRequired": "Location access required",

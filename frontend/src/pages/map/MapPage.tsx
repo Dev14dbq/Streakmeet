@@ -417,7 +417,7 @@ export default function MapPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-brand-primary)]">
               Live map
             </p>
-            <h1 className="text-2xl font-black text-white">{t('nav.map')}</h1>
+            <h1 className="text-2xl font-black text-white">{t('map.friendsMapTitle')}</h1>
             <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">
               {loading
                 ? t('map.loading')
@@ -473,7 +473,7 @@ export default function MapPage() {
                 <MapPin size={15} className="mt-0.5 shrink-0 text-[var(--color-brand-primary)]" />
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)]">
-                    {t('settings.geoOnPhotos')}
+                    {t('map.locationLabel')}
                   </p>
                   <p className="text-sm leading-snug text-white">
                     {addressLoading ? t('map.resolving') : (selectedAddress ?? '—')}
@@ -499,7 +499,7 @@ export default function MapPage() {
                 className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] py-3.5 text-sm font-black text-white shadow-[0_8px_24px_rgba(255,26,79,0.4)] active:scale-[0.98]"
               >
                 <Navigation size={18} />
-                {t('nav.map')}
+                {t('map.route')}
               </button>
               <Link
                 to={`/${selected.nickname}`}
