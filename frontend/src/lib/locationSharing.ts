@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
+import i18n from '../i18n'
 import { Geolocation } from '@capacitor/geolocation'
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation'
 import { setLocationSharing, updateMyLocation, getMyLocation } from './api'
@@ -52,7 +53,7 @@ async function startWatcher(): Promise<void> {
   watcherId = await BackgroundGeolocation.addWatcher(
     {
       backgroundTitle: 'StreakMeet',
-      backgroundMessage: 'Трансляция геолокации для друзей',
+      backgroundMessage: i18n.t('map.backgroundMessage'),
       requestPermissions: false,
       stale: false,
       distanceFilter: 0,

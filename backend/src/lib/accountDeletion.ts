@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js'
+import { apiErrorBody, ErrorCodes } from './apiErrors.js'
 
 export const ACCOUNT_RETENTION_DAYS = 30
 const RETENTION_MS = ACCOUNT_RETENTION_DAYS * 86_400_000
@@ -14,7 +15,7 @@ export function getDaysRemaining(deletedAt: Date): number {
 
 export function deletedAccountPayload(user: { email: string; deletedAt: Date }) {
   return {
-    code: 'ACCOUNT_DELETED' as const,
+    ...apiErrorBody(ErrorCodes.ACCOUNT_DELETED),
     email: user.email,
     deletedAt: user.deletedAt.toISOString(),
     daysRemaining: getDaysRemaining(user.deletedAt),

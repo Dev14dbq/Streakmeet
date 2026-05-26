@@ -1,16 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { Flame, Map, Clapperboard, User } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import GlobalCamera from './GlobalCamera'
-
-const leftTabs = [
-  { to: '/', icon: Flame, label: 'Дом', end: true },
-  { to: '/map', icon: Map, label: 'Карта', end: false },
-] as const
-
-const rightTabs = [
-  { to: '/memories', icon: Clapperboard, label: 'Лента', end: false },
-  { to: '/profile', icon: User, label: 'Профиль', end: false },
-] as const
 
 function NavTab({
   to,
@@ -53,6 +44,16 @@ function NavTab({
 }
 
 export default function BottomNav() {
+  const { t } = useTranslation()
+  const leftTabs = [
+    { to: '/', icon: Flame, label: t('nav.home'), end: true },
+    { to: '/map', icon: Map, label: t('nav.map'), end: false },
+  ] as const
+  const rightTabs = [
+    { to: '/memories', icon: Clapperboard, label: t('nav.memories'), end: false },
+    { to: '/profile', icon: User, label: t('nav.profile'), end: false },
+  ] as const
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       <div className="w-full max-w-[420px] pointer-events-auto">

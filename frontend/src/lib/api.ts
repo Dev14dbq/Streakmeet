@@ -1,5 +1,35 @@
-import axios from 'axios'
+import axios, { isAxiosError } from 'axios'
+import i18n from '../i18n'
+import type {
+  AuthResponse,
+  AuthUser,
+  DeletedAccountInfo,
+  FriendLocation,
+  LegalConsentStatus,
+  LegalDocument,
+  MagicMeetResponse,
+  MyLocationState,
+  RegisterPayload,
+  RestoreAccountPayload,
+} from '@streakmeet/api-spec'
 import { getDeviceTimezone } from './timezone'
+
+export type {
+  AuthResponse,
+  AuthUser,
+  DeletedAccountInfo,
+  FriendLocation,
+  LegalConsentStatus,
+  LegalDocument,
+  MagicMeetPartner,
+  MagicMeetResponse,
+  MyLocationState,
+  PublicFriendship,
+  PublicProfile,
+  PublicUser,
+  RegisterPayload,
+  RestoreAccountPayload,
+} from '@streakmeet/api-spec'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
@@ -21,7 +51,10 @@ export function setUnauthorizedHandler(handler: () => void) {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const code = error.response?.data?.code
+    // 403 + ACCOUNT_DELETED обрабатывается вызывающим кодом (restore flow)
+    if (status === 401 && code !== 'ACCOUNT_DELETED') {
       localStorage.removeItem('accessToken')
       localStorage.removeItem('user')
       onUnauthorized?.()
@@ -29,6 +62,36 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+/** Extracts a human-readable message from API response (translated when possible) */
+export function getApiErrorMessage(err: unknown, fallback?: string): string {
+  const fb = fallback ?? i18n.t('errors.generic')
+  if (isAxiosError(err)) {
+    const data = err.response?.data as { error?: string; code?: string } | undefined
+    if (typeof data?.code === 'string' && data.code.trim()) {
+      const codeKey = `errors.${data.code}`
+      if (i18n.exists(codeKey)) return i18n.t(codeKey)
+    }
+    if (typeof data?.error === 'string' && data.error.trim()) {
+      return data.error
+    }
+    if (err.code === 'ECONNABORTED') return i18n.t('errors.timeout')
+    if (!err.response) return i18n.t('errors.noConnection')
+  }
+  if (err instanceof Error && err.message) return err.message
+  return fb
+}
+
+/** Ищет пользователя по точному @nickname или qrCodeId */
+export function findUserByScanTarget(
+  users: { id: string; nickname: string; qrCodeId?: string }[],
+  target: string
+) {
+  const normalized = target.toLowerCase()
+  return (
+    users.find((u) => u.nickname === normalized) ?? users.find((u) => u.qrCodeId === target) ?? null
+  )
+}
 
 // SWR Fetcher
 export const fetcher = (url: string) => api.get(url).then((res) => res.data)
@@ -48,46 +111,9 @@ export const deleteAccount = () => api.delete<{ success: boolean }>('/api/users/
 export const register = (data: RegisterPayload) =>
   api.post<AuthResponse>('/api/auth/register', data)
 
-export interface AuthUser {
-  id: string
-  email: string
-  nickname: string
-  qrCodeId?: string
-  gemsBalance?: number
-  faceEnrolled: boolean
-  avatarUrl?: string
-  timezone?: string
-  isPublic?: boolean
-}
-
-export interface AuthResponse {
-  accessToken: string
-  user: AuthUser
-}
-
-export interface RegisterPayload {
-  email: string
-  password: string
-  nickname: string
-  username: string
-  timezone?: string
-}
-
-export interface DeletedAccountInfo {
-  code: 'ACCOUNT_DELETED'
-  email: string
-  deletedAt: string
-  daysRemaining: number
-}
-
-export type RestoreAccountPayload =
-  | { email: string; password: string }
-  | { provider: 'google'; accessToken?: string; idToken?: string }
-  | { provider: 'apple'; idToken: string }
-
 export function getDeletedAccountInfo(err: unknown): DeletedAccountInfo | null {
   const data = (err as { response?: { status?: number; data?: DeletedAccountInfo } })?.response
-  if (data?.status === 403 && data.data?.code === 'ACCOUNT_DELETED') {
+  if ((data?.status === 403 || data?.status === 409) && data.data?.code === 'ACCOUNT_DELETED') {
     return data.data
   }
   return null
@@ -105,22 +131,10 @@ export const updateSettings = (timezone: string) =>
 export const updatePublicProfile = (isPublic: boolean) =>
   api.patch<AuthUser>('/api/users/public', { isPublic })
 
-export interface LegalDocument {
-  slug: 'terms' | 'privacy'
-  title: string
-  version: number
-  content: string
-  updatedAt: string
-}
-
-export interface LegalConsentStatus {
-  needsAcceptance: boolean
-  terms: { version: number; accepted: boolean; updatedAt: string | null }
-  privacy: { version: number; accepted: boolean; updatedAt: string | null }
-}
-
-export const getLegalDocument = (slug: 'terms' | 'privacy') =>
-  api.get<LegalDocument>(`/api/legal/${slug}`)
+export const getLegalDocument = (slug: 'terms' | 'privacy', locale?: string) =>
+  api.get<LegalDocument>(`/api/legal/${slug}`, {
+    params: locale ? { locale } : undefined,
+  })
 
 export const getLegalConsentStatus = () => api.get<LegalConsentStatus>('/api/legal/status/me')
 
@@ -155,37 +169,12 @@ export const replyRemoteSelfie = (streakId: string, requestId: string, photoBase
     { photoBase64 }
   )
 
-export interface FriendLocation {
-  id: string
-  nickname: string
-  avatarUrl: string | null
-  latitude: number
-  longitude: number
-  updatedAt: string
-}
-
-export interface MyLocationState {
-  sharingLocation: boolean
-  latitude: number | null
-  longitude: number | null
-  updatedAt: string | null
-}
-
 export const getFriendLocations = () => api.get<FriendLocation[]>('/api/location/friends')
 export const getMyLocation = () => api.get<MyLocationState>('/api/location/me')
 export const setLocationSharing = (enabled: boolean) =>
   api.post<MyLocationState>('/api/location/sharing', { enabled })
 export const updateMyLocation = (latitude: number, longitude: number) =>
   api.post<{ ok: true }>('/api/location/update', { latitude, longitude })
-export interface MagicMeetPartner {
-  nickname: string
-  avatarUrl?: string | null
-}
-
-export interface MagicMeetResponse {
-  message: string
-  partners: MagicMeetPartner[]
-}
 
 export const magicMeet = (payload: {
   photoBase64: string
@@ -194,23 +183,6 @@ export const magicMeet = (payload: {
 
 export const enrollFace = (photos: string[]) =>
   api.post('/api/auth/enroll-face', { photos }, { timeout: 120_000 })
-
-export interface PublicUser {
-  id: string
-  nickname: string
-  avatarUrl?: string | null
-  isPublic?: boolean
-}
-
-export type PublicFriendship =
-  | { status: 'SELF' }
-  | { id: string; status: 'PENDING' | 'ACCEPTED' | 'BLOCKED'; isIncoming: boolean }
-  | null
-
-export interface PublicProfile {
-  user: PublicUser
-  friendship: PublicFriendship
-}
 
 export const RESERVED_PATHS = new Set([
   'login',

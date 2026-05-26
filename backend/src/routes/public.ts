@@ -2,6 +2,7 @@ import { Router, type Response } from 'express'
 import { optionalAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../lib/prisma.js'
 import { parsePagination } from '../lib/pagination.js'
+import { ErrorCodes, sendError } from '../lib/apiErrors.js'
 
 const router = Router()
 
@@ -87,13 +88,13 @@ async function getUserPhotos(
 router.get('/users/:nickname', optionalAuth, async (req: AuthRequest, res: Response) => {
   const nickname = String(req.params.nickname ?? '').toLowerCase()
   if (!NICKNAME_RE.test(nickname)) {
-    res.status(404).json({ error: 'User not found' })
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
 
   const user = await findPublicUser(nickname)
   if (!user) {
-    res.status(404).json({ error: 'User not found' })
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
 
@@ -105,13 +106,13 @@ router.get('/users/:nickname', optionalAuth, async (req: AuthRequest, res: Respo
 router.get('/users/:nickname/photos', optionalAuth, async (req: AuthRequest, res: Response) => {
   const nickname = String(req.params.nickname ?? '').toLowerCase()
   if (!NICKNAME_RE.test(nickname)) {
-    res.status(404).json({ error: 'User not found' })
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
 
   const user = await findPublicUser(nickname)
   if (!user) {
-    res.status(404).json({ error: 'User not found' })
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
 
@@ -119,7 +120,7 @@ router.get('/users/:nickname/photos', optionalAuth, async (req: AuthRequest, res
   const isFriendOrSelf = friendship?.status === 'ACCEPTED' || friendship?.status === 'SELF'
 
   if (!user.isPublic && !isFriendOrSelf) {
-    res.status(403).json({ error: 'Private profile' })
+    sendError(res, 403, ErrorCodes.PRIVATE_PROFILE)
     return
   }
 

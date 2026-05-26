@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { register, type AuthUser } from '../../lib/api'
+import { register, getApiErrorMessage, type AuthUser } from '../../lib/api'
 import { getDeviceTimezone } from '../../lib/timezone'
 
 interface Props {
@@ -8,11 +9,11 @@ interface Props {
 }
 
 export default function RegisterDetailsPage({ onAuth }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const emailFromState = (location.state as { email?: string })?.email ?? ''
 
-  const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -21,12 +22,11 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
 
   function validate() {
     const e: Record<string, string> = {}
-    if (!displayName.trim()) e.displayName = 'Введите имя'
     if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-      e.username = 'Только a-z, 0-9, _, от 3 до 20 символов'
+      e.username = t('auth.usernameRules')
     }
-    if (password.length < 6) e.password = 'Минимум 6 символов'
-    if (password !== confirmPassword) e.confirmPassword = 'Пароли не совпадают'
+    if (password.length < 6) e.password = t('auth.passwordMin')
+    if (password !== confirmPassword) e.confirmPassword = t('auth.passwordMismatch')
     return e
   }
 
@@ -39,11 +39,12 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
     setErrors({})
     setLoading(true)
     try {
+      const normalizedUsername = username.toLowerCase()
       const { data } = await register({
         email: emailFromState,
         password,
-        nickname: displayName.trim(),
-        username: username.toLowerCase(),
+        nickname: normalizedUsername,
+        username: normalizedUsername,
         timezone: getDeviceTimezone(),
       })
       localStorage.setItem('accessToken', data.accessToken)
@@ -51,13 +52,13 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
     } catch (err: unknown) {
       const resp = (err as { response?: { data?: { error?: string; code?: string } } })?.response
         ?.data
-      const msg = resp?.error ?? 'Ошибка регистрации'
+      const msg = getApiErrorMessage(err, t('auth.registerError'))
       if (resp?.code === 'ACCOUNT_DELETED') {
         navigate('/login/email', { state: { email: emailFromState, deletedHint: true } })
         return
       }
       if (msg.toLowerCase().includes('username')) {
-        setErrors({ username: 'Этот ник уже занят' })
+        setErrors({ username: msg })
       } else {
         setErrors({ general: msg })
       }
@@ -68,7 +69,6 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
 
   return (
     <div className="flex min-h-screen flex-col bg-black">
-      {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-14 pb-4">
         <button
           onClick={() => navigate('/login')}
@@ -77,7 +77,9 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
           ←
         </button>
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">Создать аккаунт</h1>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">
+            {t('auth.createAccount')}
+          </h1>
           <p className="text-xs text-[var(--color-on-surface-variant)] mt-0.5">{emailFromState}</p>
         </div>
       </div>
@@ -101,33 +103,9 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
         )}
 
         <div className="flex flex-col gap-6">
-          {/* Display name */}
-          <div>
-            <label htmlFor="reg-name" className="sr-only">
-              Имя
-            </label>
-            <input
-              id="reg-name"
-              name="name"
-              type="text"
-              autoComplete="name"
-              placeholder="Имя (Как тебя зовут?)"
-              value={displayName}
-              onChange={(e) => {
-                setDisplayName(e.target.value)
-                setErrors((prev) => ({ ...prev, displayName: '' }))
-              }}
-              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-white placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
-            />
-            {errors.displayName && (
-              <p className="mt-2 text-xs text-[var(--color-error)] pl-4">{errors.displayName}</p>
-            )}
-          </div>
-
-          {/* Username */}
           <div>
             <label htmlFor="reg-username" className="sr-only">
-              Уникальный ник
+              {t('auth.usernamePlaceholder')}
             </label>
             <div className="relative">
               <span className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--color-on-surface-variant)] font-medium">
@@ -138,7 +116,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
                 name="username"
                 type="text"
                 autoComplete="username"
-                placeholder="Уникальный ник (username)"
+                placeholder={t('auth.usernamePlaceholder')}
                 value={username}
                 onChange={(e) => {
                   setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
@@ -148,26 +126,21 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
                 className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 pl-10 pr-6 text-white placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
               />
             </div>
-            {errors.username ? (
+            {errors.username && (
               <p className="mt-2 text-xs text-[var(--color-error)] pl-4">{errors.username}</p>
-            ) : (
-              <p className="mt-2 text-xs text-[var(--color-on-surface-variant)] pl-4">
-                Только строчные буквы, цифры и _
-              </p>
             )}
           </div>
 
-          {/* Password */}
           <div>
             <label htmlFor="reg-password" className="sr-only">
-              Пароль
+              {t('auth.password')}
             </label>
             <input
               id="reg-password"
               name="new-password"
               type="password"
               autoComplete="new-password"
-              placeholder="Пароль (минимум 6 символов)"
+              placeholder={t('auth.passwordPlaceholder')}
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value)
@@ -180,17 +153,16 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
             )}
           </div>
 
-          {/* Confirm password */}
           <div>
             <label htmlFor="reg-password-confirm" className="sr-only">
-              Повторите пароль
+              {t('auth.confirmPasswordPlaceholder')}
             </label>
             <input
               id="reg-password-confirm"
               name="confirm-password"
               type="password"
               autoComplete="new-password"
-              placeholder="Повторите пароль"
+              placeholder={t('auth.confirmPasswordPlaceholder')}
               value={confirmPassword}
               onChange={(e) => {
                 setConfirmPassword(e.target.value)
@@ -210,7 +182,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
             disabled={loading}
             className="mt-4 w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white transition hover:bg-[var(--color-primary-container)] active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
           >
-            {loading ? 'Создаём аккаунт...' : 'Создать аккаунт →'}
+            {loading ? t('auth.creatingAccount') : t('auth.createAccountBtn')}
           </button>
         </div>
       </form>

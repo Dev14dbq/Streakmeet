@@ -3,6 +3,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../lib/prisma.js'
 
 import { notifyUser } from '../lib/socket.js'
+import { ErrorCodes, sendError } from '../lib/apiErrors.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -38,11 +39,16 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 
 // POST /api/friends/request
 router.post('/request', async (req: AuthRequest, res: Response) => {
-  const { friendId } = req.body
+  const { friendId } = req.body as { friendId?: string }
   const userId = req.userId!
 
+  if (typeof friendId !== 'string' || !friendId.trim()) {
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
+    return
+  }
+
   if (userId === friendId) {
-    res.status(400).json({ error: 'Cannot add yourself' })
+    sendError(res, 400, ErrorCodes.CANNOT_ADD_SELF)
     return
   }
 
@@ -51,7 +57,7 @@ router.post('/request', async (req: AuthRequest, res: Response) => {
     select: { id: true },
   })
   if (!friend) {
-    res.status(404).json({ error: 'User not found' })
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
 
@@ -66,7 +72,7 @@ router.post('/request', async (req: AuthRequest, res: Response) => {
   })
 
   if (existing) {
-    res.status(400).json({ error: 'Friendship already exists or pending' })
+    sendError(res, 400, ErrorCodes.FRIENDSHIP_EXISTS)
     return
   }
 
@@ -94,17 +100,22 @@ router.post('/request', async (req: AuthRequest, res: Response) => {
 
 // POST /api/friends/accept
 router.post('/accept', async (req: AuthRequest, res: Response) => {
-  const { friendshipId } = req.body
+  const { friendshipId } = req.body as { friendshipId?: string }
   const userId = req.userId!
+
+  if (typeof friendshipId !== 'string' || !friendshipId.trim()) {
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
+    return
+  }
 
   const friendship = await prisma.friendship.findUnique({ where: { id: friendshipId } })
   if (!friendship || friendship.userBId !== userId) {
-    res.status(404).json({ error: 'Request not found' })
+    sendError(res, 404, ErrorCodes.FRIENDSHIP_NOT_FOUND)
     return
   }
 
   if (friendship.status !== 'PENDING') {
-    res.status(400).json({ error: 'Request is not pending' })
+    sendError(res, 400, ErrorCodes.FRIENDSHIP_NOT_PENDING)
     return
   }
 

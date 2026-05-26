@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Webcam from 'react-webcam'
 import * as faceapi from '@vladmandic/face-api'
 import { enrollFace, type AuthUser } from '../../lib/api'
 import { captureVideoFrame } from '../../lib/captureVideoFrame'
 import { toastError } from '../../lib/toast'
+import i18n from '../../i18n'
 
 type Phase = 'loading' | 'intro' | 'center' | 'right' | 'left' | 'saving' | 'done'
 
@@ -16,32 +18,35 @@ interface StepInfo {
   next: Phase
 }
 
-const STEPS: Record<Phase, StepInfo | null> = {
-  loading: null,
-  intro: null,
-  done: null,
-  saving: null,
-  center: {
-    label: 'Смотри прямо',
-    hint: 'Держи голову ровно, смотри в камеру',
-    arrow: null,
-    yawOk: (y) => Math.abs(y) < 0.13,
-    next: 'right',
-  },
-  right: {
-    label: 'Медленно вправо →',
-    hint: 'Поворачивай голову вправо, пока не заполнится полоса',
-    arrow: '→',
-    yawOk: (y) => y < -0.28,
-    next: 'left',
-  },
-  left: {
-    label: '← Медленно влево',
-    hint: 'Теперь поворачивай голову влево',
-    arrow: '←',
-    yawOk: (y) => y > 0.28,
-    next: 'saving',
-  },
+function getStepInfo(phase: Phase): StepInfo | null {
+  switch (phase) {
+    case 'center':
+      return {
+        label: i18n.t('face.lookStraight'),
+        hint: i18n.t('face.lookStraightHint'),
+        arrow: null,
+        yawOk: (y) => Math.abs(y) < 0.13,
+        next: 'right',
+      }
+    case 'right':
+      return {
+        label: i18n.t('face.turnRight'),
+        hint: i18n.t('face.turnRightHint'),
+        arrow: '→',
+        yawOk: (y) => y < -0.28,
+        next: 'left',
+      }
+    case 'left':
+      return {
+        label: i18n.t('face.turnLeft'),
+        hint: i18n.t('face.turnLeftHint'),
+        arrow: '←',
+        yawOk: (y) => y > 0.28,
+        next: 'saving',
+      }
+    default:
+      return null
+  }
 }
 
 const NEED_STABLE = 7
@@ -94,6 +99,8 @@ function drawMesh(
 }
 
 function SuccessScreen({ onContinue }: { onContinue: () => void }) {
+  const { t } = useTranslation()
+
   return (
     <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black px-6 pb-safe">
       <div className="flex flex-col items-center flex-1 justify-center">
@@ -119,10 +126,10 @@ function SuccessScreen({ onContinue }: { onContinue: () => void }) {
           </svg>
         </div>
         <h2 className="enroll-success-label text-3xl font-extrabold text-white tracking-tight text-center">
-          Готово!
+          {t('face.registered')}
         </h2>
         <p className="enroll-success-label mt-3 text-sm text-[var(--color-on-surface-variant)] text-center max-w-xs">
-          Лицо зарегистрировано — теперь подтверждай встречи с друзьями
+          {t('settings.biometricDesc')}
         </p>
       </div>
       <button
@@ -130,7 +137,7 @@ function SuccessScreen({ onContinue }: { onContinue: () => void }) {
         onClick={onContinue}
         className="enroll-success-btn w-full max-w-sm rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 mb-6"
       >
-        Перейти в приложение
+        {t('auth.continue')}
       </button>
     </div>
   )
@@ -166,6 +173,7 @@ export default function FaceEnrollmentPage({
 }: {
   onUserUpdate?: (user: AuthUser) => void
 }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const autoStart = !!(location.state as { autoStart?: boolean } | null)?.autoStart
@@ -174,7 +182,7 @@ export default function FaceEnrollmentPage({
 
   const [modelsLoaded, setModelsLoaded] = useState(false)
   const [phase, setPhase] = useState<Phase>('loading')
-  const [statusMsg, setStatusMsg] = useState('Загрузка моделей...')
+  const [statusMsg, setStatusMsg] = useState(() => i18n.t('face.loadingModels'))
   const [holdPct, setHoldPct] = useState(0)
   const [captured, setCaptured] = useState<Set<Phase>>(new Set())
 
@@ -195,7 +203,7 @@ export default function FaceEnrollmentPage({
     capturesRef.current = []
     photosRef.current = []
     setPhase('center')
-    setStatusMsg(STEPS.center!.hint)
+    setStatusMsg(getStepInfo('center')!.hint)
     setHoldPct(0)
     stableRef.current = 0
     yawHistory.current = []
@@ -214,10 +222,10 @@ export default function FaceEnrollmentPage({
           handleStart()
         } else {
           setPhase('intro')
-          setStatusMsg('Нажми «Начать», когда будешь готов')
+          setStatusMsg(t('face.pressStart'))
         }
       } catch {
-        setStatusMsg('Ошибка загрузки моделей')
+        setStatusMsg(t('face.modelsError'))
       }
     })()
   }, []) // eslint-disable-line
@@ -254,15 +262,15 @@ export default function FaceEnrollmentPage({
     yawHistory.current = []
     setHoldPct(0)
 
-    const next = STEPS[p]!.next
+    const next = getStepInfo(p)!.next
     if (next === 'saving') {
       loopRunning.current = false
       setPhase('saving')
-      setStatusMsg('Сохранение...')
+      setStatusMsg(t('face.saving'))
       void doSave()
     } else {
       setPhase(next)
-      setStatusMsg(STEPS[next]!.hint)
+      setStatusMsg(getStepInfo(next)!.hint)
     }
   }
 
@@ -303,7 +311,7 @@ export default function FaceEnrollmentPage({
       if (noFaceRef.current >= NO_FACE_DELAY) {
         stableRef.current = 0
         setHoldPct(0)
-        setStatusMsg('Встань ближе и убери руки от лица')
+        setStatusMsg(t('face.moveCloser'))
       }
       return
     }
@@ -321,7 +329,7 @@ export default function FaceEnrollmentPage({
     if (box.width / vw < 0.13) {
       stableRef.current = 0
       setHoldPct(0)
-      setStatusMsg('Подойди чуть ближе к камере')
+      setStatusMsg(t('face.comeCloser'))
       drawMesh(ctx, landmarks, mx, my, false)
       return
     }
@@ -330,7 +338,7 @@ export default function FaceEnrollmentPage({
     yawHistory.current = [...yawHistory.current.slice(-3), rawYaw]
     const yaw = yawHistory.current.reduce((a, b) => a + b, 0) / yawHistory.current.length
 
-    const step = STEPS[curPhase]!
+    const step = getStepInfo(curPhase)!
     const ok = step.yawOk(yaw)
 
     if (ok) {
@@ -344,7 +352,7 @@ export default function FaceEnrollmentPage({
     drawMesh(ctx, landmarks, mx, my, ok)
 
     if (ok) {
-      setStatusMsg(`Держи... ${Math.round(pct * 100)}%`)
+      setStatusMsg(t('face.hold', { percent: Math.round(pct * 100) }))
     } else {
       setStatusMsg(step.hint)
     }
@@ -357,7 +365,7 @@ export default function FaceEnrollmentPage({
   async function doSave() {
     try {
       if (photosRef.current.length < 3) {
-        throw new Error('Не удалось сохранить все ракурсы — попробуй ещё раз')
+        throw new Error(t('face.saveFailed'))
       }
       await enrollFace(photosRef.current)
       const user = JSON.parse(localStorage.getItem('user') || '{}') as AuthUser
@@ -368,7 +376,7 @@ export default function FaceEnrollmentPage({
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        (e instanceof Error ? e.message : 'Ошибка сохранения')
+        (e instanceof Error ? e.message : t('face.saveError'))
       toastError(msg)
       capturesRef.current = []
       photosRef.current = []
@@ -378,7 +386,7 @@ export default function FaceEnrollmentPage({
       yawHistory.current = []
       setHoldPct(0)
       setPhase('center')
-      setStatusMsg(STEPS.center!.hint)
+      setStatusMsg(getStepInfo('center')!.hint)
       startLoop()
     }
   }
@@ -388,17 +396,17 @@ export default function FaceEnrollmentPage({
   }
 
   const stepInfo =
-    phase !== 'loading' && phase !== 'saving' && phase !== 'intro' ? STEPS[phase] : null
+    phase !== 'loading' && phase !== 'saving' && phase !== 'intro' ? getStepInfo(phase) : null
   const scanning = phase === 'center' || phase === 'right' || phase === 'left'
 
   return (
     <div className="flex min-h-screen flex-col bg-black px-6 pt-10 pb-safe">
       <div className="w-full max-w-[600px] mx-auto flex flex-col flex-1 items-center">
         <h2 className="text-2xl font-extrabold text-white tracking-tight text-center mb-1">
-          Зарегистрируй лицо
+          {t('face.faceRecognition')}
         </h2>
         <p className="text-xs text-[var(--color-on-surface-variant)] text-center mb-5 max-w-xs">
-          3 ракурса — как Face ID. Система поймает всё сама.
+          {t('face.lookStraightHint')}
         </p>
 
         <div className="flex items-center justify-center gap-4 w-full flex-1 min-h-[280px]">
@@ -435,7 +443,11 @@ export default function FaceEnrollmentPage({
                   }}
                   className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
                   onUserMediaError={(err) =>
-                    setStatusMsg(`Ошибка камеры: ${typeof err === 'string' ? err : err.message}`)
+                    setStatusMsg(
+                      t('face.cameraError', {
+                        message: typeof err === 'string' ? err : err.message,
+                      })
+                    )
                   }
                 />
               ) : (
@@ -450,7 +462,9 @@ export default function FaceEnrollmentPage({
               />
               {phase === 'saving' && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                  <p className="text-white font-semibold text-sm animate-pulse">Сохранение...</p>
+                  <p className="text-white font-semibold text-sm animate-pulse">
+                    {t('face.saving')}
+                  </p>
                 </div>
               )}
             </div>
@@ -501,7 +515,7 @@ export default function FaceEnrollmentPage({
               onClick={handleStart}
               className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95"
             >
-              Начать
+              {t('auth.continue')}
             </button>
           )}
           {phase !== 'saving' && !autoStart && (
@@ -512,13 +526,13 @@ export default function FaceEnrollmentPage({
               }}
               className="w-full py-4 text-sm font-semibold text-[var(--color-on-surface-variant)] hover:text-white transition"
             >
-              {phase === 'intro' ? 'Пропустить (сделать позже)' : 'Отмена'}
+              {phase === 'intro' ? t('face.skipLater') : t('common.cancel')}
             </button>
           )}
         </div>
 
         <p className="text-[10px] text-[var(--color-on-surface-variant)] text-center opacity-40 max-w-sm pb-4">
-          Биометрические данные используются только для верификации встреч
+          {t('settings.biometricDesc')}
         </p>
       </div>
     </div>

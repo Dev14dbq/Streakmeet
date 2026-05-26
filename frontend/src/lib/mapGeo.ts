@@ -1,5 +1,9 @@
 import { Capacitor } from '@capacitor/core'
+import { getCurrentLocale } from '../i18n'
+import { formatDistanceMeters } from '../i18n/format'
 import { openExternalUrl } from './alwaysLocationPermission'
+
+export { formatDistanceMeters as formatDistance }
 
 const geocodeCache = new Map<string, string>()
 
@@ -11,12 +15,6 @@ export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: n
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
   return r * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-}
-
-export function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)} м`
-  if (meters < 10_000) return `${(meters / 1000).toFixed(1)} км`
-  return `${Math.round(meters / 1000)} км`
 }
 
 export function formatCoords(lat: number, lng: number): string {
@@ -38,7 +36,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
 
     const res = await fetch(url.toString(), {
       headers: {
-        'Accept-Language': 'ru',
+        'Accept-Language': getCurrentLocale(),
         'User-Agent': 'StreakMeet/1.0 (map reverse geocode)',
       },
     })

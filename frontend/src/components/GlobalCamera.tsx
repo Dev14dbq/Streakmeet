@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { Camera, X } from 'lucide-react'
 import Webcam from 'react-webcam'
 import { useNavigate } from 'react-router-dom'
-import { magicMeet, type AuthUser } from '../lib/api'
+import { getApiErrorMessage, magicMeet, type AuthUser } from '../lib/api'
+import { isAxiosError } from 'axios'
 import { captureVideoFrame } from '../lib/captureVideoFrame'
 import { toastError, toastLink } from '../lib/toast'
 import type { MagicMeetResultState } from '../pages/meet/MagicMeetResultPage'
@@ -21,6 +23,7 @@ interface Props {
 }
 
 export default function GlobalCamera({ variant = 'side' }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [user, setUser] = useState<AuthUser | null>(null)
   const [cameraOpen, setCameraOpen] = useState(false)
@@ -57,12 +60,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
 
   function openCamera() {
     if (!user?.faceEnrolled) {
-      toastLink(
-        'Сначала нужно зарегистрировать лицо в настройках!',
-        '/face-enrollment',
-        navigate,
-        '👤'
-      )
+      toastLink(t('camera.faceRequired'), '/face-enrollment', navigate, '👤')
       return
     }
     resetStatus()
@@ -75,12 +73,12 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
     if (busy) return
     setBusy(true)
     setStep('screenshot')
-    setStatusDetail('Снимаем...')
+    setStatusDetail(t('camera.capturing'))
     logCapture('manual capture triggered')
 
     const video = webcamRef.current?.video
     if (!video) {
-      const msg = 'Видеопоток не найден — перезагрузи страницу'
+      const msg = t('camera.noStream')
       logCapture('error: no video element')
       setStep('error')
       setStatusDetail(msg)
@@ -93,7 +91,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
 
     const imageSrc = captureVideoFrame(video, { minWidth: 640, quality: 0.92 })
     if (!imageSrc) {
-      const msg = 'Не удалось сделать снимок — попробуй ещё раз'
+      const msg = t('camera.captureFailed')
       logCapture('error: captureVideoFrame returned null', {
         readyState: video.readyState,
         width: video.videoWidth,
@@ -122,7 +120,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
 
     if (geoEnabled) {
       setStep('geo')
-      setStatusDetail('Получаем геолокацию...')
+      setStatusDetail(t('camera.gettingLocation'))
       logCapture('requesting geolocation')
       try {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
@@ -132,12 +130,12 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
         logCapture('geolocation ok', location)
       } catch (e) {
         logCapture('geolocation skipped', e)
-        setStatusDetail('GPS недоступен — продолжаем без него')
+        setStatusDetail(t('camera.gpsUnavailable'))
       }
     }
 
     setStep('uploading')
-    setStatusDetail('Распознаём лица...')
+    setStatusDetail(t('camera.recognizing'))
     logCapture('POST /api/streaks/magic-meet')
 
     try {
@@ -153,21 +151,19 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
       setCameraOpen(false)
       resetStatus()
       navigate('/magic-meet/success', { state: resultState, replace: true })
-    } catch (e: any) {
-      const msg =
-        e.response?.data?.error ||
-        (e.code === 'ECONNABORTED'
-          ? 'Сервер не ответил вовремя — распознавание заняло слишком долго'
-          : null) ||
-        e.message ||
-        'Ошибка проверки'
-      logCapture('api error', { msg, status: e.response?.status, code: e.code })
+    } catch (e: unknown) {
+      const msg = getApiErrorMessage(e, t('camera.verifyError'))
+      logCapture('api error', {
+        msg,
+        status: isAxiosError(e) ? e.response?.status : undefined,
+        code: isAxiosError(e) ? e.code : undefined,
+      })
       setStep('error')
       setStatusDetail(msg)
       toastError(msg)
       setBusy(false)
     }
-  }, [busy, navigate, resetStatus])
+  }, [busy, navigate, resetStatus, t])
 
   if (!user) return null
 
@@ -175,10 +171,10 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
   const statusText =
     statusDetail ||
     (step === 'error'
-      ? 'Ошибка'
+      ? t('camera.error')
       : processing
-        ? 'Обработка...'
-        : 'Сфотографируйтесь вместе с другом')
+        ? t('camera.processing')
+        : t('camera.meetPhoto'))
 
   const cameraModal = cameraOpen
     ? createPortal(
@@ -187,7 +183,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
           style={{ height: '100dvh' }}
         >
           <div className="flex items-center justify-between px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-2 shrink-0">
-            <h2 className="text-white font-bold text-xl">Магическая камера</h2>
+            <h2 className="text-white font-bold text-xl">{t('camera.meetPhoto')}</h2>
             <button
               type="button"
               onClick={() => {
@@ -202,7 +198,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
           </div>
 
           <div className="mx-6 mb-3 rounded-2xl bg-zinc-900/90 border border-white/10 px-4 py-3 shrink-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2">
               {processing && (
                 <span className="w-4 h-4 border-2 border-[var(--color-brand-primary)]/30 border-t-[var(--color-brand-primary)] rounded-full animate-spin shrink-0" />
               )}
@@ -212,10 +208,6 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
                 {statusText}
               </p>
             </div>
-            <p className="text-[11px] text-zinc-500 mt-1.5">
-              {cameraReady ? '● Камера готова' : '○ Ждём камеру...'}
-              {!processing && step !== 'error' ? ' · на фото должны быть вы оба' : ''}
-            </p>
           </div>
 
           <div className="relative flex-1 min-h-0 mx-4 mb-4 rounded-3xl overflow-hidden bg-zinc-900">
@@ -238,7 +230,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
                 const msg = typeof err === 'string' ? err : err.message
                 logCapture('camera error', msg)
                 setStep('error')
-                setStatusDetail(`Ошибка камеры: ${msg}`)
+                setStatusDetail(t('face.cameraError', { message: msg }))
               }}
             />
 
@@ -267,7 +259,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
                 onClick={resetStatus}
                 className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 font-bold text-lg text-white transition active:scale-95"
               >
-                Попробовать снова
+                {t('common.retry')}
               </button>
             ) : (
               <button
@@ -276,7 +268,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
                 disabled={!cameraReady || busy}
                 className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 font-bold text-lg text-white transition active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
               >
-                {busy ? 'Обработка...' : 'Сфотографировать'}
+                {busy ? t('camera.processing') : t('profile.takePhoto')}
               </button>
             )}
           </div>
@@ -296,7 +288,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
         type="button"
         onClick={openCamera}
         className={fabClass}
-        aria-label="Сфотографироваться с другом"
+        aria-label={t('profile.takePhoto')}
       >
         <Camera size={variant === 'center' ? 30 : 28} />
       </button>

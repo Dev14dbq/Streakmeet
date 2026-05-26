@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { io, Socket } from 'socket.io-client'
 import AppLayout from './components/AppLayout'
 import AppToaster from './components/AppToaster'
+import AppBootstrapScreen from './components/AppBootstrapScreen'
 import MobileOnlyGate from './components/MobileOnlyGate'
 import { notify, toastLink } from './lib/toast'
 import AuthPage from './pages/auth/AuthPage'
@@ -19,12 +21,8 @@ import SettingsPage from './pages/settings/SettingsPage'
 import TermsPage from './pages/legal/TermsPage'
 import PrivacyPage from './pages/legal/PrivacyPage'
 import type { AuthUser, LegalConsentStatus } from './lib/api'
-import {
-  getLegalConsentStatus,
-  getRealtimeServerUrl,
-  setUnauthorizedHandler,
-  syncDeviceTimezone,
-} from './lib/api'
+import { getLegalConsentStatus, getRealtimeServerUrl, setUnauthorizedHandler } from './lib/api'
+import { bootstrapSession } from './lib/bootstrapApp'
 import { promptEssentialPermissionsOnFirstLaunch } from './lib/nativePermissions'
 import {
   registerNotificationTapHandler,
@@ -35,8 +33,6 @@ import {
   type AppNotificationPayload,
 } from './lib/instantNotifications'
 import { resumeLocationSharingIfNeeded } from './lib/locationSharing'
-import { pruneStaleImageCache } from './lib/remoteImageCache'
-import { initGoogleAuth } from './lib/googleAuth'
 import { App as CapApp } from '@capacitor/app'
 
 import StreakDetailsPage from './pages/home/StreakDetailsPage'
@@ -48,9 +44,19 @@ import LegalConsentModal from './components/LegalConsentModal'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
 
+interface PendingNavigation {
+  fromSignup?: boolean
+  returnTo?: string
+  faceEnrolled: boolean
+}
+
 export default function App() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const pendingNavRef = useRef<PendingNavigation | null>(null)
+  const [bootstrapVersion, setBootstrapVersion] = useState(0)
+  const [appReady, setAppReady] = useState(() => !localStorage.getItem('accessToken'))
   const [user, setUser] = useState<AuthUser | null>(() => {
     try {
       const stored = localStorage.getItem('user')
@@ -61,59 +67,73 @@ export default function App() {
   })
   const [legalStatus, setLegalStatus] = useState<LegalConsentStatus | null>(null)
   const [legalChecked, setLegalChecked] = useState(false)
+  const [legalFetchFailed, setLegalFetchFailed] = useState(false)
 
-  useEffect(() => {
-    if (!user) {
-      setLegalStatus(null)
-      setLegalChecked(false)
+  function applyPendingNavigation(pending: PendingNavigation, authUser: AuthUser) {
+    if (pending.returnTo && authUser.faceEnrolled) {
+      navigate(pending.returnTo, { replace: true })
       return
     }
+    if (authUser.faceEnrolled) {
+      navigate('/', { replace: true })
+    } else {
+      navigate('/face-enrollment', {
+        replace: true,
+        state: pending.fromSignup ? { autoStart: true } : undefined,
+      })
+    }
+  }
 
+  useEffect(() => {
     let cancelled = false
-    setLegalChecked(false)
-    getLegalConsentStatus()
-      .then(({ data }) => {
-        if (!cancelled) setLegalStatus(data)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLegalStatus({
-            needsAcceptance: true,
-            terms: { version: 0, accepted: false, updatedAt: null },
-            privacy: { version: 0, accepted: false, updatedAt: null },
-          })
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLegalChecked(true)
-      })
+    const hasToken = !!localStorage.getItem('accessToken')
+
+    if (hasToken) setAppReady(false)
+
+    void bootstrapSession().then((result) => {
+      if (cancelled) return
+
+      if (result.deletedAccount) {
+        setUser(null)
+        setLegalStatus(null)
+        setLegalChecked(true)
+        setLegalFetchFailed(false)
+        setAppReady(true)
+        navigate('/account-deleted', {
+          replace: true,
+          state: result.deletedAccount,
+        })
+        return
+      }
+
+      setUser(result.user)
+      setLegalStatus(result.legalStatus)
+      setLegalChecked(result.legalChecked)
+      setLegalFetchFailed(result.legalFetchFailed)
+      setAppReady(true)
+
+      const pending = pendingNavRef.current
+      if (pending && result.user) {
+        pendingNavRef.current = null
+        applyPendingNavigation(pending, result.user)
+      }
+    })
 
     return () => {
       cancelled = true
     }
-  }, [user?.id])
+  }, [bootstrapVersion, navigate])
 
   useEffect(() => {
     if (user) localStorage.setItem('user', JSON.stringify(user))
     else localStorage.removeItem('user')
   }, [user])
 
-  const timezoneSynced = useRef(false)
   const appActiveRef = useRef(true)
-  useEffect(() => {
-    if (!user || timezoneSynced.current) return
-    timezoneSynced.current = true
-    syncDeviceTimezone().catch(() => {})
-  }, [user?.id])
 
   useEffect(() => {
     return registerNotificationTapHandler((route) => navigate(route))
   }, [navigate])
-
-  useEffect(() => {
-    void initGoogleAuth()
-    void pruneStaleImageCache()
-  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -130,6 +150,9 @@ export default function App() {
   useEffect(() => {
     setUnauthorizedHandler(() => {
       setUser(null)
+      setLegalStatus(null)
+      setLegalChecked(false)
+      setAppReady(true)
       navigate('/login', { replace: true })
     })
     return () => setUnauthorizedHandler(() => {})
@@ -147,12 +170,11 @@ export default function App() {
     return () => cleanup?.()
   }, [user?.id])
 
-  // Socket.io connection
   useEffect(() => {
     let socket: Socket | null = null
     const token = localStorage.getItem('accessToken')
 
-    if (user && token) {
+    if (user && token && appReady) {
       socket = io(getRealtimeServerUrl(), {
         auth: { token },
         transports: ['websocket', 'polling'],
@@ -176,23 +198,17 @@ export default function App() {
     return () => {
       if (socket) socket.disconnect()
     }
-  }, [user?.id, navigate])
+  }, [user?.id, appReady, navigate])
 
   function handleAuth(authUser: AuthUser, token: string, fromSignup = false, returnTo?: string) {
     localStorage.setItem('accessToken', token)
-    setUser(authUser)
-    if (returnTo && authUser.faceEnrolled) {
-      navigate(returnTo, { replace: true })
-      return
+    localStorage.setItem('user', JSON.stringify(authUser))
+    pendingNavRef.current = {
+      fromSignup,
+      returnTo,
+      faceEnrolled: authUser.faceEnrolled,
     }
-    if (authUser.faceEnrolled) {
-      navigate('/', { replace: true })
-    } else {
-      navigate('/face-enrollment', {
-        replace: true,
-        state: fromSignup ? { autoStart: true } : undefined,
-      })
-    }
+    setBootstrapVersion((v) => v + 1)
   }
 
   const isLoggedIn = !!user
@@ -212,10 +228,42 @@ export default function App() {
     )
   }
 
+  if (!appReady) {
+    return (
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <MobileOnlyGate>
+          <AppBootstrapScreen />
+        </MobileOnlyGate>
+      </GoogleOAuthProvider>
+    )
+  }
+
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <MobileOnlyGate>
         <AppToaster />
+        {legalFetchFailed && (
+          <div className="fixed top-0 inset-x-0 z-[199] bg-[var(--color-error-container)] px-4 py-3 text-center text-sm text-[var(--color-on-error-container)]">
+            {t('app.legalCheckFailed')}{' '}
+            <button
+              type="button"
+              className="underline font-semibold"
+              onClick={() => {
+                setLegalFetchFailed(false)
+                setLegalChecked(false)
+                getLegalConsentStatus()
+                  .then(({ data }) => {
+                    setLegalStatus(data)
+                    setLegalFetchFailed(false)
+                  })
+                  .catch(() => setLegalFetchFailed(true))
+                  .finally(() => setLegalChecked(true))
+              }}
+            >
+              {t('app.retry')}
+            </button>
+          </div>
+        )}
         {needsLegalConsent && legalStatus && (
           <LegalConsentModal
             status={legalStatus}
@@ -230,7 +278,6 @@ export default function App() {
           />
         )}
         <Routes>
-          {/* ── Auth (без меню) ─────────────────────────────────────────── */}
           <Route
             path="/login"
             element={isLoggedIn ? loggedInRedirect() : <AuthPage onAuth={handleAuth} />}
@@ -255,7 +302,6 @@ export default function App() {
             }
           />
 
-          {/* ── App (с нижним меню) ──────────────────────────────────────── */}
           <Route
             path="/"
             element={
@@ -296,7 +342,7 @@ export default function App() {
                   <Suspense
                     fallback={
                       <div className="flex min-h-[60vh] items-center justify-center text-sm text-[var(--color-on-surface-variant)]">
-                        Загрузка карты…
+                        {t('app.loadingMap')}
                       </div>
                     }
                   >

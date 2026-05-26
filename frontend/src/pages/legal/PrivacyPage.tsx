@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next'
 import LegalDocumentPage from './LegalDocumentPage'
 
 export default function PrivacyPage() {
-  return <LegalDocumentPage slug="privacy" fallbackTitle="Политика конфиденциальности" />
+  const { t } = useTranslation()
+  return <LegalDocumentPage slug="privacy" fallbackTitle={t('legal.privacy')} />
 }

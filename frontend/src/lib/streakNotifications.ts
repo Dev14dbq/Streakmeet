@@ -1,12 +1,9 @@
 import { Capacitor } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
+import i18n from '../i18n'
 import { getStreaks } from './api'
-import {
-  addDaysToDateString,
-  getDeviceTimezone,
-  getLocalToday,
-  localTimeInZoneToDate,
-} from './timezone'
+import { isStreakMetToday, streakToday } from './streakCalendar'
+import { addDaysToDateString, getDeviceTimezone, localTimeInZoneToDate } from './timezone'
 
 const SETTINGS_KEY = 'streakmeet_settings'
 export const NOTIFICATION_CHANNEL_ID = 'streakmeet'
@@ -17,6 +14,7 @@ interface StreakRow {
   id: string
   count: number
   lastMetDate?: string
+  timezone?: string
   partner: { nickname: string }
 }
 
@@ -48,7 +46,7 @@ export async function ensureNotificationChannel(): Promise<void> {
   channelReady = LocalNotifications.createChannel({
     id: NOTIFICATION_CHANNEL_ID,
     name: 'StreakMeet',
-    description: 'Напоминания о сериях, друзьях и встречах',
+    description: i18n.t('notifications.channelDescription'),
     importance: 5,
     visibility: 1,
     vibration: true,
@@ -89,14 +87,8 @@ export async function scheduleStreakNotifications(): Promise<void> {
   const granted = await ensureNotificationPermission()
   if (!granted) return
 
-  const tz = getDeviceTimezone()
-  const today = getLocalToday(tz)
-  const tomorrow = addDaysToDateString(today, 1)
-  const [y, m, d] = today.split('-').map(Number) as [number, number, number]
-  const [y2, m2, d2] = tomorrow.split('-').map(Number) as [number, number, number]
-
   const { data: streaks } = await getStreaks()
-  const pending = (streaks as StreakRow[]).filter((s) => s.count > 0 && s.lastMetDate !== today)
+  const pending = (streaks as StreakRow[]).filter((s) => s.count > 0 && !isStreakMetToday(s))
 
   await cancelStreakNotifications()
 
@@ -104,6 +96,12 @@ export async function scheduleStreakNotifications(): Promise<void> {
   const notifications: Parameters<typeof LocalNotifications.schedule>[0]['notifications'] = []
 
   for (const streak of pending) {
+    const tz = streak.timezone ?? getDeviceTimezone()
+    const today = streakToday(tz)
+    const tomorrow = addDaysToDateString(today, 1)
+    const [y, m, d] = today.split('-').map(Number) as [number, number, number]
+    const [y2, m2, d2] = tomorrow.split('-').map(Number) as [number, number, number]
+
     const route = `/streaks/${streak.partner.nickname}`
     const partner = streak.partner.nickname
 
@@ -111,17 +109,17 @@ export async function scheduleStreakNotifications(): Promise<void> {
       {
         kind: '1h',
         at: localTimeInZoneToDate(y, m, d, 23, 0, tz),
-        body: `Серия с @${partner} сгорит через час!`,
+        body: i18n.t('notifications.streak1h', { partner }),
       },
       {
         kind: '30m',
         at: localTimeInZoneToDate(y, m, d, 23, 30, tz),
-        body: `Серия с @${partner} сгорит через 30 минут!`,
+        body: i18n.t('notifications.streak30m', { partner }),
       },
       {
         kind: 'burn',
         at: localTimeInZoneToDate(y2, m2, d2, 0, 5, tz),
-        body: `Серия с @${partner} сгорела 🔥`,
+        body: i18n.t('notifications.streakBurned', { partner }),
       },
     ]
 

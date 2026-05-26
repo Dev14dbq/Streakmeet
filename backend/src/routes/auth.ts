@@ -5,6 +5,7 @@ import appleSignin from 'apple-signin-auth'
 import { OAuth2Client } from 'google-auth-library'
 import { prisma } from '../lib/prisma.js'
 import { averageEmbeddings, embedFaceFromBase64, ensureFaceService } from '../lib/face.js'
+import { faceErrorFromException, ErrorCodes, sendError } from '../lib/apiErrors.js'
 import {
   deletedAccountPayload,
   findActiveUserByNickname,
@@ -15,6 +16,7 @@ import {
 import { isValidTimezone, normalizeTimezone } from '../lib/timezone.js'
 import { acceptCurrentLegalForUser } from '../lib/legalDocuments.js'
 import { getJwtSecret } from '../lib/jwtSecret.js'
+import type { AuthResponse, AuthUser } from '../types/api.js'
 
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 
@@ -56,7 +58,7 @@ async function resolveGoogleProfile(body: {
 router.post('/enroll-face', requireAuth, async (req: AuthRequest, res: Response) => {
   const { photos } = req.body as { photos?: string[] }
   if (!photos || !Array.isArray(photos) || photos.length === 0) {
-    res.status(400).json({ error: 'Нужно хотя бы одно фото' })
+    sendError(res, 400, ErrorCodes.PHOTOS_REQUIRED)
     return
   }
 
@@ -66,7 +68,7 @@ router.post('/enroll-face', requireAuth, async (req: AuthRequest, res: Response)
 
     for (const photo of photos) {
       if (typeof photo !== 'string' || !photo.startsWith('data:image/')) {
-        res.status(400).json({ error: 'Некорректный формат фото' })
+        sendError(res, 400, ErrorCodes.INVALID_PHOTO)
         return
       }
       const face = await embedFaceFromBase64(photo)
@@ -86,14 +88,14 @@ router.post('/enroll-face', requireAuth, async (req: AuthRequest, res: Response)
     res.json({ success: true })
   } catch (e) {
     console.error('[enroll-face]', e)
-    const msg = e instanceof Error ? e.message : 'Ошибка обработки лица на сервере'
-    res.status(500).json({ error: msg })
+    const { code, message } = faceErrorFromException(e)
+    sendError(res, 500, code, message)
   }
 })
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '7d'
 
-function makeTokens(userId: string) {
+function makeTokens(userId: string): Pick<AuthResponse, 'accessToken'> {
   const accessToken = jwt.sign({ sub: userId }, getJwtSecret(), {
     expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
   })
@@ -106,7 +108,7 @@ function authUserPayload(user: {
   nickname: string
   faceEnrolled: boolean
   isPublic: boolean
-}) {
+}): AuthUser {
   return {
     id: user.id,
     email: user.email,
@@ -140,7 +142,7 @@ async function resolveDeletedAccount(
 
   if (isRetentionExpired(user.deletedAt)) {
     await purgeUser(user.id)
-    res.status(401).json({ error: 'Invalid credentials' })
+    sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
     return true
   }
 
@@ -200,7 +202,7 @@ async function restoreDeletedUser(userId: string) {
 router.post('/check-email', async (req: Request, res: Response) => {
   const { email } = req.body as { email?: string }
   if (!email || !email.includes('@')) {
-    res.status(400).json({ error: 'Invalid email' })
+    sendError(res, 400, ErrorCodes.INVALID_EMAIL)
     return
   }
   const user = await findUserByEmail(email)
@@ -215,17 +217,17 @@ router.post('/login', async (req: Request, res: Response) => {
     timezone?: string
   }
   if (!email || !password) {
-    res.status(400).json({ error: 'Email and password are required' })
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
     return
   }
   const user = await findUserByEmail(email)
   if (!user || !user.passwordHash) {
-    res.status(401).json({ error: 'Invalid credentials' })
+    sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
     return
   }
   const valid = await bcrypt.compare(password, user.passwordHash)
   if (!valid) {
-    res.status(401).json({ error: 'Invalid credentials' })
+    sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
     return
   }
   if (await resolveDeletedAccount(user, res)) return
@@ -253,14 +255,14 @@ router.post('/restore-account', async (req: Request, res: Response) => {
 
     if (provider === 'google') {
       if (!accessToken && !idToken) {
-        res.status(400).json({ error: 'accessToken or idToken is required' })
+        sendError(res, 400, ErrorCodes.MISSING_FIELD)
         return
       }
       const profile = await resolveGoogleProfile({ accessToken, idToken })
       userEmail = profile.email
     } else if (provider === 'apple') {
       if (!idToken) {
-        res.status(400).json({ error: 'idToken is required' })
+        sendError(res, 400, ErrorCodes.MISSING_FIELD)
         return
       }
       const payload = await appleSignin.verifyIdToken(idToken, {
@@ -270,17 +272,17 @@ router.post('/restore-account', async (req: Request, res: Response) => {
       userEmail = payload.email
     } else {
       if (!email || !password) {
-        res.status(400).json({ error: 'Email and password are required' })
+        sendError(res, 400, ErrorCodes.MISSING_FIELD)
         return
       }
       const user = await findUserByEmail(email)
       if (!user || !user.passwordHash) {
-        res.status(401).json({ error: 'Invalid credentials' })
+        sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
         return
       }
       const valid = await bcrypt.compare(password, user.passwordHash)
       if (!valid) {
-        res.status(401).json({ error: 'Invalid credentials' })
+        sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
         return
       }
       if (!user.deletedAt) {
@@ -289,7 +291,7 @@ router.post('/restore-account', async (req: Request, res: Response) => {
       }
       if (isRetentionExpired(user.deletedAt)) {
         await purgeUser(user.id)
-        res.status(410).json({ error: 'Срок восстановления истёк — аккаунт удалён навсегда' })
+        sendError(res, 410, ErrorCodes.ACCOUNT_RETENTION_EXPIRED)
         return
       }
       const restored = await restoreDeletedUser(user.id)
@@ -298,13 +300,13 @@ router.post('/restore-account', async (req: Request, res: Response) => {
     }
 
     if (!userEmail) {
-      res.status(401).json({ error: 'Invalid credentials' })
+      sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
       return
     }
 
     const user = await findUserByEmail(userEmail)
     if (!user) {
-      res.status(401).json({ error: 'Invalid credentials' })
+      sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
       return
     }
     if (!user.deletedAt) {
@@ -313,14 +315,14 @@ router.post('/restore-account', async (req: Request, res: Response) => {
     }
     if (isRetentionExpired(user.deletedAt)) {
       await purgeUser(user.id)
-      res.status(410).json({ error: 'Срок восстановления истёк — аккаунт удалён навсегда' })
+      sendError(res, 410, ErrorCodes.ACCOUNT_RETENTION_EXPIRED)
       return
     }
 
     const restored = await restoreDeletedUser(user.id)
     res.json({ ...makeTokens(restored.id), user: authUserPayload(restored) })
   } catch {
-    res.status(401).json({ error: 'Не удалось восстановить аккаунт' })
+    sendError(res, 401, ErrorCodes.RESTORE_ACCOUNT_FAILED)
   }
 })
 
@@ -334,15 +336,15 @@ router.post('/register', async (req: Request, res: Response) => {
     timezone?: string
   }
   if (!email || !password || !username) {
-    res.status(400).json({ error: 'All fields are required' })
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
     return
   }
   if (password.length < 6) {
-    res.status(400).json({ error: 'Password must be at least 6 characters' })
+    sendError(res, 400, ErrorCodes.PASSWORD_TOO_SHORT)
     return
   }
   if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-    res.status(400).json({ error: 'Username must be 3-20 chars: a-z, 0-9, _' })
+    sendError(res, 400, ErrorCodes.INVALID_USERNAME)
     return
   }
 
@@ -355,21 +357,18 @@ router.post('/register', async (req: Request, res: Response) => {
       if (isRetentionExpired(existingEmail.deletedAt)) {
         await purgeUser(existingEmail.id)
       } else {
-        res.status(409).json({
-          error: 'Аккаунт удалён — войдите, чтобы восстановить',
-          code: 'ACCOUNT_DELETED',
-        })
+        sendError(res, 409, ErrorCodes.ACCOUNT_DELETED)
         return
       }
     } else {
-      res.status(409).json({ error: 'Email already in use' })
+      sendError(res, 409, ErrorCodes.EMAIL_ALREADY_IN_USE)
       return
     }
   }
 
   const existingNickname = await findActiveUserByNickname(normalizedUsername)
   if (existingNickname) {
-    res.status(409).json({ error: 'Username already taken' })
+    sendError(res, 409, ErrorCodes.USERNAME_TAKEN)
     return
   }
 
@@ -398,11 +397,11 @@ router.post('/google', async (req: Request, res: Response) => {
     timezone?: string
   }
   if (!accessToken && !idToken) {
-    res.status(400).json({ error: 'accessToken or idToken is required' })
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
     return
   }
   if (!process.env.GOOGLE_CLIENT_ID) {
-    res.status(503).json({ error: 'Google OAuth is not configured on this server' })
+    sendError(res, 503, ErrorCodes.OAUTH_NOT_CONFIGURED)
     return
   }
   try {
@@ -422,7 +421,7 @@ router.post('/google', async (req: Request, res: Response) => {
       user: authUserPayload(user),
     })
   } catch {
-    res.status(401).json({ error: 'Invalid Google token' })
+    sendError(res, 401, ErrorCodes.OAUTH_INVALID_TOKEN)
   }
 })
 
@@ -432,11 +431,11 @@ router.post('/google', async (req: Request, res: Response) => {
 router.post('/apple', async (req: Request, res: Response) => {
   const { idToken, timezone } = req.body as { idToken?: string; timezone?: string }
   if (!idToken) {
-    res.status(400).json({ error: 'idToken is required' })
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
     return
   }
   if (!process.env.APPLE_CLIENT_ID) {
-    res.status(503).json({ error: 'Apple Sign In is not configured on this server' })
+    sendError(res, 503, ErrorCodes.OAUTH_NOT_CONFIGURED)
     return
   }
   try {
@@ -454,7 +453,7 @@ router.post('/apple', async (req: Request, res: Response) => {
       user: authUserPayload(user),
     })
   } catch {
-    res.status(401).json({ error: 'Invalid Apple token' })
+    sendError(res, 401, ErrorCodes.OAUTH_INVALID_TOKEN)
   }
 })
 

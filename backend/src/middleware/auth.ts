@@ -1,6 +1,8 @@
 import { type Request, type Response, type NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { prisma } from '../lib/prisma.js'
+import { deletedAccountPayload } from '../lib/accountDeletion.js'
+import { ErrorCodes, sendError } from '../lib/apiErrors.js'
 import { getJwtSecret } from '../lib/jwtSecret.js'
 
 export interface AuthRequest extends Request {
@@ -10,13 +12,13 @@ export interface AuthRequest extends Request {
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Unauthorized' })
+    sendError(res, 401, ErrorCodes.UNAUTHORIZED)
     return
   }
 
   const token = authHeader.split(' ')[1]
   if (!token) {
-    res.status(401).json({ error: 'Unauthorized' })
+    sendError(res, 401, ErrorCodes.UNAUTHORIZED)
     return
   }
 
@@ -24,19 +26,20 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     const payload = jwt.verify(token, getJwtSecret()) as { sub: string }
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { deletedAt: true },
+      select: { deletedAt: true, email: true },
     })
-    if (!user || user.deletedAt) {
-      res.status(401).json({
-        error: user?.deletedAt ? 'Account deleted' : 'Unauthorized',
-        code: user?.deletedAt ? 'ACCOUNT_DELETED' : undefined,
-      })
+    if (!user) {
+      sendError(res, 401, ErrorCodes.UNAUTHORIZED)
+      return
+    }
+    if (user.deletedAt) {
+      res.status(403).json(deletedAccountPayload({ email: user.email, deletedAt: user.deletedAt }))
       return
     }
     req.userId = payload.sub
     next()
   } catch {
-    res.status(401).json({ error: 'Invalid token' })
+    sendError(res, 401, ErrorCodes.INVALID_TOKEN)
   }
 }
 

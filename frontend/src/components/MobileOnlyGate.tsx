@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Smartphone } from 'lucide-react'
 import { requiresMobileGate } from '../lib/device'
 
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function MobileOnlyGate({ children }: Props) {
+  const { t } = useTranslation()
   const [blocked, setBlocked] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -29,9 +31,9 @@ export default function MobileOnlyGate({ children }: Props) {
           className="text-[var(--color-brand-primary)] mb-6"
           strokeWidth={1.5}
         />
-        <h1 className="text-xl font-bold text-white mb-2">Откройте с телефона</h1>
+        <h1 className="text-xl font-bold text-white mb-2">{t('mobileGate.title')}</h1>
         <p className="text-sm text-[var(--color-on-surface-variant)] leading-relaxed">
-          StreakMeet доступен только на смартфоне
+          {t('mobileGate.description')}
         </p>
       </div>
     </div>

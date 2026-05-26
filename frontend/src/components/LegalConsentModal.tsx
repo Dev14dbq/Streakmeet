@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { FileText, Shield } from 'lucide-react'
-import { acceptLegalDocuments, type LegalConsentStatus } from '../lib/api'
+import { acceptLegalDocuments, getApiErrorMessage, type LegalConsentStatus } from '../lib/api'
 import { toastError } from '../lib/toast'
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function LegalConsentModal({ status, onAccepted }: Props) {
+  const { t } = useTranslation()
   const [accepting, setAccepting] = useState(false)
 
   async function handleAccept() {
@@ -18,8 +20,8 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
     try {
       await acceptLegalDocuments()
       onAccepted()
-    } catch {
-      toastError('Не удалось сохранить согласие')
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('legal.acceptFailed')))
     } finally {
       setAccepting(false)
     }
@@ -27,6 +29,13 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
 
   const termsUpdated = !status.terms.accepted
   const privacyUpdated = !status.privacy.accepted
+
+  const docsLabel =
+    termsUpdated && privacyUpdated
+      ? t('legal.updatedBoth')
+      : termsUpdated
+        ? t('legal.updatedTerms')
+        : t('legal.updatedPrivacy')
 
   return (
     <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -42,22 +51,16 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
           </div>
           <div>
             <h2 id="legal-consent-title" className="text-lg font-bold text-white">
-              Обновлены документы
+              {t('legal.updated')}
             </h2>
             <p className="text-xs text-[var(--color-on-surface-variant)]">
-              Нужно ваше согласие для продолжения
+              {t('legal.consentRequired')}
             </p>
           </div>
         </div>
 
         <p className="text-sm text-[var(--color-on-surface-variant)] leading-relaxed mb-4">
-          Мы обновили{' '}
-          {termsUpdated && privacyUpdated
-            ? 'Условия использования и Политику конфиденциальности'
-            : termsUpdated
-              ? 'Условия использования'
-              : 'Политику конфиденциальности'}
-          . Пожалуйста, ознакомьтесь с изменениями и подтвердите согласие.
+          {t('legal.reviewPrompt', { docs: docsLabel })}
         </p>
 
         <div className="flex flex-col gap-2 mb-6">
@@ -67,7 +70,7 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
               className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-container-highest)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               <FileText size={18} className="text-[var(--color-on-surface-variant)]" />
-              Прочитать условия использования
+              {t('legal.readTerms')}
             </Link>
           )}
           {privacyUpdated && (
@@ -76,7 +79,7 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
               className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-container-highest)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               <Shield size={18} className="text-[var(--color-on-surface-variant)]" />
-              Прочитать политику конфиденциальности
+              {t('legal.readPrivacy')}
             </Link>
           )}
         </div>
@@ -87,7 +90,7 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
           disabled={accepting}
           className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition active:scale-95 disabled:opacity-60"
         >
-          {accepting ? 'Сохранение...' : 'Принимаю'}
+          {accepting ? t('common.saving') : t('legal.accept')}
         </button>
       </div>
     </div>

@@ -1,9 +1,17 @@
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, X } from 'lucide-react'
 import { QRCode } from 'react-qr-code'
 import { Scanner } from '@yudiel/react-qr-scanner'
-import { profileUrl, parseQrScanTarget, searchUsers, requestFriend } from '../lib/api'
+import {
+  profileUrl,
+  parseQrScanTarget,
+  searchUsers,
+  requestFriend,
+  findUserByScanTarget,
+  getApiErrorMessage,
+} from '../lib/api'
 import { shareProfileLink } from '../lib/shareProfile'
 import { toastError, toastSuccess, toastLink } from '../lib/toast'
 
@@ -14,6 +22,7 @@ interface Props {
 }
 
 export default function ProfileQrModal({ nickname, open, onClose }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [showScanner, setShowScanner] = useState(false)
   const scanningRef = useRef(false)
@@ -24,8 +33,8 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
     const url = profileUrl(nickname)
     const result = await shareProfileLink(nickname, url)
 
-    if (result === 'copied') toastSuccess('Ссылка скопирована')
-    if (result === 'failed') toastError('Не удалось поделиться профилем')
+    if (result === 'copied') toastSuccess(t('profile.shareCopied'))
+    if (result === 'failed') toastError(t('profile.shareFailed'))
   }
 
   function handleCloseAll() {
@@ -37,7 +46,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
     return (
       <div className="fixed inset-0 z-[100] bg-black flex flex-col">
         <div className="flex items-center justify-between p-6 pb-2">
-          <h2 className="text-white font-bold text-xl">Сканирование QR</h2>
+          <h2 className="text-white font-bold text-xl">{t('common.qr')}</h2>
           <button
             type="button"
             onClick={() => setShowScanner(false)}
@@ -54,23 +63,23 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
               scanningRef.current = true
               const target = parseQrScanTarget(result[0].rawValue)
               if (!target) {
-                toastError('Некорректный QR-код')
+                toastError(t('profile.invalidQr'))
                 scanningRef.current = false
                 return
               }
               try {
                 const { data: users } = await searchUsers(target)
-                const friend = users.find((u) => u.nickname === target) ?? users[0]
+                const friend = findUserByScanTarget(users, target)
                 if (!friend) {
-                  toastError('Пользователь не найден')
+                  toastError(t('profile.userNotFound'))
                   return
                 }
                 await requestFriend(friend.id)
-                toastLink('Запрос в друзья отправлен!', '/', navigate, '👥')
+                toastLink(t('profile.friendRequestSent'), '/', navigate, '👥')
                 setShowScanner(false)
                 onClose()
-              } catch {
-                toastError('Ошибка или запрос уже отправлен')
+              } catch (e) {
+                toastError(getApiErrorMessage(e, t('profile.qrRequestFailed')))
               } finally {
                 scanningRef.current = false
               }
@@ -92,7 +101,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
           type="button"
           onClick={handleCloseAll}
           className="p-3 bg-[var(--color-surface-container-high)] rounded-full text-white transition active:scale-95 hover:bg-[var(--color-surface-container-highest)]"
-          aria-label="Назад"
+          aria-label={t('common.back')}
         >
           <ArrowLeft size={24} />
         </button>
@@ -114,7 +123,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
           onClick={handleShareProfile}
           className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 font-bold text-lg text-white transition active:scale-95 shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
         >
-          Поделиться профилем
+          {t('profile.shareDialogTitle')}
         </button>
         <button
           type="button"
@@ -124,7 +133,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
           }}
           className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 font-bold text-lg text-white transition active:scale-95 hover:bg-[var(--color-surface-container-highest)]"
         >
-          Отсканировать QR
+          {t('common.qr')}
         </button>
       </div>
     </div>

@@ -6,6 +6,7 @@ import {
   broadcastLocationToFriends,
   type FriendLocationPayload,
 } from '../lib/location.js'
+import { ErrorCodes, sendError } from '../lib/apiErrors.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -90,7 +91,7 @@ router.get('/friends', async (req: AuthRequest, res: Response) => {
 router.post('/sharing', async (req: AuthRequest, res: Response) => {
   const { enabled } = req.body as { enabled?: boolean }
   if (typeof enabled !== 'boolean') {
-    res.status(400).json({ error: 'enabled must be boolean' })
+    sendError(res, 400, ErrorCodes.INVALID_BOOLEAN)
     return
   }
 
@@ -154,7 +155,7 @@ router.post('/update', async (req: AuthRequest, res: Response) => {
     longitude < -180 ||
     longitude > 180
   ) {
-    res.status(400).json({ error: 'Invalid coordinates' })
+    sendError(res, 400, ErrorCodes.INVALID_COORDINATES)
     return
   }
 
@@ -165,7 +166,7 @@ router.post('/update', async (req: AuthRequest, res: Response) => {
   })
 
   if (!existing.sharingLocation) {
-    res.status(409).json({ error: 'Location sharing is disabled' })
+    sendError(res, 409, ErrorCodes.LOCATION_SHARING_DISABLED)
     return
   }
 

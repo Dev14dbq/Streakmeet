@@ -1,0 +1,29 @@
+{
+  "name": "@streakmeet/api-spec",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "compile": "tsp compile .",
+    "generate:types": "openapi-typescript ./generated/@typespec/openapi3/openapi.yaml -o ./generated/schema.d.ts",
+    "build:spec": "npm run compile && npm run generate:types",
+    "build": "npm run build:spec && tsc",
+    "dev": "npm run build:spec -- --watch"
+  },
+  "devDependencies": {
+    "@typespec/compiler": "^1.12.0",
+    "@typespec/http": "^1.12.0",
+    "@typespec/openapi3": "^1.12.0",
+    "@typespec/rest": "^0.82.0",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "~5.9.3"
+  }
+}

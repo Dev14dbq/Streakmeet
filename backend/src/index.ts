@@ -10,12 +10,14 @@ import streaksRouter from './routes/streaks.js'
 import locationRouter from './routes/location.js'
 import publicRouter from './routes/public.js'
 import legalRouter from './routes/legal.js'
+import { errorHandler } from './lib/httpErrors.js'
 import { initSocket } from './lib/socket.js'
 import { UPLOADS_DIR } from './lib/paths.js'
 import { ensureFaceService } from './lib/face.js'
 import { ensureLegalDocuments } from './lib/legalDocuments.js'
 import { purgeExpiredDeletedUsers } from './lib/accountDeletion.js'
 import { processStreakNotifications } from './lib/streakNotifications.js'
+import { reconcileAllStreakTimezones } from './lib/streakCalendar.js'
 
 dotenv.config()
 
@@ -44,6 +46,8 @@ app.use('/api/streaks', streaksRouter)
 app.use('/api/location', locationRouter)
 app.use('/api/legal', legalRouter)
 
+app.use(errorHandler)
+
 httpServer.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`)
   void ensureLegalDocuments().catch((e) =>
@@ -57,6 +61,10 @@ httpServer.listen(Number(port), '0.0.0.0', () => {
 
   void purgeExpiredDeletedUsers().then((count) => {
     if (count > 0) console.log(`[accounts] Purged ${count} expired deleted account(s)`)
+  })
+
+  void reconcileAllStreakTimezones().then((count) => {
+    if (count > 0) console.log(`[streaks] Reconciled timezone for ${count} streak(s)`)
   })
 
   const DAY_MS = 86_400_000

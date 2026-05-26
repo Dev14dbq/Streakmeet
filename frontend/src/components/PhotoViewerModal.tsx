@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, MoreVertical, Download, Share, Info } from 'lucide-react'
 import { Capacitor } from '@capacitor/core'
 import { Share as CapShare } from '@capacitor/share'
@@ -7,6 +8,7 @@ import { toastError, toastSuccess } from '../lib/toast'
 import CachedImage from './CachedImage'
 import { resolveBackendImageUrl } from '../lib/remoteImageUrl'
 import { useCachedImageSrc } from '../lib/useCachedImageSrc'
+import { formatDateTime } from '../i18n/format'
 
 export interface PhotoData {
   id: string
@@ -29,6 +31,7 @@ interface Props {
 }
 
 export default function PhotoViewerModal({ photo, onClose }: Props) {
+  const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -58,7 +61,7 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
           path: fileName,
           directory: Directory.Documents,
         })
-        toastSuccess('Фото сохранено в Документы')
+        toastSuccess(t('photo.savedDocuments'))
       } else {
         const response = await fetch(remoteUrl)
         if (!response.ok) throw new Error('Download failed')
@@ -71,11 +74,11 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
         a.click()
         a.remove()
         window.URL.revokeObjectURL(url)
-        toastSuccess('Фото скачано')
+        toastSuccess(t('photo.downloaded'))
       }
     } catch (e) {
       console.error('Download error:', e)
-      toastError('Не удалось скачать фото')
+      toastError(t('photo.downloadFailed'))
     }
   }
 
@@ -84,12 +87,10 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
     try {
       if (Capacitor.isNativePlatform() && cachedSrc?.startsWith('file://')) {
         await CapShare.share({
-          title: 'Фото из StreakMeet',
+          title: t('photo.shareTitle'),
           url: cachedSrc,
         })
       } else if (navigator.share) {
-        // Web share API might not support sharing image blobs directly easily without File objects
-        // Let's try to fetch and share as File
         const response = await fetch(remoteUrl)
         if (!response.ok) throw new Error('Share fetch failed')
         const blob = await response.blob()
@@ -97,21 +98,21 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
-            title: 'Фото из StreakMeet',
+            title: t('photo.shareTitle'),
           })
         } else {
           await navigator.share({
-            title: 'Фото из StreakMeet',
+            title: t('photo.shareTitle'),
             url: remoteUrl,
           })
         }
       } else {
-        toastError('Поделиться не поддерживается на этом устройстве')
+        toastError(t('photo.shareNotSupported'))
       }
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') return
       console.error('Share error:', e)
-      toastError('Не удалось поделиться фото')
+      toastError(t('photo.shareFailed'))
     }
   }
 
@@ -120,12 +121,11 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
     setInfoOpen(true)
   }
 
-  const uploaderNickname = photo.uploadedBy?.nickname || 'Неизвестно'
-  const dateStr = photo.createdAt ? new Date(photo.createdAt).toLocaleString() : 'Неизвестно'
+  const uploaderNickname = photo.uploadedBy?.nickname || t('common.unknown')
+  const dateStr = photo.createdAt ? formatDateTime(photo.createdAt) : t('common.unknown')
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-sm animate-in fade-in duration-200">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] relative z-10 shrink-0">
         <button
           onClick={onClose}
@@ -149,65 +149,51 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
                 className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white hover:bg-white/5 transition"
               >
                 <Download size={18} />
-                Скачать
+                {t('photo.downloaded')}
               </button>
               <button
                 onClick={handleShare}
                 className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white hover:bg-white/5 transition"
               >
                 <Share size={18} />
-                Поделиться
+                {t('profile.shareDialogTitle')}
               </button>
               <button
                 onClick={handleInfo}
                 className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white hover:bg-white/5 transition"
               >
                 <Info size={18} />
-                Информация
+                {t('settings.about')}
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Image */}
       <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
         <CachedImage
           path={photo.photoUrl}
-          alt="Фото встречи"
+          alt={t('photo.meetPhoto')}
           className="max-w-full max-h-full object-contain rounded-lg"
         />
       </div>
 
-      {/* Info Modal */}
       {infoOpen && (
         <div className="absolute inset-0 z-20 flex items-end sm:items-center justify-center p-4 bg-black/50 animate-in fade-in">
           <div className="w-full max-w-sm bg-[var(--color-surface-container-high)] rounded-3xl p-6 shadow-2xl animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 sm:zoom-in-95">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-white">Информация о фото</h3>
+            <div className="flex justify-end mb-2">
               <button onClick={() => setInfoOpen(false)} className="text-white/50 hover:text-white">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs text-[var(--color-on-surface-variant)] mb-1">
-                  Кто сделал фото
-                </p>
-                <p className="text-sm text-white font-medium">@{uploaderNickname}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--color-on-surface-variant)] mb-1">Дата и время</p>
-                <p className="text-sm text-white font-medium">{dateStr}</p>
-              </div>
+            <div className="space-y-3">
+              <p className="text-sm text-white font-medium">@{uploaderNickname}</p>
+              <p className="text-sm text-white font-medium">{dateStr}</p>
               {photo.latitude != null && photo.longitude != null && (
-                <div>
-                  <p className="text-xs text-[var(--color-on-surface-variant)] mb-1">Координаты</p>
-                  <p className="text-sm text-white font-medium">
-                    {photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}
-                  </p>
-                </div>
+                <p className="text-sm text-white font-medium">
+                  {photo.latitude.toFixed(6)}, {photo.longitude.toFixed(6)}
+                </p>
               )}
             </div>
           </div>

@@ -16,18 +16,24 @@ import {
   legacyEmbeddingMessage,
 } from '../lib/face.js'
 import { getLocalDateString, normalizeTimezone } from '../lib/timezone.js'
+import {
+  generousStreakTimezone,
+  instantMeetStreakDay,
+  remoteSelfieStreakDay,
+} from '../lib/streakCalendar.js'
 import { expireStaleRemoteSelfieRequests, REMOTE_SELFIE_TTL_MS } from '../lib/remoteSelfie.js'
 import { parsePagination } from '../lib/pagination.js'
+import { faceErrorFromException, ErrorCodes, sendError } from '../lib/apiErrors.js'
 
 const router = Router()
 router.use(requireAuth)
 
-async function getUserTimezone(userId: string): Promise<string> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { timezone: true },
-  })
-  return normalizeTimezone(user?.timezone)
+async function getPartnerTimezones(userId: string, partnerId: string) {
+  const [self, partner] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
+    prisma.user.findUnique({ where: { id: partnerId }, select: { timezone: true } }),
+  ])
+  return generousStreakTimezone(self?.timezone, partner?.timezone)
 }
 
 // GET /api/streaks
@@ -52,6 +58,7 @@ router.get('/', async (req: AuthRequest, res: Response) => {
       id: s.id,
       count: s.count,
       lastMetDate: s.lastMetDate,
+      timezone: s.timezone,
       partner,
     }
   })
@@ -61,8 +68,13 @@ router.get('/', async (req: AuthRequest, res: Response) => {
 
 // POST /api/streaks
 router.post('/', async (req: AuthRequest, res: Response) => {
-  const { partnerId } = req.body
+  const { partnerId } = req.body as { partnerId?: string }
   const userId = req.userId!
+
+  if (typeof partnerId !== 'string' || !partnerId.trim()) {
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
+    return
+  }
 
   // Проверяем, друзья ли они
   const isFriend = await prisma.friendship.findFirst({
@@ -76,7 +88,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   })
 
   if (!isFriend) {
-    res.status(400).json({ error: 'You must be friends to start a streak' })
+    sendError(res, 400, ErrorCodes.NOT_FRIENDS)
     return
   }
 
@@ -92,7 +104,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   })
 
   if (existing) {
-    res.status(400).json({ error: 'Streak already exists' })
+    sendError(res, 400, ErrorCodes.STREAK_EXISTS)
     return
   }
 
@@ -101,7 +113,7 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       userAId: userId,
       userBId: partnerId,
       count: 0,
-      timezone: await getUserTimezone(userId),
+      timezone: await getPartnerTimezones(userId, partnerId),
     },
   })
 
@@ -123,19 +135,16 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
 
   if (!photoBase64) {
     console.log('[magic-meet] rejected: no photo')
-    res.status(400).json({ error: 'Фото обязательно' })
+    sendError(res, 400, ErrorCodes.MAGIC_MEET_PHOTO_REQUIRED)
     return
   }
 
   const currentUser = await prisma.user.findUnique({ where: { id: userId } })
   if (!currentUser?.faceEmbedding) {
     console.log('[magic-meet] rejected: face not enrolled')
-    res.status(400).json({ error: 'Сначала зарегистрируй лицо в профиле' })
+    sendError(res, 400, ErrorCodes.FACE_NOT_ENROLLED)
     return
   }
-
-  const userTimezone = normalizeTimezone(currentUser.timezone)
-  const today = getLocalDateString(userTimezone)
 
   let descriptors: number[][]
   try {
@@ -144,22 +153,26 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
     descriptors = detections.map((d) => d.embedding)
   } catch (e) {
     console.error('[magic-meet] face detection failed', e)
-    res.status(500).json({ error: 'Ошибка распознавания лиц на сервере' })
+    const { code, message } = faceErrorFromException(e)
+    sendError(res, 500, code, message)
     return
   }
 
   if (descriptors.length < 2) {
     console.log(`[magic-meet] rejected: only ${descriptors.length} face(s)`)
-    res
-      .status(400)
-      .json({ error: `На фото должно быть минимум 2 лица (найдено: ${descriptors.length})` })
+    sendError(
+      res,
+      400,
+      ErrorCodes.MAGIC_MEET_MIN_FACES,
+      `На фото должно быть минимум 2 лица (найдено: ${descriptors.length})`
+    )
     return
   }
 
   const myDesc = currentUser.faceEmbedding as number[]
   if (isLegacyEmbedding(myDesc)) {
     console.log('[magic-meet] rejected: legacy embedding')
-    res.status(400).json({ error: legacyEmbeddingMessage() })
+    sendError(res, 400, ErrorCodes.FACE_LEGACY_EMBEDDING, legacyEmbeddingMessage())
     return
   }
 
@@ -176,13 +189,17 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
 
   if (!amIPresent) {
     console.log('[magic-meet] rejected: user not found on photo')
-    res.status(400).json({ error: 'Мы не нашли тебя на фото!' })
+    sendError(res, 400, ErrorCodes.MAGIC_MEET_USER_NOT_ON_PHOTO)
     return
   }
 
   console.log(`[magic-meet] user found at index ${myDescIndex}, matching friends...`)
 
-  const photoHash = await computePhotoHash(photoBase64)
+  const photoHash = await computePhotoHash(photoBase64).catch(() => null)
+  if (!photoHash) {
+    sendError(res, 400, ErrorCodes.INVALID_PHOTO)
+    return
+  }
 
   // 2. Ищем серии с друзьями, которые тоже есть на фото
   const activeStreaks = await prisma.streak.findMany({
@@ -212,6 +229,8 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
     }
 
     if (!partnerFound) continue
+
+    const today = instantMeetStreakDay(streak.timezone)
 
     let streakDay = await prisma.streakDay.findUnique({
       where: { streakId_date: { streakId: streak.id, date: today } },
@@ -281,17 +300,18 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
   if (allPartners.length === 0) {
     if (duplicatePartners.length > 0) {
       console.log(`[magic-meet] rejected: duplicate photo for ${duplicatePartners.join(', ')}`)
-      res.status(400).json({
-        error: `Это фото уже было добавлено${duplicatePartners.length === 1 ? ` (с @${duplicatePartners[0]})` : ''}`,
-      })
+      sendError(
+        res,
+        400,
+        ErrorCodes.MAGIC_MEET_DUPLICATE_PHOTO,
+        `Это фото уже было добавлено${duplicatePartners.length === 1 ? ` (с @${duplicatePartners[0]})` : ''}`
+      )
       return
     }
     console.log(
       `[magic-meet] rejected: no matching friends (${activeStreaks.length} active streaks checked)`
     )
-    res.status(400).json({
-      error: 'Мы не распознали твоих друзей из активных серий на этом фото.',
-    })
+    sendError(res, 400, ErrorCodes.MAGIC_MEET_NO_MATCH)
     return
   }
 
@@ -329,7 +349,7 @@ router.post('/:partnerNickname/remind', async (req: AuthRequest, res: Response) 
     select: { id: true, nickname: true },
   })
   if (!partner) {
-    res.status(404).json({ error: 'Streak not found' })
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
 
@@ -343,7 +363,7 @@ router.post('/:partnerNickname/remind', async (req: AuthRequest, res: Response) 
     },
   })
   if (!streak) {
-    res.status(404).json({ error: 'Streak not found' })
+    sendError(res, 404, ErrorCodes.STREAK_NOT_FOUND)
     return
   }
 
@@ -352,13 +372,13 @@ router.post('/:partnerNickname/remind', async (req: AuthRequest, res: Response) 
     select: { nickname: true, timezone: true },
   })
   if (!sender) {
-    res.status(404).json({ error: 'User not found' })
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
 
-  const today = getLocalDateString(sender.timezone)
+  const today = getLocalDateString(normalizeTimezone(streak.timezone))
   if (streak.lastMetDate === today) {
-    res.status(400).json({ error: 'Streak already extended today' })
+    sendError(res, 400, ErrorCodes.STREAK_ALREADY_MET_TODAY)
     return
   }
 
@@ -387,7 +407,7 @@ router.post('/:streakId/remote-selfie/init', async (req: AuthRequest, res: Respo
   const userId = req.userId!
 
   if (!photoBase64) {
-    res.status(400).json({ error: 'Фото обязательно' })
+    sendError(res, 400, ErrorCodes.MAGIC_MEET_PHOTO_REQUIRED)
     return
   }
 
@@ -397,7 +417,7 @@ router.post('/:streakId/remote-selfie/init', async (req: AuthRequest, res: Respo
   })
 
   if (!streak || (streak.userAId !== userId && streak.userBId !== userId)) {
-    res.status(404).json({ error: 'Серия не найдена' })
+    sendError(res, 404, ErrorCodes.STREAK_NOT_FOUND)
     return
   }
 
@@ -411,7 +431,7 @@ router.post('/:streakId/remote-selfie/init', async (req: AuthRequest, res: Respo
     where: { streakId: streak.id, status: 'PENDING' },
   })
   if (existingPending) {
-    res.status(409).json({ error: 'Уже есть активный запрос на селфи' })
+    sendError(res, 409, ErrorCodes.REMOTE_SELFIE_PENDING)
     return
   }
 
@@ -448,7 +468,7 @@ router.post(
     const userId = req.userId!
 
     if (!photoBase64) {
-      res.status(400).json({ error: 'Фото обязательно' })
+      sendError(res, 400, ErrorCodes.MAGIC_MEET_PHOTO_REQUIRED)
       return
     }
 
@@ -458,12 +478,22 @@ router.post(
     })
 
     if (!request || request.receiverId !== userId || request.streakId !== streakId) {
-      res.status(404).json({ error: 'Запрос не найден' })
+      sendError(res, 404, ErrorCodes.REMOTE_SELFIE_NOT_FOUND)
       return
     }
 
     if (request.status !== 'PENDING') {
-      res.status(400).json({ error: 'Запрос уже обработан или истек' })
+      sendError(res, 400, ErrorCodes.REMOTE_SELFIE_HANDLED)
+      return
+    }
+
+    const ageMs = Date.now() - request.createdAt.getTime()
+    if (ageMs > REMOTE_SELFIE_TTL_MS) {
+      await prisma.remoteSelfieRequest.update({
+        where: { id: requestId },
+        data: { status: 'EXPIRED' },
+      })
+      sendError(res, 410, ErrorCodes.REMOTE_SELFIE_EXPIRED)
       return
     }
 
@@ -477,7 +507,7 @@ router.post(
       data: { status: 'COMPLETED' },
     })
     if (claimed.count === 0) {
-      res.status(409).json({ error: 'Запрос уже обработан или истек' })
+      sendError(res, 409, ErrorCodes.REMOTE_SELFIE_HANDLED)
       return
     }
 
@@ -491,7 +521,7 @@ router.post(
         where: { id: requestId },
         data: { status: 'PENDING' },
       })
-      res.status(404).json({ error: 'Серия не найдена' })
+      sendError(res, 404, ErrorCodes.STREAK_NOT_FOUND)
       return
     }
 
@@ -513,7 +543,7 @@ router.post(
     } catch (e) {
       console.error('Error combining images', e)
       await revertClaim()
-      res.status(500).json({ error: 'Ошибка при объединении фото' })
+      sendError(res, 500, ErrorCodes.IMAGE_COMBINE_FAILED)
       return
     }
 
@@ -523,13 +553,12 @@ router.post(
     } catch (e) {
       console.error('Error hashing combined image', e)
       await revertClaim()
-      res.status(500).json({ error: 'Ошибка при сохранении фото' })
+      sendError(res, 500, ErrorCodes.IMAGE_SAVE_FAILED)
       return
     }
 
-    // Add MeetProof and extend streak
-    const userTimezone = await getUserTimezone(userId)
-    const today = getLocalDateString(userTimezone)
+    // Add MeetProof and extend streak (day anchored to when remote selfie was initiated)
+    const today = remoteSelfieStreakDay(streak.timezone, request.createdAt)
 
     let streakDay = await prisma.streakDay.findUnique({
       where: { streakId_date: { streakId: streak.id, date: today } },
@@ -564,9 +593,12 @@ router.post(
     }
 
     const receiver = streak.userAId === userId ? streak.userA : streak.userB
+    const notifyMessage = alreadyMetToday
+      ? `✨ @${receiver.nickname} ответил(а) на селфи! Добавлено новое фото.`
+      : `✨ @${receiver.nickname} ответил(а) на селфи! Серия продлена!`
     notifyUser(request.senderId, 'notification', {
       type: 'remote_selfie_completed',
-      message: `✨ @${receiver.nickname} ответил(а) на селфи! Серия продлена!`,
+      message: notifyMessage,
       route: `/streaks/${receiver.nickname}`,
     })
 
@@ -596,7 +628,7 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
       select: { id: true },
     })
     if (!partner) {
-      res.status(404).json({ error: 'Streak not found' })
+      sendError(res, 404, ErrorCodes.STREAK_NOT_FOUND)
       return
     }
     const meta = await prisma.streak.findFirst({
@@ -613,7 +645,7 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
   }
 
   if (!streakId) {
-    res.status(404).json({ error: 'Streak not found' })
+    sendError(res, 404, ErrorCodes.STREAK_NOT_FOUND)
     return
   }
 
@@ -625,7 +657,7 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
   })
 
   if (!streak || (streak.userAId !== userId && streak.userBId !== userId)) {
-    res.status(404).json({ error: 'Streak not found' })
+    sendError(res, 404, ErrorCodes.STREAK_NOT_FOUND)
     return
   }
 

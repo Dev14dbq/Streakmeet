@@ -1,19 +1,22 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Flame, ArrowLeft, Bell, Camera, Check, Image as ImageIcon, Smartphone } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Flame, ArrowLeft, Bell, Camera, Image as ImageIcon, Smartphone } from 'lucide-react'
 import useSWRInfinite from 'swr/infinite'
 import {
   fetcher,
   remindStreak,
   initRemoteSelfie,
   replyRemoteSelfie,
+  getApiErrorMessage,
   type AuthUser,
 } from '../../lib/api'
 import CachedImage from '../../components/CachedImage'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 import RemoteSelfieCameraModal from '../../components/RemoteSelfieCameraModal'
 import { vibrateRemind } from '../../lib/haptics'
-import { getLocalToday } from '../../lib/timezone'
+import { isStreakMetToday } from '../../lib/streakCalendar'
+import { formatDate, formatMonthYear } from '../../i18n/format'
 import { toastError, toastSuccess } from '../../lib/toast'
 
 const PARTICLE_EMOJIS = ['🔔', '🔥', '⚡', '💥', '📣', '👋', '❗', '💫']
@@ -40,27 +43,21 @@ interface StreakDay {
   meetProofs: MeetProof[]
 }
 
-function getRemindLabel(combo: number) {
-  if (combo >= 20) return 'СПАМ!!!'
-  if (combo >= 12) return 'ПИНГ-ПИНГ!'
-  if (combo >= 6) return 'Ещё ещё!'
-  if (combo >= 3) return 'Напомнить!'
-  return 'Напомнить'
-}
-
-function daysLabel(count: number) {
-  if (count === 1) return 'день'
-  if (count >= 2 && count <= 4) return 'дня'
-  return 'дней'
-}
-
-function monthKey(date: string) {
-  return date.slice(0, 7)
+function getRemindLabel(combo: number, t: (key: string) => string) {
+  if (combo >= 20) return t('streak.spam')
+  if (combo >= 12) return t('streak.pingPing')
+  if (combo >= 6) return t('streak.remindMore')
+  if (combo >= 3) return `${t('streak.remind')}!`
+  return t('streak.remind')
 }
 
 function monthLabel(key: string) {
   const [y, m] = key.split('-').map(Number)
-  return new Date(y!, m! - 1, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  return formatMonthYear(y!, m!)
+}
+
+function monthKey(date: string) {
+  return date.slice(0, 7)
 }
 
 function DuoAvatar({
@@ -98,9 +95,9 @@ function DuoAvatar({
 }
 
 export default function StreakDetailsPage() {
+  const { t } = useTranslation()
   const { nickname = '' } = useParams()
   const navigate = useNavigate()
-  const today = getLocalToday()
 
   const me: AuthUser = useMemo(() => {
     try {
@@ -122,7 +119,6 @@ export default function StreakDetailsPage() {
   const streakMeta = data?.[0]
   const streakDays: StreakDay[] = data ? data.flatMap((page) => page.streakDays) : []
   const isReachingEnd = data && data[data.length - 1]?.streakDays.length < 10
-  const totalPhotos = streakDays.reduce((n, d) => n + d.meetProofs.length, 0)
   const coverPhoto = streakDays[0]?.meetProofs[0]?.photoUrl ?? null
 
   const [combo, setCombo] = useState(0)
@@ -226,23 +222,23 @@ export default function StreakDetailsPage() {
         if (replyingToRequest) {
           const { data } = await replyRemoteSelfie(streakMeta.id, replyingToRequest, photoBase64)
           if (data.success) {
-            toastSuccess('Селфи объединено! Серия продлена 🎉')
+            toastSuccess(t('streak.selfieMerged'))
             setSize(1)
           }
         } else {
           await initRemoteSelfie(streakMeta.id, photoBase64)
-          toastSuccess('Запрос на селфи отправлен!')
+          toastSuccess(t('streak.selfieRequestSent'))
           setSize(1)
         }
         setShowRemoteSelfieCamera(false)
         setReplyingToRequest(null)
-      } catch (e: any) {
-        toastError(e.response?.data?.error || 'Ошибка при отправке селфи')
+      } catch (e) {
+        toastError(getApiErrorMessage(e, t('streak.selfieError')))
       } finally {
         setRemoteSelfieUploading(false)
       }
     },
-    [replyingToRequest, streakMeta, setSize]
+    [replyingToRequest, streakMeta, setSize, t]
   )
 
   function openRemoteSelfieInit() {
@@ -266,29 +262,30 @@ export default function StreakDetailsPage() {
             className="text-[var(--color-brand-primary)] animate-pulse"
             fill="currentColor"
           />
-          <p className="text-sm text-[var(--color-on-surface-variant)]">Загрузка серии...</p>
+          <p className="text-sm text-[var(--color-on-surface-variant)]">{t('common.loading')}</p>
         </div>
       </div>
     )
   }
 
   if (error || !streakMeta) {
+    const message = error ? getApiErrorMessage(error, t('streak.loadFailed')) : t('streak.notFound')
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 gap-4">
-        <p className="text-[var(--color-on-surface-variant)] text-center">Серия не найдена</p>
+        <p className="text-[var(--color-on-surface-variant)] text-center">{message}</p>
         <button
           type="button"
           onClick={() => navigate('/')}
           className="rounded-full bg-[var(--color-surface-container-high)] px-6 py-3 text-white font-semibold"
         >
-          На главную
+          {t('notFound.goHome')}
         </button>
       </div>
     )
   }
 
   const partner = streakMeta.userAId === me.id ? streakMeta.userB : streakMeta.userA
-  const metToday = streakMeta.lastMetDate === today
+  const metToday = isStreakMetToday(streakMeta)
   const count = streakMeta.count
 
   const pendingRemoteSelfie = streakMeta?.remoteSelfies?.[0]
@@ -325,7 +322,7 @@ export default function StreakDetailsPage() {
               type="button"
               onClick={() => navigate('/')}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-white border border-white/10 transition active:scale-95"
-              aria-label="Назад"
+              aria-label={t('common.back')}
             >
               <ArrowLeft size={20} />
             </button>
@@ -341,7 +338,7 @@ export default function StreakDetailsPage() {
           <div className="flex items-center justify-center gap-3 mb-5">
             <DuoAvatar
               path={me.avatarUrl}
-              label="Мой профиль"
+              label={t('streak.myProfile')}
               onClick={() => navigate('/profile')}
             />
             <div className="flex flex-col items-center min-w-[88px]">
@@ -355,46 +352,12 @@ export default function StreakDetailsPage() {
                   fill="currentColor"
                 />
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-on-surface-variant)] mt-1">
-                {daysLabel(count)}
-              </span>
             </div>
             <DuoAvatar
               path={partner.avatarUrl}
-              label={`Профиль @${partner.nickname}`}
+              label={t('streak.partnerProfile', { nickname: partner.nickname })}
               onClick={() => navigate(`/${partner.nickname}`)}
             />
-          </div>
-
-          <div className="flex flex-col items-center gap-2">
-            <div
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold backdrop-blur-md border ${
-                metToday
-                  ? 'bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)] border-[var(--color-brand-primary)]/25'
-                  : 'bg-white/5 text-white border-white/10'
-              }`}
-            >
-              {metToday ? (
-                <>
-                  <Check size={15} strokeWidth={3} />
-                  Сегодня встретились
-                </>
-              ) : (
-                <>
-                  <Flame
-                    size={15}
-                    fill="currentColor"
-                    className="text-[var(--color-brand-primary)]"
-                  />
-                  Сегодня ещё не встречались
-                </>
-              )}
-            </div>
-            {totalPhotos > 0 && (
-              <p className="text-xs text-[var(--color-on-surface-variant)] font-medium">
-                {totalPhotos} фото вместе
-              </p>
-            )}
           </div>
         </div>
       </section>
@@ -407,7 +370,7 @@ export default function StreakDetailsPage() {
               key={combo}
               className="remind-combo-badge absolute -top-3 left-1/2 -translate-x-1/2 z-20 px-4 py-1 rounded-full bg-[var(--color-brand-primary)] text-white text-xs font-black tracking-wider shadow-[0_4px_20px_rgba(255,26,79,0.5)]"
             >
-              x{combo} КОМБО
+              x{combo}
             </div>
           )}
 
@@ -425,7 +388,7 @@ export default function StreakDetailsPage() {
             <span key={pulseKey} className="remind-pulse-ring" />
             <span className="relative z-10 flex items-center justify-center gap-2">
               <Bell size={22} className={combo >= 5 ? 'animate-bounce' : ''} />
-              {getRemindLabel(combo)}
+              {getRemindLabel(combo, t)}
             </span>
 
             {particles.map((p) => (
@@ -447,8 +410,8 @@ export default function StreakDetailsPage() {
 
           {totalPings > 0 && (
             <p className="text-center text-[11px] text-[var(--color-on-surface-variant)] mt-2 opacity-80">
-              Отправлено напоминаний: {totalPings}
-              {combo >= 8 ? ' — ты монстр 🔔' : ''}
+              {totalPings}
+              {combo >= 8 ? t('streak.monster') : ''}
             </p>
           )}
         </div>
@@ -463,12 +426,12 @@ export default function StreakDetailsPage() {
             className="w-full rounded-full py-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold text-base shadow-[0_8px_30px_rgba(139,92,246,0.4)] transition active:scale-[0.96] flex items-center justify-center gap-2"
           >
             <Camera size={20} />
-            Ответить на селфи от @{pendingRemoteSelfie.sender.nickname}
+            {t('camera.sendReply')} @{pendingRemoteSelfie.sender.nickname}
           </button>
         ) : pendingRemoteSelfie && isMyRequest ? (
           <div className="w-full rounded-full py-4 bg-white/5 border border-white/10 text-[var(--color-on-surface-variant)] font-medium text-sm text-center flex items-center justify-center gap-2">
             <Smartphone size={18} />
-            Ждем селфи от @{partner.nickname}...
+            {t('common.loading')} @{partner.nickname}...
           </div>
         ) : !metToday ? (
           <button
@@ -477,24 +440,17 @@ export default function StreakDetailsPage() {
             className="w-full rounded-full py-4 bg-[var(--color-surface-container-high)] text-white font-bold text-sm transition active:scale-[0.96] hover:bg-[var(--color-surface-container-highest)] flex items-center justify-center gap-2"
           >
             <Smartphone size={18} />
-            Селфи на расстоянии
+            {t('camera.meetPhoto')}
           </button>
         ) : null}
       </div>
 
       {/* Gallery */}
       <div className="px-4 mt-8 pb-4">
-        <h2 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-5">
-          История встреч
-        </h2>
-
         {streakDays.length === 0 ? (
           <div className="glass-card rounded-3xl p-10 flex flex-col items-center text-center border border-white/5">
             <Camera size={36} className="text-[var(--color-on-surface-variant)] opacity-40 mb-4" />
-            <p className="text-white font-semibold mb-1">Пока нет фото</p>
-            <p className="text-sm text-[var(--color-on-surface-variant)] leading-relaxed max-w-[240px]">
-              Сфотографируйтесь через камеру внизу — здесь появится ваша лента
-            </p>
+            <p className="text-white font-semibold">{t('home.noResults')}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-8">
@@ -507,16 +463,11 @@ export default function StreakDetailsPage() {
                   {days.map((day) => (
                     <div key={day.id}>
                       <p className="text-sm font-semibold text-white/80 mb-3 capitalize">
-                        {new Date(day.date + 'T12:00:00').toLocaleDateString('ru-RU', {
+                        {formatDate(day.date + 'T12:00:00', {
                           weekday: 'short',
                           day: 'numeric',
                           month: 'short',
                         })}
-                        {day.date === today && (
-                          <span className="ml-2 text-[10px] font-bold uppercase text-[var(--color-brand-primary)]">
-                            сегодня
-                          </span>
-                        )}
                       </p>
                       <div className="grid grid-cols-2 gap-3">
                         {day.meetProofs.map((proof) => (
@@ -559,7 +510,7 @@ export default function StreakDetailsPage() {
                 className="w-full py-4 rounded-full bg-[var(--color-surface-container-high)] text-white font-bold hover:bg-[var(--color-surface-container-highest)] transition active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 <ImageIcon size={18} />
-                Загрузить ещё
+                {t('common.retry')}
               </button>
             )}
           </div>

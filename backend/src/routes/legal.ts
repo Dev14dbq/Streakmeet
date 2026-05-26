@@ -2,6 +2,9 @@ import { Router, type Response } from 'express'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../lib/prisma.js'
 import { acceptCurrentLegalForUser, getLegalStatusForUser } from '../lib/legalDocuments.js'
+import { getLocalizedLegal, normalizeLegalLocale } from '../lib/legalTranslations.js'
+import type { LegalConsentStatus, LegalDocument } from '../types/api.js'
+import { ErrorCodes, sendError } from '../lib/apiErrors.js'
 
 const router = Router()
 
@@ -15,7 +18,7 @@ function slugParamToEnum(slug: string): 'TERMS' | 'PRIVACY' | null {
 router.get('/status/me', requireAuth, async (req: AuthRequest, res: Response) => {
   const status = await getLegalStatusForUser(req.userId!)
   if (!status) {
-    res.status(404).json({ error: 'User not found' })
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
   res.json(status)
@@ -31,7 +34,7 @@ router.post('/accept', requireAuth, async (req: AuthRequest, res: Response) => {
 router.get('/:slug', async (req, res: Response) => {
   const slug = slugParamToEnum(String(req.params.slug ?? '').toLowerCase())
   if (!slug) {
-    res.status(404).json({ error: 'Document not found' })
+    sendError(res, 404, ErrorCodes.LEGAL_DOCUMENT_NOT_FOUND)
     return
   }
 
@@ -47,17 +50,24 @@ router.get('/:slug', async (req, res: Response) => {
   })
 
   if (!doc) {
-    res.status(404).json({ error: 'Document not found' })
+    sendError(res, 404, ErrorCodes.LEGAL_DOCUMENT_NOT_FOUND)
     return
   }
 
+  const locale = normalizeLegalLocale(
+    typeof req.query.locale === 'string'
+      ? req.query.locale
+      : req.headers['accept-language']?.split(',')[0]
+  )
+  const localized = getLocalizedLegal(slug, locale, doc.content)
+
   res.json({
     slug: slug === 'TERMS' ? 'terms' : 'privacy',
-    title: doc.title,
+    title: localized.title,
     version: doc.version,
-    content: doc.content,
-    updatedAt: doc.updatedAt,
-  })
+    content: localized.content,
+    updatedAt: doc.updatedAt.toISOString(),
+  } satisfies LegalDocument)
 })
 
 export default router

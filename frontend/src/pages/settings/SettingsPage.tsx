@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -16,16 +17,18 @@ import {
 } from 'lucide-react'
 import useSWR from 'swr'
 import {
-  fetcher,
   deleteAccount,
   syncDeviceTimezone,
   updateEmail,
   updatePublicProfile,
+  getApiErrorMessage,
   type AuthUser,
 } from '../../lib/api'
+import { SWR_KEYS } from '../../lib/swrKeys'
 import { toastError, toastInfo, toastSuccess } from '../../lib/toast'
 import { scheduleStreakNotifications } from '../../lib/streakNotifications'
 import { stopLocationSharing } from '../../lib/locationSharing'
+import LanguageSwitcher from '../../components/LanguageSwitcher'
 
 const SETTINGS_KEY = 'streakmeet_settings'
 
@@ -140,8 +143,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function SettingsPage({ user: initialUser, onUserUpdate }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
-  const { data: me, mutate } = useSWR<AuthUser & { timezone?: string }>('/api/users/me', fetcher)
+  const { data: me, mutate } = useSWR<AuthUser & { timezone?: string }>(SWR_KEYS.me)
   const [local, setLocal] = useState<LocalSettings>(loadLocalSettings)
 
   useEffect(() => {
@@ -163,18 +167,14 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
   }
 
   async function handleLogout() {
-    if (!confirm('Выйти из аккаунта?')) return
+    if (!confirm(t('settings.logoutConfirm'))) return
     await stopLocationSharing().catch(() => {})
     localStorage.clear()
     window.location.href = '/login'
   }
 
   async function handleDeleteAccount() {
-    if (
-      !confirm(
-        'Удалить аккаунт?\n\nДанные будут храниться ещё 30 дней. За это время вы сможете восстановить аккаунт, просто войдя снова.'
-      )
-    ) {
+    if (!confirm(t('settings.deleteConfirm'))) {
       return
     }
     try {
@@ -182,8 +182,8 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
       await stopLocationSharing().catch(() => {})
       localStorage.clear()
       window.location.href = '/login'
-    } catch {
-      toastError('Не удалось удалить аккаунт')
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('settings.deleteFailed')))
     }
   }
 
@@ -197,16 +197,16 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
       const next = { ...(me ?? initialUser), ...updated }
       mutate(next, false)
       onUserUpdate?.(next)
-    } catch {
-      toastError('Не удалось обновить настройки профиля')
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('settings.profileUpdateFailed')))
     }
   }
 
   async function handleChangeEmail() {
-    const newEmail = prompt('Введите новый email:', email)
+    const newEmail = prompt(t('settings.newEmailPrompt'), email)
     if (!newEmail || newEmail === email) return
     if (!newEmail.includes('@')) {
-      toastError('Некорректный email')
+      toastError(t('settings.invalidEmail'))
       return
     }
     try {
@@ -214,9 +214,9 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
       const next = { ...(me ?? initialUser), ...updated }
       mutate(next, false)
       onUserUpdate?.(next)
-      toastSuccess('Email успешно изменён')
-    } catch (e: any) {
-      toastError(e.response?.data?.error || 'Не удалось изменить email')
+      toastSuccess(t('settings.emailChanged'))
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('settings.emailChangeFailed')))
     }
   }
 
@@ -229,83 +229,71 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
         >
           <ArrowLeft size={22} />
         </button>
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">Настройки</h1>
+        <h1 className="text-2xl font-extrabold text-white tracking-tight">{t('settings.title')}</h1>
       </div>
 
-      <Section title="Аккаунт">
+      <Section title={t('settings.account')}>
+        <LanguageSwitcher />
         <SettingsRow icon={Mail} label="Email" description={email} onClick={handleChangeEmail} />
         <SettingsRow
           icon={Camera}
-          label="Фото профиля"
-          description="Изменить аватар"
+          label={t('settings.profilePhoto')}
+          description={t('settings.changeAvatar')}
           onClick={() => navigate('/profile', { state: { openAvatarSheet: true } })}
         />
         <SettingsRow
           icon={ScanFace}
-          label="Распознавание лица"
-          description={faceEnrolled ? 'Зарегистрировано' : 'Не настроено — нужно для встреч'}
+          label={t('face.faceRecognition')}
+          description={faceEnrolled ? t('face.registered') : t('face.notConfigured')}
           onClick={() => navigate('/face-enrollment')}
         />
       </Section>
 
-      <Section title="Уведомления">
-        <SettingsRow
-          icon={Bell}
-          label="Напоминания о серии"
-          description="Утро и вечер, если серия горит"
-        >
+      <Section title={t('settings.notifications')}>
+        <SettingsRow icon={Bell} label={t('settings.streakReminders')}>
           <Toggle on={local.notifyStreak} onChange={(v) => updateLocal({ notifyStreak: v })} />
         </SettingsRow>
-        <SettingsRow icon={Bell} label="Друзья" description="Заявки и принятие">
+        <SettingsRow icon={Bell} label={t('settings.friends')}>
           <Toggle on={local.notifyFriends} onChange={(v) => updateLocal({ notifyFriends: v })} />
         </SettingsRow>
-        <SettingsRow icon={Bell} label="Встречи" description="Серия продлена, друг на фото">
+        <SettingsRow icon={Bell} label={t('settings.meets')}>
           <Toggle on={local.notifyMeet} onChange={(v) => updateLocal({ notifyMeet: v })} />
         </SettingsRow>
-        <p className="text-[10px] text-[var(--color-on-surface-variant)] px-1 mt-2 opacity-70">
-          На телефоне — push в 23:00, 23:30 и после полуночи, если серия не продлена.
-        </p>
       </Section>
 
-      <Section title="Конфиденциальность">
-        <SettingsRow icon={Shield} label="Публичный профиль" description="Доступ к фото по ссылке">
+      <Section title={t('settings.privacy')}>
+        <SettingsRow icon={Shield} label={t('settings.publicProfile')}>
           <Toggle on={isPublic} onChange={handleTogglePublic} />
         </SettingsRow>
-        <SettingsRow icon={MapPin} label="Геолокация на фото" description="Сохранять место встречи">
+        <SettingsRow icon={MapPin} label={t('settings.geoOnPhotos')}>
           <Toggle on={local.geoOnPhotos} onChange={(v) => updateLocal({ geoOnPhotos: v })} />
         </SettingsRow>
-        <SettingsRow
-          icon={Shield}
-          label="Биометрические данные"
-          description="Используются только для проверки встреч"
-        />
+        <SettingsRow icon={Shield} label={t('settings.biometric')} />
       </Section>
 
-      <Section title="О приложении">
+      <Section title={t('settings.about')}>
         <SettingsRow
           icon={FileText}
-          label="Условия использования"
+          label={t('settings.terms')}
           onClick={() => navigate('/terms')}
         />
         <SettingsRow
           icon={Shield}
-          label="Политика конфиденциальности"
+          label={t('settings.privacyPolicy')}
           onClick={() => navigate('/privacy')}
         />
         <SettingsRow
           icon={HelpCircle}
-          label="Поддержка"
+          label={t('settings.support')}
           description="support@streakmeet.app"
-          onClick={() => toastInfo('Скоро')}
+          onClick={() => toastInfo(t('common.soon'))}
         />
         <div className="px-4 py-3 text-center">
-          <span className="text-[var(--color-on-surface-variant)] text-xs">
-            StreakMeet · v0.1.0
-          </span>
+          <span className="text-[var(--color-on-surface-variant)] text-xs">{t('app.version')}</span>
         </div>
       </Section>
 
-      <Section title="Аккаунт">
+      <Section title={t('settings.account')}>
         <button
           type="button"
           onClick={handleLogout}
@@ -314,7 +302,7 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
           <div className="w-10 h-10 rounded-full bg-[var(--color-error)]/10 flex items-center justify-center">
             <LogOut size={18} />
           </div>
-          <span className="font-semibold text-sm">Выйти</span>
+          <span className="font-semibold text-sm">{t('settings.signOut')}</span>
         </button>
         <button
           type="button"
@@ -324,7 +312,7 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
           <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
             <Trash2 size={18} />
           </div>
-          <span className="font-medium text-sm">Удалить аккаунт</span>
+          <span className="font-medium text-sm">{t('settings.deleteAccount')}</span>
         </button>
       </Section>
     </div>

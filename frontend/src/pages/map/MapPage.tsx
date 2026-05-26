@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Capacitor } from '@capacitor/core'
 import { Geolocation } from '@capacitor/geolocation'
 import { io, type Socket } from 'socket.io-client'
@@ -11,6 +12,7 @@ import {
   getFriendLocations,
   getMyLocation,
   getRealtimeServerUrl,
+  getApiErrorMessage,
   type AuthUser,
   type FriendLocation,
 } from '../../lib/api'
@@ -29,22 +31,13 @@ import {
 } from '../../lib/mapGeo'
 import { resolveBackendImageUrl } from '../../lib/remoteImageUrl'
 import { useCachedImageSrcMap } from '../../lib/useCachedImageSrc'
+import { formatRelativeTime } from '../../i18n/format'
 import { toastError } from '../../lib/toast'
 
 const SHARE_UI_COMPACT_KEY = 'map_share_ui_compact'
 const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
 const TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
-
-function formatUpdatedAt(iso: string): string {
-  const diffSec = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
-  if (diffSec < 15) return 'только что'
-  if (diffSec < 60) return `${diffSec} сек назад`
-  const min = Math.floor(diffSec / 60)
-  if (min < 60) return `${min} мин назад`
-  const h = Math.floor(min / 60)
-  return `${h} ч назад`
-}
 
 function avatarDisplaySrc(
   url: string | null | undefined,
@@ -82,20 +75,23 @@ function userMarkerHtml(opts: {
 }
 
 function NativeAppGate() {
+  const { t } = useTranslation()
+
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-8 pb-28 text-center">
       <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-surface-container-high)]">
         <Smartphone size={36} className="text-[var(--color-brand-primary)]" />
       </div>
-      <h2 className="mb-2 text-xl font-bold text-white">Карта — только в приложении</h2>
+      <h2 className="mb-2 text-xl font-bold text-white">{t('mobileGate.title')}</h2>
       <p className="max-w-xs text-sm leading-relaxed text-[var(--color-on-surface-variant)]">
-        Живая геолокация друзей и фоновая трансляция доступны в мобильном приложении StreakMeet.
+        {t('mobileGate.description')}
       </p>
     </div>
   )
 }
 
 export default function MapPage() {
+  const { t } = useTranslation()
   const isNative = Capacitor.isNativePlatform()
   const mapElRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -207,8 +203,8 @@ export default function MapPage() {
         if (me.latitude != null && me.longitude != null) {
           setSelfPos({ lat: me.latitude, lng: me.longitude })
         }
-      } catch {
-        if (!cancelled) toastError('Не удалось загрузить карту')
+      } catch (e) {
+        if (!cancelled) toastError(getApiErrorMessage(e, t('map.loadFailed')))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -325,7 +321,7 @@ export default function MapPage() {
     const icon = L.divIcon({
       className: 'map-marker-wrap',
       html: userMarkerHtml({
-        nickname: me.nickname || 'Я',
+        nickname: me.nickname || t('common.me'),
         src: avatarDisplaySrc(me.avatarUrl, cachedAvatars),
         variant: 'self',
       }),
@@ -368,12 +364,12 @@ export default function MapPage() {
     } catch (e) {
       const code = (e as Error).message
       if (code === 'not_always') {
-        toastError('Выбери «Разрешить всегда», не «При использовании»')
+        toastError(t('map.allowAlways'))
         void openAlwaysLocationSettings()
       } else if (code === 'permission_denied') {
-        toastError('Нужен доступ к геолокации')
+        toastError(t('map.locationRequired'))
       } else {
-        toastError('Не удалось переключить трансляцию')
+        toastError(getApiErrorMessage(e, t('map.toggleFailed')))
       }
     } finally {
       setSharingBusy(false)
@@ -405,7 +401,7 @@ export default function MapPage() {
         originLng: selfPos?.lng,
       })
     } catch {
-      toastError('Не удалось открыть навигатор')
+      toastError(t('map.navFailed'))
     }
   }
 
@@ -421,13 +417,13 @@ export default function MapPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-brand-primary)]">
               Live map
             </p>
-            <h1 className="text-2xl font-black text-white">Карта друзей</h1>
+            <h1 className="text-2xl font-black text-white">{t('nav.map')}</h1>
             <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">
               {loading
-                ? 'Загрузка…'
+                ? t('map.loading')
                 : friends.length === 0
-                  ? 'Пока никто не транслирует'
-                  : `${friends.length} на карте · ${onlineCount} онлайн`}
+                  ? t('map.nobodySharing')
+                  : t('map.onMap', { count: friends.length, online: onlineCount })}
             </p>
           </div>
           <div className="glass-card pointer-events-auto flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-white">
@@ -461,13 +457,13 @@ export default function MapPage() {
                     type="button"
                     onClick={() => setSelected(null)}
                     className="shrink-0 rounded-full p-1.5 text-[var(--color-on-surface-variant)]"
-                    aria-label="Закрыть"
+                    aria-label={t('common.close')}
                   >
                     <X size={18} />
                   </button>
                 </div>
                 <p className="mt-0.5 text-xs text-[var(--color-on-surface-variant)]">
-                  {formatUpdatedAt(selected.updatedAt)}
+                  {formatRelativeTime(selected.updatedAt)}
                 </p>
               </div>
             </div>
@@ -477,10 +473,10 @@ export default function MapPage() {
                 <MapPin size={15} className="mt-0.5 shrink-0 text-[var(--color-brand-primary)]" />
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)]">
-                    Адрес
+                    {t('settings.geoOnPhotos')}
                   </p>
                   <p className="text-sm leading-snug text-white">
-                    {addressLoading ? 'Определяем…' : (selectedAddress ?? '—')}
+                    {addressLoading ? t('map.resolving') : (selectedAddress ?? '—')}
                   </p>
                 </div>
               </div>
@@ -489,7 +485,9 @@ export default function MapPage() {
                   {formatCoords(selected.latitude, selected.longitude)}
                 </span>
                 <span className="font-semibold text-white">
-                  {selectedDistance ? `~${selectedDistance} от тебя` : 'Расстояние неизвестно'}
+                  {selectedDistance
+                    ? t('map.distanceFromYou', { distance: selectedDistance })
+                    : t('map.distanceUnknown')}
                 </span>
               </div>
             </div>
@@ -501,13 +499,13 @@ export default function MapPage() {
                 className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] py-3.5 text-sm font-black text-white shadow-[0_8px_24px_rgba(255,26,79,0.4)] active:scale-[0.98]"
               >
                 <Navigation size={18} />
-                Построить маршрут
+                {t('nav.map')}
               </button>
               <Link
                 to={`/${selected.nickname}`}
                 className="flex items-center justify-center rounded-full bg-white/10 px-5 py-3.5 text-sm font-semibold text-white"
               >
-                Профиль
+                {t('nav.profile')}
               </Link>
             </div>
           </div>
@@ -520,9 +518,9 @@ export default function MapPage() {
             type="button"
             disabled={sharingBusy}
             onClick={() => void toggleSharing()}
-            aria-label={sharing ? 'Выключить трансляцию' : 'Включить трансляцию'}
+            aria-label={sharing ? t('map.disableSharing') : t('map.enableSharing')}
             aria-pressed={sharing}
-            title={sharing ? 'Трансляция включена' : 'Трансляция выключена'}
+            title={sharing ? t('map.sharingOn') : t('map.sharingOff')}
             className={`map-share-toggle__btn ${sharing ? 'map-share-toggle__btn--on' : ''}`}
           >
             <Radio
@@ -540,7 +538,7 @@ export default function MapPage() {
           <div className="glass-card w-full max-w-md rounded-[28px] border border-white/10 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
             <div className="mb-3 flex items-center gap-2 text-xs text-[var(--color-on-surface-variant)]">
               <MapPin size={14} className="text-[var(--color-brand-primary)]" />
-              Точная геолокация · друзья увидят тебя на карте
+              {t('map.backgroundMessage')}
             </div>
             <button
               type="button"
@@ -549,17 +547,14 @@ export default function MapPage() {
               className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-black text-white shadow-[0_12px_36px_rgba(255,26,79,0.45)] transition active:scale-[0.98] disabled:opacity-60"
             >
               <Radio size={20} />
-              {sharingBusy ? '…' : 'Транслировать геолокацию'}
+              {sharingBusy ? '…' : t('map.shareLocation')}
             </button>
-            <p className="mt-2 text-center text-[11px] text-[var(--color-on-surface-variant)]">
-              Можно смотреть друзей без своей трансляции — выключи в любой момент
-            </p>
             <button
               type="button"
               onClick={dismissSharePrompt}
               className="mt-2 w-full text-center text-xs font-medium text-[var(--color-on-surface-variant)] underline-offset-2 hover:text-white hover:underline"
             >
-              Позже
+              {t('common.soon')}
             </button>
           </div>
         </div>

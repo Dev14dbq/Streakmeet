@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
 import type { AuthUser } from '../../lib/api'
@@ -13,12 +14,14 @@ import {
   useNativeGoogleSignIn,
 } from '../../lib/googleAuth'
 import { toastError, toastInfo } from '../../lib/toast'
+import { getApiErrorMessage } from '../../lib/api'
 
 interface Props {
   onAuth: (user: AuthUser, token: string, fromSignup?: boolean, returnTo?: string) => void
 }
 
 export default function AuthPage({ onAuth }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const returnTo = (location.state as { returnTo?: string } | null)?.returnTo
@@ -44,7 +47,7 @@ export default function AuthPage({ onAuth }: Props) {
       })
       return
     }
-    toastError('Ошибка входа через Google')
+    toastError(result.errorMessage)
   }
 
   useEffect(() => {
@@ -69,7 +72,7 @@ export default function AuthPage({ onAuth }: Props) {
         setGoogleLoading(false)
       }
     },
-    onError: () => toastInfo('Google авторизация отменена'),
+    onError: () => toastInfo(t('auth.googleCancelled')),
   })
 
   async function handleGoogle() {
@@ -82,9 +85,9 @@ export default function AuthPage({ onAuth }: Props) {
         await finishGoogleSignIn(tokens)
       } catch (err) {
         if (isGoogleAuthCancelled(err)) {
-          toastInfo('Google авторизация отменена')
+          toastInfo(t('auth.googleCancelled'))
         } else {
-          toastError('Ошибка входа через Google')
+          toastError(getApiErrorMessage(err, t('auth.googleError')))
         }
       } finally {
         setGoogleLoading(false)
@@ -96,7 +99,7 @@ export default function AuthPage({ onAuth }: Props) {
       try {
         startGoogleRedirectLogin()
       } catch {
-        toastError('Google вход не настроен')
+        toastError(t('auth.googleNotConfigured'))
       }
       return
     }
@@ -108,7 +111,7 @@ export default function AuthPage({ onAuth }: Props) {
   function handleApple() {
     const clientId = import.meta.env.VITE_APPLE_CLIENT_ID
     if (!clientId) {
-      toastInfo('Apple Sign In не настроен. Заполните VITE_APPLE_CLIENT_ID в .env')
+      toastInfo(t('auth.appleNotConfigured'))
       return
     }
     const redirectUri = encodeURIComponent(`${window.location.origin}/login`)
@@ -135,9 +138,9 @@ export default function AuthPage({ onAuth }: Props) {
         </div>
         <h1 className="text-4xl font-extrabold tracking-tight text-white">StreakMeet</h1>
         <p className="mt-3 text-center text-sm text-[var(--color-on-surface-variant)] leading-relaxed">
-          Встречайся с другом каждый день.
+          {t('app.tagline')}
           <br />
-          Держи серию живой.
+          {t('app.taglineSub')}
         </p>
       </div>
 
@@ -145,32 +148,32 @@ export default function AuthPage({ onAuth }: Props) {
       <div className="flex flex-col gap-3 px-6 pb-12">
         <AuthButton
           icon={<AppleIcon />}
-          label="Войти через Apple"
+          label={t('auth.signInApple')}
           onClick={handleApple}
           className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)]"
         />
         <AuthButton
           icon={<GoogleIcon />}
-          label={googleLoading ? 'Подключение…' : 'Войти через Google'}
+          label={googleLoading ? t('common.connecting') : t('auth.signInGoogle')}
           onClick={handleGoogle}
           disabled={googleLoading}
           className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)] disabled:opacity-60"
         />
         <AuthButton
           icon={<MailIcon />}
-          label="Продолжить через почту"
+          label={t('auth.continueEmail')}
           onClick={() => navigate('/login/email')}
           className="bg-[var(--color-brand-primary)] text-white hover:bg-[var(--color-primary-container)] shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
         />
 
         <p className="mt-2 text-center text-xs text-zinc-700">
-          Продолжая, вы соглашаетесь с{' '}
+          {t('auth.termsAgree')}{' '}
           <a href="/terms" className="underline hover:text-zinc-500">
-            условиями
+            {t('auth.terms')}
           </a>{' '}
-          и{' '}
+          {t('auth.and')}{' '}
           <a href="/privacy" className="underline hover:text-zinc-500">
-            политикой конфиденциальности
+            {t('auth.privacyPolicy')}
           </a>
         </p>
       </div>

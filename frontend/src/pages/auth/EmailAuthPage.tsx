@@ -1,6 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { checkEmail, login, getDeletedAccountInfo, type AuthUser } from '../../lib/api'
+import {
+  checkEmail,
+  login,
+  getDeletedAccountInfo,
+  getApiErrorMessage,
+  type AuthUser,
+} from '../../lib/api'
 
 type Step = 'email' | 'password'
 
@@ -9,6 +16,7 @@ interface Props {
 }
 
 export default function EmailAuthPage({ onAuth }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const returnTo = (location.state as { returnTo?: string } | null)?.returnTo
@@ -27,7 +35,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
   async function handleEmailContinue() {
     const trimmed = email.trim()
     if (!trimmed || !trimmed.includes('@')) {
-      setEmailError('Введите корректный email')
+      setEmailError(t('auth.invalidEmail'))
       return
     }
     setEmailError('')
@@ -39,8 +47,8 @@ export default function EmailAuthPage({ onAuth }: Props) {
       } else {
         navigate('/register', { state: { email: trimmed } })
       }
-    } catch {
-      setEmailError('Ошибка сети, попробуйте снова')
+    } catch (e) {
+      setEmailError(getApiErrorMessage(e, t('auth.networkError')))
     } finally {
       setLoading(false)
     }
@@ -48,7 +56,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
 
   async function handleLogin() {
     if (!password) {
-      setPasswordError('Введите пароль')
+      setPasswordError(t('auth.enterPasswordPrompt'))
       return
     }
     setPasswordError('')
@@ -70,7 +78,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
         })
         return
       }
-      setPasswordError('Неверный пароль')
+      setPasswordError(getApiErrorMessage(err, t('auth.wrongPassword')))
     } finally {
       setLoading(false)
     }
@@ -87,11 +95,11 @@ export default function EmailAuthPage({ onAuth }: Props) {
           ←
         </button>
         <h1 className="text-2xl font-extrabold text-white tracking-tight">
-          {step === 'email' ? 'Вход по почте' : 'Введите пароль'}
+          {step === 'email' ? t('auth.emailLogin') : t('auth.enterPassword')}
         </h1>
       </div>
 
-      {/* Контент */}
+      {/* Content */}
       <form
         className="flex flex-col px-6 mt-6"
         autoComplete="on"
@@ -130,7 +138,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
           {step === 'password' && (
             <div>
               <label htmlFor="login-password" className="sr-only">
-                Пароль
+                {t('auth.password')}
               </label>
               <input
                 id="login-password"
@@ -138,7 +146,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
                 ref={passwordRef}
                 type="password"
                 autoComplete="current-password"
-                placeholder="Пароль"
+                placeholder={t('auth.password')}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value)
@@ -157,7 +165,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
             disabled={loading}
             className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white transition hover:bg-[var(--color-primary-container)] active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)] mt-2"
           >
-            {loading ? '...' : step === 'email' ? 'Продолжить' : 'Войти'}
+            {loading ? '...' : step === 'email' ? t('auth.continue') : t('auth.signIn')}
           </button>
         </div>
       </form>

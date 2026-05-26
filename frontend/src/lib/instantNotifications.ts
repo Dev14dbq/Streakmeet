@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import { ensureNotificationPermission, NOTIFICATION_CHANNEL_ID } from './streakNotifications'
+import { translateNotification } from './translateNotification'
 
 const SETTINGS_KEY = 'streakmeet_settings'
 
@@ -8,6 +9,7 @@ export interface AppNotificationPayload {
   message: string
   route?: string
   type?: string
+  params?: Record<string, string>
 }
 
 let nextInstantId = 950_000
@@ -28,7 +30,11 @@ function allowsInstantPush(data: AppNotificationPayload): boolean {
     case 'friend_accepted':
       return settingEnabled('notifyFriends')
     case 'meet':
+    case 'meet_extended':
+    case 'meet_photo_added':
     case 'streak_remind':
+    case 'remote_selfie_request':
+    case 'remote_selfie_completed':
       return settingEnabled('notifyMeet')
     default:
       return true
@@ -53,7 +59,7 @@ export async function showInstantPushNotification(data: AppNotificationPayload):
       {
         id: takeInstantNotificationId(),
         title: 'StreakMeet',
-        body: data.message,
+        body: translateNotification(data),
         schedule: { at: new Date(Date.now() + 100) },
         channelId: NOTIFICATION_CHANNEL_ID,
         extra: { route: data.route ?? '/' },

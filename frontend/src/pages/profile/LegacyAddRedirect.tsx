@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { searchUsers } from '../../lib/api'
+import { searchUsers, findUserByScanTarget } from '../../lib/api'
 
 export default function LegacyAddRedirect() {
+  const { t } = useTranslation()
   const { qrCodeId = '' } = useParams()
   const navigate = useNavigate()
 
@@ -14,21 +16,23 @@ export default function LegacyAddRedirect() {
     void (async () => {
       try {
         const { data } = await searchUsers(qrCodeId)
-        const user = data[0]
+        const user = findUserByScanTarget(data, qrCodeId)
         if (user?.nickname) {
           navigate(`/${user.nickname}`, { replace: true })
         } else {
-          navigate('/login', { replace: true })
+          navigate('/404', { replace: true })
         }
       } catch {
-        navigate('/login', { replace: true })
+        navigate('/404', { replace: true })
       }
     })()
   }, [qrCodeId, navigate])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-black">
-      <p className="text-[var(--color-on-surface-variant)] animate-pulse">Переход в профиль...</p>
+      <p className="text-[var(--color-on-surface-variant)] animate-pulse">
+        {t('redirect.toProfile')}
+      </p>
     </div>
   )
 }

@@ -1,7 +1,10 @@
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import useSWR from 'swr'
-import { fetcher, type LegalDocument } from '../../lib/api'
+import { getLegalDocument, type LegalDocument } from '../../lib/api'
+import { getCurrentLocale } from '../../i18n'
+import { formatDate } from '../../i18n/format'
 
 interface Props {
   slug: 'terms' | 'privacy'
@@ -9,12 +12,16 @@ interface Props {
 }
 
 export default function LegalDocumentPage({ slug, fallbackTitle }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
-  const { data, error, isLoading } = useSWR<LegalDocument>(`/api/legal/${slug}`, fetcher)
+  const locale = getCurrentLocale()
+  const { data, error, isLoading } = useSWR<LegalDocument>([`/api/legal/${slug}`, locale], () =>
+    getLegalDocument(slug, locale).then((r) => r.data)
+  )
 
   const title = data?.title ?? fallbackTitle
   const updatedAt = data?.updatedAt
-    ? new Date(data.updatedAt).toLocaleDateString('ru-RU', {
+    ? formatDate(data.updatedAt, {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -36,17 +43,15 @@ export default function LegalDocumentPage({ slug, fallbackTitle }: Props) {
 
       {isLoading ? (
         <p className="text-sm text-[var(--color-on-surface-variant)] animate-pulse">
-          Загрузка документа...
+          {t('common.loadingDocument')}
         </p>
       ) : error ? (
-        <p className="text-sm text-[var(--color-error)]">
-          Не удалось загрузить документ. Попробуйте позже.
-        </p>
+        <p className="text-sm text-[var(--color-error)]">{t('legal.loadFailed')}</p>
       ) : (
         <div className="prose prose-invert max-w-none text-sm text-[var(--color-on-surface-variant)] legal-document">
           {updatedAt && (
             <p className="text-[var(--color-on-surface-variant)] mb-4">
-              Версия {data?.version} · обновлено {updatedAt}
+              {t('legal.versionUpdated', { version: data?.version, date: updatedAt })}
             </p>
           )}
           <div dangerouslySetInnerHTML={{ __html: data?.content ?? '' }} />

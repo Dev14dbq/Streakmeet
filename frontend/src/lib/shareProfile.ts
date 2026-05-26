@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { Share } from '@capacitor/share'
+import i18n from '../i18n'
 import { isMobilePhone } from './device'
 
 export type ShareProfileResult = 'shared' | 'copied' | 'cancelled' | 'failed'
@@ -11,12 +12,12 @@ function isShareCancelled(error: unknown): boolean {
 }
 
 export async function shareProfileLink(nickname: string, url: string): Promise<ShareProfileResult> {
-  const text = `Мой профиль в StreakMeet — @${nickname}`
+  const text = i18n.t('profile.shareText', { nickname })
   const payload = { title: 'StreakMeet', text, url }
 
   if (Capacitor.isNativePlatform()) {
     try {
-      await Share.share({ ...payload, dialogTitle: 'Поделиться профилем' })
+      await Share.share({ ...payload, dialogTitle: i18n.t('profile.shareDialogTitle') })
       return 'shared'
     } catch (error) {
       if (isShareCancelled(error)) return 'cancelled'

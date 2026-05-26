@@ -425,6 +425,19 @@ body {
   }
 }
 
+@keyframes bootstrap-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.bootstrap-progress-bar {
+  animation: bootstrap-progress 1.2s ease-in-out infinite;
+}
+
 .legal-document h2 {
   color: #fff;
   font-size: 1.125rem;

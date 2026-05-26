@@ -1,25 +1,28 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import ProfileQrModal from '../../components/ProfileQrModal'
 import Avatar from '../../components/Avatar'
 import { Flame, Search, UserPlus, Clock, QrCode } from 'lucide-react'
 import useSWR from 'swr'
 import {
-  fetcher,
   searchUsers,
   requestFriend,
   acceptFriend,
   createStreak,
+  getApiErrorMessage,
   type AuthUser,
 } from '../../lib/api'
+import { SWR_KEYS } from '../../lib/swrKeys'
 import { toastError, toastSuccess } from '../../lib/toast'
-import { getLocalToday } from '../../lib/timezone'
+import { isStreakMetToday } from '../../lib/streakCalendar'
 
 interface Props {
   user: AuthUser
 }
 
 export default function HomePage({ user }: Props) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState<
     { id: string; nickname: string; avatarUrl?: string }[]
@@ -33,11 +36,10 @@ export default function HomePage({ user }: Props) {
     data: streaks = [],
     error: streaksError,
     mutate: mutateStreaks,
-  } = useSWR('/api/streaks', fetcher)
-  const { data: friends = [], mutate: mutateFriends } = useSWR('/api/friends', fetcher)
+  } = useSWR(SWR_KEYS.streaks)
+  const { data: friends = [], mutate: mutateFriends } = useSWR(SWR_KEYS.friends)
 
   const loading = !streaks && !streaksError
-  const today = getLocalToday()
 
   useEffect(() => {
     if (query.length < 3) {
@@ -51,9 +53,10 @@ export default function HomePage({ user }: Props) {
       try {
         const { data } = await searchUsers(query)
         setSearchResults(data)
-      } catch {
+      } catch (e) {
         setSearchResults([])
         setSearchError(true)
+        toastError(getApiErrorMessage(e, t('home.searchFailed')))
       } finally {
         setLoadingSearch(false)
       }
@@ -73,7 +76,9 @@ export default function HomePage({ user }: Props) {
     (f: { friend: { id: string } }) => !streakPartnerIds.has(f.friend.id)
   )
 
-  const needsMeetToday = streaks.filter((s: { lastMetDate?: string }) => s.lastMetDate !== today)
+  const needsMeetToday = streaks.filter(
+    (s: { lastMetDate?: string; timezone?: string }) => !isStreakMetToday(s)
+  )
 
   async function handleAdd(id: string) {
     try {
@@ -81,9 +86,9 @@ export default function HomePage({ user }: Props) {
       setQuery('')
       setShowSearch(false)
       mutateFriends()
-      toastSuccess('Запрос отправлен')
-    } catch {
-      toastError('Ошибка или запрос уже отправлен')
+      toastSuccess(t('home.requestSent'))
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('home.requestFailed')))
     }
   }
 
@@ -91,8 +96,9 @@ export default function HomePage({ user }: Props) {
     try {
       await acceptFriend(friendshipId)
       mutateFriends()
-    } catch {
-      toastError('Ошибка')
+      toastSuccess(t('home.requestAccepted'))
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('home.acceptFailed')))
     }
   }
 
@@ -101,19 +107,18 @@ export default function HomePage({ user }: Props) {
       await createStreak(friendId)
       mutateStreaks()
       mutateFriends()
-      toastSuccess('Серия начата!')
-    } catch {
-      toastError('Серия уже существует или ошибка')
+      toastSuccess(t('home.streakStarted'))
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('home.streakStartFailed')))
     }
   }
 
   function StreakCard({ s, urgent }: { s: any; urgent?: boolean }) {
-    const isMetToday = s.lastMetDate === today
     return (
       <Link
         to={`/streaks/${s.partner.nickname}`}
         className={`glass-card rounded-3xl p-5 flex flex-col relative overflow-hidden transition active:scale-[0.98] shadow-[0_10px_30px_rgba(0,0,0,0.4)] ${
-          urgent && !isMetToday ? 'ring-1 ring-[var(--color-brand-primary)]/40' : ''
+          urgent ? 'ring-1 ring-[var(--color-brand-primary)]/40' : ''
         }`}
       >
         {s.count > 0 && (
@@ -126,9 +131,6 @@ export default function HomePage({ user }: Props) {
               <h3 className="font-bold text-white text-base tracking-tight truncate">
                 @{s.partner.nickname}
               </h3>
-              <p className="text-xs text-[var(--color-on-surface-variant)] font-medium mt-0.5">
-                {isMetToday ? 'Сегодня встретились ✓' : 'Ещё не встретились сегодня'}
-              </p>
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0 ml-2">
@@ -159,13 +161,13 @@ export default function HomePage({ user }: Props) {
   return (
     <div className="flex flex-col px-6 pt-12 pb-6 min-h-full">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-white tracking-tight">Дом</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight">{t('home.title')}</h1>
         <div className="flex items-center gap-2 bg-[var(--color-surface-container-high)] px-4 py-2 rounded-full">
           <span className="text-[var(--color-brand-primary)] font-extrabold text-sm">
             {user.gemsBalance ?? 0}
           </span>
           <span className="text-[10px] text-[var(--color-on-surface-variant)] font-bold tracking-wider uppercase">
-            Гемов
+            {t('common.gems')}
           </span>
         </div>
       </div>
@@ -181,7 +183,7 @@ export default function HomePage({ user }: Props) {
             <input
               type="text"
               autoFocus
-              placeholder="Найти по нику (часть ника)..."
+              placeholder={t('home.searchPlaceholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-[var(--color-surface-container-high)] text-white rounded-full py-4 pl-14 pr-12 outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] transition"
@@ -205,7 +207,7 @@ export default function HomePage({ user }: Props) {
               className="flex-1 flex items-center justify-center gap-2 rounded-full bg-[var(--color-surface-container-high)] py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-[0.98]"
             >
               <Search size={18} />
-              Найти человека
+              {t('home.findPerson')}
             </button>
             <button
               type="button"
@@ -213,7 +215,7 @@ export default function HomePage({ user }: Props) {
               className="flex items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)] px-5 py-3.5 text-sm font-bold transition active:scale-[0.98]"
             >
               <QrCode size={18} />
-              QR
+              {t('common.qr')}
             </button>
           </div>
         )}
@@ -221,11 +223,15 @@ export default function HomePage({ user }: Props) {
         {showSearch && query.length >= 3 && (
           <div className="mt-3 flex flex-col gap-2">
             {loadingSearch ? (
-              <p className="text-[var(--color-on-surface-variant)] text-sm py-2">Поиск...</p>
+              <p className="text-[var(--color-on-surface-variant)] text-sm py-2">
+                {t('common.searching')}
+              </p>
             ) : searchError ? (
-              <p className="text-[var(--color-error)] text-sm py-2">Не удалось выполнить поиск</p>
+              <p className="text-[var(--color-error)] text-sm py-2">{t('home.searchError')}</p>
             ) : searchResults.length === 0 ? (
-              <p className="text-[var(--color-on-surface-variant)] text-sm py-2">Никого не нашли</p>
+              <p className="text-[var(--color-on-surface-variant)] text-sm py-2">
+                {t('home.noResults')}
+              </p>
             ) : (
               searchResults.map((u) => (
                 <div
@@ -258,16 +264,16 @@ export default function HomePage({ user }: Props) {
       </div>
 
       {loading ? (
-        <p className="text-zinc-500 text-center py-10">Загрузка...</p>
+        <p className="text-zinc-500 text-center py-10">{t('common.loading')}</p>
       ) : streaksError ? (
         <div className="glass-card rounded-3xl p-8 text-center border border-white/5">
-          <p className="text-white font-semibold mb-2">Не удалось загрузить данные</p>
+          <p className="text-white font-semibold mb-2">{t('home.loadFailed')}</p>
           <button
             type="button"
             onClick={() => mutateStreaks()}
             className="text-sm font-bold text-[var(--color-brand-primary)]"
           >
-            Повторить
+            {t('common.retry')}
           </button>
         </div>
       ) : (
@@ -275,7 +281,7 @@ export default function HomePage({ user }: Props) {
           {incoming.length > 0 && (
             <section className="mb-6">
               <h2 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-3">
-                Запросы · {incoming.length}
+                {t('home.requests')} · {incoming.length}
               </h2>
               <div className="flex flex-col gap-2">
                 {incoming.map((f: any) => (
@@ -292,7 +298,7 @@ export default function HomePage({ user }: Props) {
                       onClick={() => handleAccept(f.id)}
                       className="px-4 py-2 bg-[var(--color-brand-primary)] text-white text-sm font-bold rounded-full active:scale-95 shrink-0"
                     >
-                      Принять
+                      {t('common.accept')}
                     </button>
                   </div>
                 ))}
@@ -303,7 +309,7 @@ export default function HomePage({ user }: Props) {
           {needsMeetToday.length > 0 && (
             <section className="mb-6">
               <h2 className="text-xs font-bold text-[var(--color-brand-primary)] uppercase tracking-widest mb-3">
-                Сегодня · встретиться
+                {t('home.todayMeet')}
               </h2>
               <div className="flex flex-col gap-3">
                 {needsMeetToday.map((s: any) => (
@@ -316,11 +322,11 @@ export default function HomePage({ user }: Props) {
           {streaks.length > 0 && (
             <section className="mb-6">
               <h2 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-3">
-                Серии
+                {t('home.streaks')}
               </h2>
               <div className="flex flex-col gap-3">
                 {streaks
-                  .filter((s: any) => s.lastMetDate === today)
+                  .filter((s: any) => isStreakMetToday(s))
                   .map((s: any) => (
                     <StreakCard key={s.id} s={s} />
                   ))}
@@ -331,7 +337,7 @@ export default function HomePage({ user }: Props) {
           {canStartStreak.length > 0 && (
             <section className="mb-6">
               <h2 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-3">
-                Начать серию
+                {t('home.startStreak')}
               </h2>
               <div className="flex flex-col gap-2">
                 {canStartStreak.map((f: any) => (
@@ -349,7 +355,7 @@ export default function HomePage({ user }: Props) {
                       className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)] text-sm font-bold rounded-full active:scale-95 shrink-0"
                     >
                       <Flame size={16} fill="currentColor" />
-                      Серия
+                      {t('home.streak')}
                     </button>
                   </div>
                 ))}
@@ -360,7 +366,7 @@ export default function HomePage({ user }: Props) {
           {pendingOut.length > 0 && (
             <section className="mb-6">
               <h2 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-3">
-                Ожидают ответа
+                {t('home.pending')}
               </h2>
               <div className="flex flex-col gap-2">
                 {pendingOut.map((f: any) => (
@@ -373,7 +379,7 @@ export default function HomePage({ user }: Props) {
                       <span className="font-bold text-white">@{f.friend.nickname}</span>
                     </div>
                     <span className="text-xs text-[var(--color-on-surface-variant)] flex items-center gap-1">
-                      <Clock size={14} /> Ждём
+                      <Clock size={14} /> {t('home.waiting')}
                     </span>
                   </div>
                 ))}
@@ -386,16 +392,13 @@ export default function HomePage({ user }: Props) {
               <div className="w-24 h-24 bg-[var(--color-surface-container-high)] rounded-full flex items-center justify-center mb-6">
                 <Flame size={40} className="text-[var(--color-on-surface-variant)] opacity-50" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">С кем встречаешься?</h2>
-              <p className="text-[var(--color-on-surface-variant)] text-sm max-w-[260px] leading-relaxed mb-6">
-                Найди человека по @нику или покажи QR — и начните серию встреч каждый день.
-              </p>
+              <h2 className="text-xl font-bold text-white mb-2">{t('home.whoMeet')}</h2>
               <button
                 type="button"
                 onClick={() => setShowSearch(true)}
                 className="rounded-full bg-[var(--color-brand-primary)] px-8 py-3.5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] active:scale-95"
               >
-                Найти человека
+                {t('home.findPerson')}
               </button>
             </div>
           )}

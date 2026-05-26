@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Camera, RotateCcw, Send, X } from 'lucide-react'
 import Webcam from 'react-webcam'
 import CachedImage from './CachedImage'
@@ -33,6 +34,7 @@ export default function RemoteSelfieCameraModal({
   onClose,
   onSend,
 }: Props) {
+  const { t } = useTranslation()
   const webcamRef = useRef<Webcam>(null)
   const [phase, setPhase] = useState<Phase>('capture')
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
@@ -53,13 +55,13 @@ export default function RemoteSelfieCameraModal({
   function handleTakePhoto() {
     const video = webcamRef.current?.video
     if (!video) {
-      toastError('Камера не готова')
+      toastError(t('camera.notReady'))
       return
     }
 
     const imageSrc = captureVideoFrame(video, { minWidth: 960, quality: 0.92, mirror: true })
     if (!imageSrc) {
-      toastError('Не удалось сделать снимок')
+      toastError(t('camera.captureFailed'))
       return
     }
 
@@ -75,26 +77,18 @@ export default function RemoteSelfieCameraModal({
   if (!open) return null
 
   const isReply = mode === 'reply'
+  const friendLabel = friendNickname ?? t('common.friend')
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col">
       <div className="flex items-center justify-between px-4 pb-3 pt-[max(1rem,env(safe-area-inset-top))] shrink-0">
-        <div>
-          <h2 className="text-white font-bold text-lg">Селфи на расстоянии</h2>
-          <p className="text-[11px] text-[var(--color-on-surface-variant)] mt-0.5">
-            {phase === 'preview'
-              ? 'Проверь фото перед отправкой'
-              : isReply
-                ? `Подстрой ракурс под @${friendNickname ?? 'друга'}`
-                : 'Держи телефон горизонтально'}
-          </p>
-        </div>
+        <h2 className="text-white font-bold text-lg">{t('camera.meetPhoto')}</h2>
         <button
           type="button"
           onClick={onClose}
           disabled={uploading}
           className="p-2 bg-zinc-900 rounded-full text-white disabled:opacity-40"
-          aria-label="Закрыть"
+          aria-label={t('common.close')}
         >
           <X size={20} />
         </button>
@@ -104,13 +98,13 @@ export default function RemoteSelfieCameraModal({
         {isReply && (
           <div className="relative flex-1 min-h-0 rounded-2xl overflow-hidden bg-zinc-900 border border-white/10">
             <div className="absolute top-2 left-2 z-10 rounded-full bg-black/60 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-              @{friendNickname ?? 'друг'}
+              @{friendLabel}
             </div>
             {friendPhotoUrl ? (
               <CachedImage path={friendPhotoUrl} alt="" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-sm text-zinc-500">
-                Фото друга
+                {t('common.friend')}
               </div>
             )}
           </div>
@@ -118,11 +112,15 @@ export default function RemoteSelfieCameraModal({
 
         <div className="relative flex-1 min-h-0 rounded-2xl overflow-hidden bg-zinc-900 border border-white/10">
           <div className="absolute top-2 left-2 z-10 rounded-full bg-black/60 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-            {phase === 'preview' ? 'Твоё фото' : 'Ты'}
+            {phase === 'preview' ? t('camera.yourPhoto') : t('camera.you')}
           </div>
 
           {phase === 'preview' && capturedPhoto ? (
-            <img src={capturedPhoto} alt="Превью" className="w-full h-full object-cover" />
+            <img
+              src={capturedPhoto}
+              alt={t('camera.preview')}
+              className="w-full h-full object-cover"
+            />
           ) : (
             <>
               <Webcam
@@ -133,7 +131,7 @@ export default function RemoteSelfieCameraModal({
                 videoConstraints={VIDEO_CONSTRAINTS}
                 className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
                 onUserMedia={() => setCameraReady(true)}
-                onUserMediaError={() => toastError('Ошибка доступа к камере')}
+                onUserMediaError={() => toastError(t('profile.cameraError'))}
               />
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-4">
                 <div className="w-full max-w-lg aspect-video border-2 border-dashed border-white/40 rounded-xl" />
@@ -153,7 +151,7 @@ export default function RemoteSelfieCameraModal({
               className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 font-bold text-white transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <RotateCcw size={20} />
-              Переснять
+              {t('common.retry')}
             </button>
             <button
               type="button"
@@ -162,7 +160,11 @@ export default function RemoteSelfieCameraModal({
               className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 font-bold text-lg text-white transition active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)] flex items-center justify-center gap-2"
             >
               <Send size={20} />
-              {uploading ? 'Отправка...' : isReply ? 'Отправить ответ' : 'Отправить запрос'}
+              {uploading
+                ? t('camera.sending')
+                : isReply
+                  ? t('camera.sendReply')
+                  : t('camera.sendRequest')}
             </button>
           </>
         ) : (
@@ -173,7 +175,7 @@ export default function RemoteSelfieCameraModal({
             className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 font-bold text-lg text-white transition active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)] flex items-center justify-center gap-2"
           >
             <Camera size={22} />
-            Сфотографировать
+            {t('profile.takePhoto')}
           </button>
         )}
       </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, Link, Navigate } from 'react-router-dom'
 import { isAxiosError } from 'axios'
 import { ArrowLeft, Image as ImageIcon, MapPin, UserPlus, Check, Clock, Shield } from 'lucide-react'
@@ -8,6 +9,7 @@ import {
   acceptFriend,
   fetcher,
   requestFriend,
+  getApiErrorMessage,
   type AuthUser,
   type PublicFriendship,
   type PublicProfile,
@@ -23,6 +25,7 @@ interface Props {
 }
 
 export default function PublicProfilePage({ currentUser }: Props) {
+  const { t } = useTranslation()
   const { nickname = '' } = useParams()
   const navigate = useNavigate()
   const normalized = nickname.toLowerCase()
@@ -62,7 +65,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-6">
         <p className="text-center text-sm text-[var(--color-on-surface-variant)]">
-          Не удалось загрузить профиль
+          {getApiErrorMessage(profileError, t('profile.loadFailed'))}
         </p>
       </div>
     )
@@ -71,7 +74,9 @@ export default function PublicProfilePage({ currentUser }: Props) {
   if (!profile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black">
-        <p className="text-[var(--color-on-surface-variant)] animate-pulse">Загрузка...</p>
+        <p className="text-[var(--color-on-surface-variant)] animate-pulse">
+          {t('common.loading')}
+        </p>
       </div>
     )
   }
@@ -89,10 +94,10 @@ export default function PublicProfilePage({ currentUser }: Props) {
     setFriendLoading(true)
     try {
       await requestFriend(user.id)
-      toastSuccess('Заявка отправлена')
+      toastSuccess(t('profile.requestSent'))
       await mutateProfile()
-    } catch {
-      toastError('Не удалось отправить заявку')
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('profile.requestFailed')))
     } finally {
       setFriendLoading(false)
     }
@@ -103,10 +108,10 @@ export default function PublicProfilePage({ currentUser }: Props) {
     setFriendLoading(true)
     try {
       await acceptFriend(friendship.id)
-      toastSuccess('Вы теперь друзья!')
+      toastSuccess(t('profile.nowFriends'))
       await mutateProfile()
-    } catch {
-      toastError('Не удалось принять заявку')
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('profile.acceptFailed')))
     } finally {
       setFriendLoading(false)
     }
@@ -119,7 +124,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
           to="/profile"
           className="w-full max-w-sm rounded-full bg-[var(--color-surface-container-high)] py-4 text-base font-bold text-white text-center transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
         >
-          Мой профиль
+          {t('streak.myProfile')}
         </Link>
       )
     }
@@ -133,7 +138,8 @@ export default function PublicProfilePage({ currentUser }: Props) {
           disabled
           className="w-full max-w-sm rounded-full bg-[var(--color-surface-container-high)] py-4 text-base font-bold text-[var(--color-on-surface-variant)] flex items-center justify-center gap-2"
         >
-          <Check size={20} />В друзьях
+          <Check size={20} />
+          {t('settings.friends')}
         </button>
       )
     }
@@ -146,7 +152,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
           disabled={friendLoading}
           className="w-full max-w-sm rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 disabled:opacity-50"
         >
-          {friendLoading ? '...' : 'Принять заявку'}
+          {friendLoading ? '...' : t('profile.acceptRequest')}
         </button>
       )
     }
@@ -159,7 +165,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
           className="w-full max-w-sm rounded-full bg-[var(--color-surface-container-high)] py-4 text-base font-bold text-[var(--color-on-surface-variant)] flex items-center justify-center gap-2"
         >
           <Clock size={20} />
-          Заявка отправлена
+          {t('profile.requestSent')}
         </button>
       )
     }
@@ -172,7 +178,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
         className="w-full max-w-sm rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
       >
         <UserPlus size={20} />
-        {friendLoading ? '...' : currentUser ? 'Добавить в друзья' : 'Войти и добавить в друзья'}
+        {friendLoading ? '...' : currentUser ? t('profile.addFriend') : t('profile.signInToAdd')}
       </button>
     )
   }
@@ -186,7 +192,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
             window.history.length > 1 ? navigate(-1) : navigate(currentUser ? '/' : '/login')
           }
           className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
-          aria-label="Назад"
+          aria-label={t('common.back')}
         >
           <ArrowLeft size={22} />
         </button>
@@ -213,17 +219,14 @@ export default function PublicProfilePage({ currentUser }: Props) {
             </div>
           </div>
 
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">{user.nickname}</h1>
-          <p className="text-[var(--color-on-surface-variant)] text-sm font-medium mt-1">
-            @{user.nickname}
-          </p>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">@{user.nickname}</h1>
         </div>
 
         <div className="flex justify-center mb-10">{renderFriendButton()}</div>
 
         <div>
           <h2 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-4">
-            Фотографии встреч
+            {t('settings.meets')}
           </h2>
 
           {!canViewPhotos ? (
@@ -233,22 +236,22 @@ export default function PublicProfilePage({ currentUser }: Props) {
                 className="text-[var(--color-on-surface-variant)] opacity-50 mb-3"
               />
               <p className="text-[var(--color-on-surface-variant)] text-sm font-medium">
-                Это приватный профиль. Добавьте пользователя в друзья, чтобы видеть фото.
+                {t('settings.publicProfileDesc')}
               </p>
             </div>
           ) : loadingPhotos ? (
             <p className="text-[var(--color-on-surface-variant)] text-sm text-center py-10 opacity-70">
-              Загрузка...
+              {t('common.loading')}
             </p>
           ) : photosError ? (
             <div className="glass-card rounded-3xl p-8 text-center border border-white/5">
-              <p className="text-white font-semibold mb-2">Не удалось загрузить фото</p>
+              <p className="text-white font-semibold mb-2">{t('profile.loadFailed')}</p>
               <button
                 type="button"
                 onClick={() => setSize(1)}
                 className="text-sm font-bold text-[var(--color-brand-primary)]"
               >
-                Повторить
+                {t('common.retry')}
               </button>
             </div>
           ) : photos.length === 0 ? (
@@ -258,7 +261,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
                 className="text-[var(--color-on-surface-variant)] opacity-50 mb-3"
               />
               <p className="text-[var(--color-on-surface-variant)] text-sm font-medium">
-                Пока нет фотографий
+                {t('home.noResults')}
               </p>
             </div>
           ) : (
@@ -297,7 +300,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                         <div className="absolute bottom-3 left-3 right-3 flex flex-col gap-1.5">
                           <span className="text-xs text-white font-bold drop-shadow-md">
-                            с @{partner.nickname}
+                            @{partner.nickname}
                           </span>
                           {photo.latitude != null && photo.longitude != null && (
                             <div className="flex items-center gap-1">
@@ -319,7 +322,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
                   onClick={() => setSize(size + 1)}
                   className="w-full mt-6 py-4 rounded-full bg-[var(--color-surface-container-high)] text-white font-bold hover:bg-[var(--color-surface-container-highest)] transition"
                 >
-                  Загрузить ещё
+                  {t('common.retry')}
                 </button>
               )}
             </>

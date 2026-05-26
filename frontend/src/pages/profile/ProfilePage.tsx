@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { QrCode, Image as ImageIcon, Settings, X, MapPin, Camera } from 'lucide-react'
 import Webcam from 'react-webcam'
@@ -6,7 +7,8 @@ import useSWRInfinite from 'swr/infinite'
 import ProfileQrModal from '../../components/ProfileQrModal'
 import CachedImage from '../../components/CachedImage'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
-import { uploadAvatar, fetcher, type AuthUser } from '../../lib/api'
+import { uploadAvatar, getApiErrorMessage, type AuthUser } from '../../lib/api'
+import { SWR_KEYS } from '../../lib/swrKeys'
 import { invalidateCachedImage } from '../../lib/remoteImageCache'
 import { toastError } from '../../lib/toast'
 
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export default function ProfilePage({ user: initialUser }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [user, setUser] = useState(initialUser)
@@ -25,9 +28,9 @@ export default function ProfilePage({ user: initialUser }: Props) {
 
   const getKey = (pageIndex: number, previousPageData: unknown[]) => {
     if (previousPageData && !previousPageData.length) return null
-    return `/api/users/photos?page=${pageIndex + 1}&limit=12`
+    return SWR_KEYS.photosPage(pageIndex + 1)
   }
-  const { data, size, setSize, error } = useSWRInfinite(getKey, fetcher)
+  const { data, size, setSize, error } = useSWRInfinite(getKey)
   const photos = data ? data.flat() : []
   const loadingPhotos = !data && !error
   const isReachingEnd = data && data[data.length - 1]?.length < 12
@@ -59,8 +62,8 @@ export default function ProfilePage({ user: initialUser }: Props) {
       localStorage.setItem('user', JSON.stringify(updatedUser))
       setShowCamera(false)
       setShowAvatarSheet(false)
-    } catch {
-      toastError('Ошибка загрузки аватара')
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('profile.avatarUploadFailed')))
     } finally {
       setUploading(false)
     }
@@ -107,16 +110,16 @@ export default function ProfilePage({ user: initialUser }: Props) {
           type="button"
           onClick={() => setShowQR(true)}
           className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] hover:text-white hover:bg-[var(--color-surface-container-highest)] transition active:scale-95"
-          aria-label="Мой QR"
+          aria-label={t('profile.myQr')}
         >
           <QrCode size={22} />
         </button>
-        <h1 className="text-lg font-bold text-white tracking-tight">Профиль</h1>
+        <h1 className="text-lg font-bold text-white tracking-tight">{t('nav.profile')}</h1>
         <button
           type="button"
           onClick={() => navigate('/settings')}
           className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] hover:text-white hover:bg-[var(--color-surface-container-highest)] transition active:scale-95"
-          aria-label="Настройки"
+          aria-label={t('profile.settings')}
         >
           <Settings size={22} />
         </button>
@@ -129,7 +132,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
           onClick={() => setShowAvatarSheet(true)}
           disabled={uploading}
           className="mb-4 relative group disabled:opacity-60"
-          aria-label="Изменить фото профиля"
+          aria-label={t('profile.changeAvatar')}
         >
           {user.avatarUrl ? (
             <div className="absolute inset-0 rounded-full blur-xl opacity-60 scale-110 z-0">
@@ -160,19 +163,19 @@ export default function ProfilePage({ user: initialUser }: Props) {
           onClick={() => navigate(`/${user.nickname}`)}
           className="text-[var(--color-on-surface-variant)] text-sm font-medium mt-1 hover:text-[var(--color-brand-primary)] transition"
         >
-          @{user.nickname} · публичный профиль
+          @{user.nickname} · {t('settings.publicProfile').toLowerCase()}
         </button>
       </div>
 
       {/* Photos Grid */}
       <div>
         <h3 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-4">
-          История встреч
+          {t('settings.meets')}
         </h3>
 
         {loadingPhotos ? (
           <p className="text-[var(--color-on-surface-variant)] text-sm text-center py-10 opacity-70">
-            Загрузка...
+            {t('common.loading')}
           </p>
         ) : photos.length === 0 ? (
           <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-white/5">
@@ -181,10 +184,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
               className="text-[var(--color-on-surface-variant)] opacity-50 mb-3"
             />
             <p className="text-[var(--color-on-surface-variant)] text-sm font-medium">
-              Пока нет совместных фото
-            </p>
-            <p className="text-[var(--color-on-surface-variant)] text-xs mt-2 opacity-70">
-              Сфотографируйтесь с другом через камеру внизу
+              {t('home.noResults')}
             </p>
           </div>
         ) : (
@@ -223,7 +223,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                       <div className="absolute bottom-3 left-3 right-3 flex flex-col gap-1.5">
                         <span className="text-xs text-white font-bold drop-shadow-md">
-                          с @{partner.nickname}
+                          @{partner.nickname}
                         </span>
                         {photo.latitude != null && photo.longitude != null && (
                           <div className="flex items-center gap-1">
@@ -245,7 +245,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
                 onClick={() => setSize(size + 1)}
                 className="w-full mt-6 py-4 rounded-full bg-[var(--color-surface-container-high)] text-white font-bold hover:bg-[var(--color-surface-container-highest)] transition"
               >
-                Загрузить ещё
+                {t('common.retry')}
               </button>
             )}
           </>
@@ -263,7 +263,9 @@ export default function ProfilePage({ user: initialUser }: Props) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-5" />
-            <h3 className="text-lg font-bold text-white mb-4 text-center">Фото профиля</h3>
+            <h3 className="text-lg font-bold text-white mb-4 text-center">
+              {t('settings.profilePhoto')}
+            </h3>
             <div className="flex flex-col gap-2">
               <button
                 type="button"
@@ -273,21 +275,21 @@ export default function ProfilePage({ user: initialUser }: Props) {
                 }}
                 className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-white font-semibold active:scale-[0.99] transition"
               >
-                Сделать фото
+                {t('profile.takePhoto')}
               </button>
               <button
                 type="button"
                 onClick={handlePickFromGallery}
                 className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-white font-semibold active:scale-[0.99] transition"
               >
-                Выбрать из галереи
+                {t('profile.changeAvatar')}
               </button>
               <button
                 type="button"
                 onClick={() => setShowAvatarSheet(false)}
                 className="w-full py-4 text-[var(--color-on-surface-variant)] font-semibold"
               >
-                Отмена
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -300,7 +302,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
       {showCamera && (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col">
           <div className="flex items-center justify-between p-6 pb-2">
-            <h2 className="text-white font-bold text-xl">Фото профиля</h2>
+            <h2 className="text-white font-bold text-xl">{t('settings.profilePhoto')}</h2>
             <button
               type="button"
               onClick={() => setShowCamera(false)}
@@ -317,7 +319,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
               screenshotFormat="image/jpeg"
               videoConstraints={{ facingMode: 'user', aspectRatio: 1 }}
               className="w-full h-full object-cover max-w-md"
-              onUserMediaError={() => toastError('Ошибка доступа к камере')}
+              onUserMediaError={() => toastError(t('profile.cameraError'))}
             />
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               <div className="w-64 h-64 rounded-full border-4 border-[var(--color-brand-primary)] shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]" />
@@ -331,7 +333,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
               disabled={uploading}
               className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 font-bold text-lg text-white transition active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
             >
-              {uploading ? 'Сохранение...' : 'Сделать фото'}
+              {uploading ? t('common.saving') : t('profile.takePhoto')}
             </button>
           </div>
         </div>

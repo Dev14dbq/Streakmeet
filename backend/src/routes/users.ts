@@ -2,9 +2,12 @@ import { Router, type Response, type Request } from 'express'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../lib/prisma.js'
 import { saveBase64ImageAsAvif } from '../lib/saveImage.js'
+import { isValidBase64Image } from '../lib/httpErrors.js'
+import { ErrorCodes, sendError } from '../lib/apiErrors.js'
 import { isValidTimezone } from '../lib/timezone.js'
 import { findUserByEmail } from '../lib/accountDeletion.js'
 import { parsePagination } from '../lib/pagination.js'
+import { reconcileStreakTimezonesForUser } from '../lib/streakCalendar.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -26,7 +29,7 @@ router.get('/me', async (req: AuthRequest, res: Response) => {
     },
   })
   if (!user) {
-    res.status(404).json({ error: 'User not found' })
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
   res.json(user)
@@ -36,13 +39,13 @@ router.get('/me', async (req: AuthRequest, res: Response) => {
 router.patch('/settings', async (req: AuthRequest, res: Response) => {
   const { timezone } = req.body as { timezone?: string }
   if (!timezone || typeof timezone !== 'string') {
-    res.status(400).json({ error: 'timezone is required' })
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
     return
   }
   try {
     if (!isValidTimezone(timezone)) throw new Error('invalid')
   } catch {
-    res.status(400).json({ error: 'Invalid timezone' })
+    sendError(res, 400, ErrorCodes.INVALID_TIMEZONE)
     return
   }
   const user = await prisma.user.update({
@@ -60,14 +63,13 @@ router.patch('/settings', async (req: AuthRequest, res: Response) => {
       isPublic: true,
     },
   })
+  await reconcileStreakTimezonesForUser(req.userId!)
   res.json(user)
 })
-
-// PATCH /api/users/email
 router.patch('/email', async (req: AuthRequest, res: Response) => {
   const { email } = req.body as { email?: string }
   if (!email || !email.includes('@')) {
-    res.status(400).json({ error: 'Некорректный email' })
+    sendError(res, 400, ErrorCodes.INVALID_EMAIL)
     return
   }
 
@@ -75,7 +77,7 @@ router.patch('/email', async (req: AuthRequest, res: Response) => {
 
   const existing = await findUserByEmail(normalizedEmail)
   if (existing && existing.id !== req.userId) {
-    res.status(409).json({ error: 'Этот email уже занят' })
+    sendError(res, 409, ErrorCodes.EMAIL_ALREADY_IN_USE)
     return
   }
 
@@ -101,7 +103,7 @@ router.patch('/email', async (req: AuthRequest, res: Response) => {
 router.patch('/public', async (req: AuthRequest, res: Response) => {
   const { isPublic } = req.body as { isPublic?: boolean }
   if (typeof isPublic !== 'boolean') {
-    res.status(400).json({ error: 'isPublic is required' })
+    sendError(res, 400, ErrorCodes.INVALID_BOOLEAN)
     return
   }
 
@@ -126,8 +128,8 @@ router.patch('/public', async (req: AuthRequest, res: Response) => {
 // POST /api/users/avatar
 router.post('/avatar', async (req: AuthRequest, res: Response) => {
   const { photoBase64 } = req.body as { photoBase64?: string }
-  if (!photoBase64) {
-    res.status(400).json({ error: 'Фото обязательно' })
+  if (!isValidBase64Image(photoBase64)) {
+    sendError(res, 400, ErrorCodes.INVALID_PHOTO)
     return
   }
 
@@ -141,7 +143,7 @@ router.post('/avatar', async (req: AuthRequest, res: Response) => {
     res.json({ avatarUrl })
   } catch (e) {
     console.error('Avatar upload error:', e)
-    res.status(500).json({ error: 'Ошибка сохранения аватара' })
+    sendError(res, 500, ErrorCodes.AVATAR_SAVE_FAILED)
   }
 })
 
@@ -202,7 +204,7 @@ router.get('/search', async (req: AuthRequest, res: Response) => {
         { qrCodeId: { contains: query, mode: 'insensitive' } },
       ],
     },
-    select: { id: true, nickname: true, avatarUrl: true },
+    select: { id: true, nickname: true, avatarUrl: true, qrCodeId: true },
     take: 10,
     orderBy: { nickname: 'asc' },
   })
