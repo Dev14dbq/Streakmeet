@@ -5,8 +5,8 @@ export default function AppToaster() {
   return (
     <Toaster
       position="top-center"
-      containerClassName="!top-[max(1rem,env(safe-area-inset-top))] !z-[200]"
-      containerStyle={{ zIndex: 200 }}
+      containerClassName="!top-[max(1rem,env(safe-area-inset-top))] !z-[10100]"
+      containerStyle={{ zIndex: 10100 }}
       toastOptions={{
         style: toastStyle,
         success: {

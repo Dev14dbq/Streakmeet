@@ -12,6 +12,7 @@ import {
   type AuthUser,
 } from '../../lib/api'
 import CachedImage from '../../components/CachedImage'
+import { avatarInitial } from '../../lib/avatarInitial'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 import RemoteSelfieCameraModal from '../../components/RemoteSelfieCameraModal'
 import { vibrateRemind } from '../../lib/haptics'
@@ -62,17 +63,21 @@ function monthKey(date: string) {
 
 function DuoAvatar({
   path,
+  name,
   label,
   onClick,
 }: {
   path?: string | null
+  name?: string | null
   label?: string
   onClick?: () => void
 }) {
   const inner = path ? (
     <CachedImage path={path} alt="" className="w-full h-full object-cover" />
   ) : (
-    <span className="text-2xl">👤</span>
+    <span className="text-2xl font-bold text-[var(--color-brand-primary)] leading-none select-none">
+      {avatarInitial(name)}
+    </span>
   )
 
   const cls =
@@ -292,9 +297,12 @@ export default function StreakDetailsPage() {
   const isMyRequest = pendingRemoteSelfie?.senderId === me.id
 
   return (
-    <div ref={pageRef} className="flex flex-col min-h-full">
+    <div
+      ref={pageRef}
+      className="flex flex-col min-h-full pt-[calc(env(safe-area-inset-top)+1.25rem)]"
+    >
       {/* Duo hero */}
-      <section className="relative mx-4 mt-4 rounded-[28px] overflow-hidden border border-white/[0.06] shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
+      <section className="relative mx-4 mt-2 rounded-[28px] overflow-hidden border border-white/[0.06] shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
         <div className="absolute inset-0">
           {coverPhoto ? (
             <>
@@ -316,8 +324,8 @@ export default function StreakDetailsPage() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,26,79,0.18)_0%,transparent_65%)]" />
         </div>
 
-        <div className="relative px-5 pt-5 pb-6">
-          <div className="flex items-center justify-between mb-8">
+        <div className="relative px-5 pt-6 pb-6">
+          <div className="flex items-center justify-between mb-6">
             <button
               type="button"
               onClick={() => navigate('/')}
@@ -338,6 +346,7 @@ export default function StreakDetailsPage() {
           <div className="flex items-center justify-center gap-3 mb-5">
             <DuoAvatar
               path={me.avatarUrl}
+              name={me.nickname}
               label={t('streak.myProfile')}
               onClick={() => navigate('/profile')}
             />
@@ -355,6 +364,7 @@ export default function StreakDetailsPage() {
             </div>
             <DuoAvatar
               path={partner.avatarUrl}
+              name={partner.nickname}
               label={t('streak.partnerProfile', { nickname: partner.nickname })}
               onClick={() => navigate(`/${partner.nickname}`)}
             />
@@ -446,7 +456,7 @@ export default function StreakDetailsPage() {
       </div>
 
       {/* Gallery */}
-      <div className="px-4 mt-8 pb-4">
+      <div className="px-4 mt-8 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         {streakDays.length === 0 ? (
           <div className="glass-card rounded-3xl p-10 flex flex-col items-center text-center border border-white/5">
             <Camera size={36} className="text-[var(--color-on-surface-variant)] opacity-40 mb-4" />

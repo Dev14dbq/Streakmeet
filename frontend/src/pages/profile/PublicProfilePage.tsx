@@ -16,6 +16,7 @@ import {
 } from '../../lib/api'
 import { toastError, toastSuccess } from '../../lib/toast'
 import CachedImage from '../../components/CachedImage'
+import { avatarInitial } from '../../lib/avatarInitial'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 
 const NICKNAME_RE = /^[a-z0-9_]{3,20}$/
@@ -214,7 +215,9 @@ export default function PublicProfilePage({ currentUser }: Props) {
               {user.avatarUrl ? (
                 <CachedImage path={user.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-4xl">👤</span>
+                <span className="text-4xl font-bold text-[var(--color-brand-primary)] leading-none select-none">
+                  {avatarInitial(user.nickname)}
+                </span>
               )}
             </div>
           </div>

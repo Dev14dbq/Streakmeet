@@ -8,6 +8,7 @@ import ProfileQrModal from '../../components/ProfileQrModal'
 import CachedImage from '../../components/CachedImage'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 import { uploadAvatar, getApiErrorMessage, type AuthUser } from '../../lib/api'
+import { avatarInitial } from '../../lib/avatarInitial'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { invalidateCachedImage } from '../../lib/remoteImageCache'
 import { toastError } from '../../lib/toast'
@@ -149,7 +150,9 @@ export default function ProfilePage({ user: initialUser }: Props) {
             {user.avatarUrl ? (
               <CachedImage path={user.avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-4xl">👤</span>
+              <span className="text-4xl font-bold text-[var(--color-brand-primary)] leading-none select-none">
+                {avatarInitial(user.nickname)}
+              </span>
             )}
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition flex items-center justify-center">
               <Camera size={28} className="text-white" />

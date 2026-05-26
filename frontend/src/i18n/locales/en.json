@@ -287,7 +287,13 @@
     "torch": "Flashlight",
     "timerOff": "Timer off",
     "timer3": "3 second timer",
-    "timer10": "10 second timer"
+    "timer10": "10 second timer",
+    "modeMeet": "Selfie",
+    "modeRemote": "Remote",
+    "choosePartner": "Choose friend",
+    "replyTo": "Reply to",
+    "sendTo": "Send to",
+    "noStreaksForRemote": "No streaks yet — start one from Home"
   },
   "photo": {
     "savedDocuments": "Photo saved to Documents",
@@ -327,11 +333,45 @@
     "title": "Open on your phone",
     "description": "StreakMeet is only available on smartphone"
   },
+  "friends": {
+    "title": "Friends",
+    "searchPlaceholder": "Find by nickname (partial) or QR…",
+    "results": "Results",
+    "requests": "Requests",
+    "myFriends": "My friends",
+    "noFriends": "You have no friends yet",
+    "pending": "Pending",
+    "requestOrError": "Error or request already sent",
+    "streakCreated": "Streak created! Go to home",
+    "streakExistsOrError": "Streak already exists or error"
+  },
+  "stub": {
+    "registerSoon": "Registration — coming soon",
+    "loginSoon": "Sign in — coming soon"
+  },
+  "meetResult": {
+    "extendedWith": "Streaks extended with: {{list}}",
+    "photosWith": "Photos added with: {{list}}",
+    "skippedDuplicate": "Skipped (duplicate): {{list}}"
+  },
   "notifications": {
     "channelDescription": "Streak, friend and meet reminders",
     "streak1h": "Streak with @{{partner}} expires in 1 hour!",
     "streak30m": "Streak with @{{partner}} expires in 30 minutes!",
-    "streakBurned": "Streak with @{{partner}} burned 🔥"
+    "streakBurned": "Streak with @{{partner}} burned 🔥",
+    "friendRequest": "@{{nickname}} wants to add you as a friend",
+    "friendAccepted": "@{{nickname}} accepted your friend request",
+    "meetExtended": "You and @{{nickname}} met! Streak extended 🔥",
+    "meetPhotoAdded": "@{{nickname}} added a new meet photo 📸",
+    "streakRemind0": "🔔 @{{nickname}} reminds you: extend your streak!",
+    "streakRemind1": "🔥 @{{nickname}}: where are you? Streak is burning!",
+    "streakRemind2": "📣 @{{nickname}} nudges you — meet today!",
+    "streakRemind3": "⚡ @{{nickname}}: the streak won't wait! Hurry!",
+    "streakRemind4": "💥 @{{nickname}} spammed a reminder — go meet up!",
+    "remoteSelfieRequest": "📸 @{{nickname}} wants a remote group selfie!",
+    "remoteSelfieExtended": "✨ @{{nickname}} replied to your selfie! Streak extended!",
+    "remoteSelfiePhoto": "✨ @{{nickname}} replied to your selfie! New photo added.",
+    "someone": "Someone"
   },
   "errors": {
     "generic": "Error",

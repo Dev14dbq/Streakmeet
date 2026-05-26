@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft, SwitchCamera, Timer, X, Zap } from 'lucide-react'
 import Webcam from 'react-webcam'
 import { captureVideoFrame } from '../lib/captureVideoFrame'
+import { triggerCameraShutterFeedback } from '../lib/cameraShutter'
 import { toastError } from '../lib/toast'
 
 type TorchTrack = MediaStreamTrack & {
@@ -12,6 +13,13 @@ type TorchTrack = MediaStreamTrack & {
   ) => Promise<void>
 }
 export type CameraTimer = 'off' | 3 | 10
+export type CameraCaptureMode = 'meet' | 'remote'
+
+export interface CameraModeOption {
+  id: CameraCaptureMode
+  label: string
+}
+
 type Phase = 'live' | 'preview' | 'processing'
 
 interface Props {
@@ -21,15 +29,55 @@ interface Props {
   confirmLabel: string
   processing?: boolean
   processingLabel?: string
-  /** Small overlay during live capture (e.g. friend's photo in remote selfie reply) */
-  pip?: React.ReactNode
   closeDisabled?: boolean
+  /** Half-screen friend photo during remote selfie reply */
+  splitTop?: React.ReactNode
+  splitTopLabel?: string
+  captureMode?: CameraCaptureMode
+  onCaptureModeChange?: (mode: CameraCaptureMode) => void
+  modeOptions?: CameraModeOption[]
+  bottomOverlay?: React.ReactNode
+  shutterDisabled?: boolean
 }
 
 function timerLabel(timer: CameraTimer, t: (key: string) => string): string {
   if (timer === 3) return t('camera.timer3')
   if (timer === 10) return t('camera.timer10')
   return t('camera.timerOff')
+}
+
+function LiveWebcam({
+  facingMode,
+  isFront,
+  webcamRef,
+  className,
+  onReady,
+  onError,
+}: {
+  facingMode: 'user' | 'environment'
+  isFront: boolean
+  webcamRef: React.RefObject<Webcam | null>
+  className?: string
+  onReady: (stream: MediaStream) => void
+  onError: (err: string | DOMException) => void
+}) {
+  return (
+    <Webcam
+      key={facingMode}
+      ref={webcamRef}
+      audio={false}
+      screenshotFormat="image/jpeg"
+      forceScreenshotSourceSize
+      videoConstraints={{
+        facingMode,
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      }}
+      className={`fullscreen-camera__media ${isFront ? 'fullscreen-camera__media--mirror' : ''} ${className ?? ''}`}
+      onUserMedia={onReady}
+      onUserMediaError={onError}
+    />
+  )
 }
 
 export default function FullscreenCamera({
@@ -39,8 +87,14 @@ export default function FullscreenCamera({
   confirmLabel,
   processing = false,
   processingLabel,
-  pip,
   closeDisabled = false,
+  splitTop,
+  splitTopLabel,
+  captureMode,
+  onCaptureModeChange,
+  modeOptions,
+  bottomOverlay,
+  shutterDisabled = false,
 }: Props) {
   const { t } = useTranslation()
   const webcamRef = useRef<Webcam>(null)
@@ -55,13 +109,17 @@ export default function FullscreenCamera({
   const [countdown, setCountdown] = useState<number | null>(null)
   const [torchAvailable, setTorchAvailable] = useState(false)
   const [torchOn, setTorchOn] = useState(false)
+  const [shutterFlash, setShutterFlash] = useState(false)
 
   const isFront = facingMode === 'user'
+  const useSplit = !!splitTop && phase === 'live'
+  const showModeSwitcher = !!(modeOptions?.length && onCaptureModeChange && phase === 'live')
 
   const resetLive = useCallback(() => {
     setPhase('live')
     setCapturedPhoto(null)
     setCountdown(null)
+    setShutterFlash(false)
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
@@ -122,6 +180,22 @@ export default function FullscreenCamera({
     if (!caps?.torch) setTorchOn(false)
   }, [])
 
+  const onStreamReady = useCallback(
+    (stream: MediaStream) => {
+      inspectStream(stream)
+      setCameraReady(true)
+    },
+    [inspectStream]
+  )
+
+  const onStreamError = useCallback(
+    (err: string | DOMException) => {
+      const msg = typeof err === 'string' ? err : err.message
+      toastError(t('face.cameraError', { message: msg }))
+    },
+    [t]
+  )
+
   const cycleTimer = () => {
     setTimer((cur: CameraTimer) => (cur === 'off' ? 3 : cur === 3 ? 10 : 'off'))
   }
@@ -137,19 +211,22 @@ export default function FullscreenCamera({
       minWidth: 960,
       quality: 0.92,
       mirror: isFront,
+      enhance: true,
     })
     if (!imageSrc) {
       toastError(t('camera.captureFailed'))
       return
     }
 
+    triggerCameraShutterFeedback()
+    setShutterFlash(true)
     setCapturedPhoto(imageSrc)
     setPhase('preview')
     setCountdown(null)
   }, [isFront, t])
 
   const handleShutter = useCallback(() => {
-    if (phase !== 'live' || countdown !== null || !cameraReady) return
+    if (phase !== 'live' || countdown !== null || !cameraReady || shutterDisabled) return
 
     if (timer === 'off') {
       takePhoto()
@@ -169,7 +246,7 @@ export default function FullscreenCamera({
         setCountdown(left)
       }
     }, 1000)
-  }, [phase, countdown, cameraReady, timer, takePhoto])
+  }, [phase, countdown, cameraReady, timer, takePhoto, shutterDisabled])
 
   const handleFlip = () => {
     if (torchOn) void setTorch(false)
@@ -197,34 +274,40 @@ export default function FullscreenCamera({
       <div className="fullscreen-camera__viewport">
         {showPreview && capturedPhoto ? (
           <img src={capturedPhoto} alt="" className="fullscreen-camera__media" />
+        ) : useSplit ? (
+          <div className="fullscreen-camera__split">
+            <div className="fullscreen-camera__split-top">
+              {splitTopLabel && (
+                <span className="fullscreen-camera__split-label">{splitTopLabel}</span>
+              )}
+              {splitTop}
+            </div>
+            <div className="fullscreen-camera__split-bottom">
+              <span className="fullscreen-camera__split-label">{t('camera.you')}</span>
+              <LiveWebcam
+                facingMode={facingMode}
+                isFront={isFront}
+                webcamRef={webcamRef}
+                onReady={onStreamReady}
+                onError={onStreamError}
+              />
+            </div>
+          </div>
         ) : (
-          <>
-            <Webcam
-              key={facingMode}
-              ref={webcamRef}
-              audio={false}
-              screenshotFormat="image/jpeg"
-              forceScreenshotSourceSize
-              videoConstraints={{
-                facingMode,
-                width: { ideal: 1920 },
-                height: { ideal: 1080 },
-              }}
-              className={`fullscreen-camera__media ${isFront ? 'fullscreen-camera__media--mirror' : ''}`}
-              onUserMedia={(stream) => {
-                inspectStream(stream)
-                setCameraReady(true)
-              }}
-              onUserMediaError={(err) => {
-                const msg = typeof err === 'string' ? err : err.message
-                toastError(t('face.cameraError', { message: msg }))
-              }}
-            />
-            {pip && <div className="fullscreen-camera__pip">{pip}</div>}
-          </>
+          <LiveWebcam
+            facingMode={facingMode}
+            isFront={isFront}
+            webcamRef={webcamRef}
+            onReady={onStreamReady}
+            onError={onStreamError}
+          />
         )}
 
         {countdown !== null && <div className="fullscreen-camera__countdown">{countdown}</div>}
+
+        {shutterFlash && (
+          <div className="fullscreen-camera__flash" onAnimationEnd={() => setShutterFlash(false)} />
+        )}
 
         {phase === 'processing' && (
           <div className="fullscreen-camera__processing">
@@ -296,16 +379,36 @@ export default function FullscreenCamera({
         </div>
       )}
 
+      {bottomOverlay}
+
       {/* Bottom controls */}
       <div className="fullscreen-camera__bottom safe-bottom">
         {showLive ? (
-          <button
-            type="button"
-            className="fullscreen-camera__shutter"
-            onClick={handleShutter}
-            disabled={!cameraReady || countdown !== null}
-            aria-label={t('profile.takePhoto')}
-          />
+          <div className="fullscreen-camera__bottom-stack">
+            <button
+              type="button"
+              className="fullscreen-camera__shutter"
+              onClick={handleShutter}
+              disabled={!cameraReady || countdown !== null || shutterDisabled}
+              aria-label={t('profile.takePhoto')}
+            />
+            {showModeSwitcher && (
+              <div className="fullscreen-camera__modes" role="tablist">
+                {modeOptions!.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={captureMode === option.id}
+                    className={`fullscreen-camera__mode-btn ${captureMode === option.id ? 'fullscreen-camera__mode-btn--active' : ''}`}
+                    onClick={() => onCaptureModeChange!(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ) : showPreview ? (
           <button
             type="button"

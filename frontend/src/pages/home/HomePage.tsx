@@ -126,7 +126,7 @@ export default function HomePage({ user }: Props) {
         )}
         <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center gap-3 min-w-0">
-            <Avatar path={s.partner.avatarUrl} />
+            <Avatar path={s.partner.avatarUrl} name={s.partner.nickname} />
             <div className="min-w-0">
               <h3 className="font-bold text-white text-base tracking-tight truncate">
                 @{s.partner.nickname}
@@ -246,7 +246,7 @@ export default function HomePage({ user }: Props) {
                     }}
                     className="flex items-center gap-3 min-w-0 flex-1 active:opacity-80"
                   >
-                    <Avatar path={u.avatarUrl} size="sm" />
+                    <Avatar path={u.avatarUrl} name={u.nickname} size="sm" />
                     <span className="font-bold text-white truncate">@{u.nickname}</span>
                   </Link>
                   <button
@@ -290,7 +290,7 @@ export default function HomePage({ user }: Props) {
                     className="flex items-center justify-between glass-card p-4 rounded-2xl border border-[var(--color-brand-primary)]/25"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <Avatar path={f.friend.avatarUrl} size="sm" />
+                      <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
                       <span className="font-bold text-white truncate">@{f.friend.nickname}</span>
                     </div>
                     <button
@@ -346,7 +346,7 @@ export default function HomePage({ user }: Props) {
                     className="flex items-center justify-between glass-card p-4 rounded-2xl"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <Avatar path={f.friend.avatarUrl} size="sm" />
+                      <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
                       <span className="font-bold text-white truncate">@{f.friend.nickname}</span>
                     </div>
                     <button
@@ -375,7 +375,7 @@ export default function HomePage({ user }: Props) {
                     className="flex items-center justify-between border border-white/5 p-4 rounded-2xl opacity-60"
                   >
                     <div className="flex items-center gap-3">
-                      <Avatar path={f.friend.avatarUrl} size="sm" />
+                      <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
                       <span className="font-bold text-white">@{f.friend.nickname}</span>
                     </div>
                     <span className="text-xs text-[var(--color-on-surface-variant)] flex items-center gap-1">

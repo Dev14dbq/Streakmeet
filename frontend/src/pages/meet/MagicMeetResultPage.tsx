@@ -67,7 +67,7 @@ export default function MagicMeetResultPage() {
                 key={partner.nickname}
                 className="glass-card rounded-2xl p-4 flex items-center gap-4"
               >
-                <Avatar path={partner.avatarUrl} size="sm" />
+                <Avatar path={partner.avatarUrl} name={partner.nickname} size="sm" />
                 <div>
                   <p className="font-bold text-white">@{partner.nickname}</p>
                   <p className="text-xs text-[var(--color-brand-primary)] font-medium mt-0.5">

@@ -586,9 +586,178 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem 1.25rem;
-  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  padding: 1rem 1.25rem 2.75rem;
+  padding-bottom: max(2.75rem, calc(env(safe-area-inset-bottom) + 1.5rem));
   pointer-events: none;
+}
+
+.fullscreen-camera__bottom-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.125rem;
+  pointer-events: auto;
+}
+
+.fullscreen-camera__modes {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.fullscreen-camera__mode-btn {
+  padding: 0.5rem 1.125rem;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.1s;
+  white-space: nowrap;
+}
+
+.fullscreen-camera__mode-btn:active {
+  transform: scale(0.96);
+}
+
+.fullscreen-camera__mode-btn--active {
+  background: var(--color-brand-primary, #ff1a4f);
+  color: #fff;
+}
+
+.fullscreen-camera__split {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.fullscreen-camera__split-top,
+.fullscreen-camera__split-bottom {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.fullscreen-camera__split-top {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.18);
+}
+
+.fullscreen-camera__split-label {
+  position: absolute;
+  top: max(4.25rem, calc(env(safe-area-inset-top) + 3rem));
+  left: 1rem;
+  z-index: 10;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.55);
+  font-size: 0.625rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+
+.fullscreen-camera__picker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 22;
+  max-height: 55%;
+  padding: 1rem 1.25rem 1.5rem;
+  padding-bottom: max(10.5rem, calc(env(safe-area-inset-bottom) + 9rem));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 70%, transparent);
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+.fullscreen-camera__picker-title {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  margin-bottom: 0.875rem;
+}
+
+.fullscreen-camera__picker-empty {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.875rem;
+}
+
+.fullscreen-camera__picker-section + .fullscreen-camera__picker-section {
+  margin-top: 1rem;
+}
+
+.fullscreen-camera__picker-label {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+
+.fullscreen-camera__picker-list {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+}
+
+.fullscreen-camera__picker-list::-webkit-scrollbar {
+  display: none;
+}
+
+.fullscreen-camera__picker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 4.75rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.fullscreen-camera__picker-item:active {
+  transform: scale(0.95);
+}
+
+.fullscreen-camera__picker-thumb {
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+.fullscreen-camera__picker-item--reply .fullscreen-camera__picker-thumb {
+  border-color: var(--color-brand-primary, #ff1a4f);
+  box-shadow: 0 0 0 2px rgba(255, 26, 79, 0.35);
+}
+
+.fullscreen-camera__picker-name {
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  max-width: 4.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fullscreen-camera__bottom > * {
@@ -665,6 +834,27 @@ body {
   color: #fff;
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
   animation: camera-countdown-pulse 1s ease-in-out;
+}
+
+.fullscreen-camera__flash {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: #000;
+  pointer-events: none;
+  animation: camera-shutter-flash 0.14s ease-out forwards;
+}
+
+@keyframes camera-shutter-flash {
+  0% {
+    opacity: 1;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes camera-countdown-pulse {

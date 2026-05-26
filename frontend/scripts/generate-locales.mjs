@@ -1,5 +1,6 @@
 /**
- * Generates locale JSON files from embedded translations.
+ * Regenerates ru.json from partial overrides (merge on en.json).
+ * Other locales (es, de, fr, …) are maintained as full files in src/i18n/locales/.
  * Run: node scripts/generate-locales.mjs
  */
 import { writeFileSync, mkdirSync } from 'fs'
@@ -150,8 +151,7 @@ const overrides = {
       waiting: 'Ждём',
       pending: 'Ожидают ответа',
       whoMeet: 'С кем встречаешься?',
-      emptyHint:
-        'Найди человека по @нику или покажи QR — и начните серию встреч каждый день.',
+      emptyHint: 'Найди человека по @нику или покажи QR — и начните серию встреч каждый день.',
     },
     streak: {
       days_one: 'день',
@@ -229,8 +229,7 @@ const overrides = {
       friendsDesc: 'Заявки и принятие',
       meets: 'Встречи',
       meetsDesc: 'Серия продлена, друг на фото',
-      pushHint:
-        'На телефоне — push в 23:00, 23:30 и после полуночи, если серия не продлена.',
+      pushHint: 'На телефоне — push в 23:00, 23:30 и после полуночи, если серия не продлена.',
       privacy: 'Конфиденциальность',
       publicProfile: 'Публичный профиль',
       publicProfileDesc: 'Доступ к фото по ссылке',
@@ -300,6 +299,12 @@ const overrides = {
       timerOff: 'Таймер выкл',
       timer3: 'Таймер 3 сек',
       timer10: 'Таймер 10 сек',
+      modeMeet: 'Селфи',
+      modeRemote: 'На расстоянии',
+      choosePartner: 'Выбери друга',
+      replyTo: 'Ответить',
+      sendTo: 'Отправить',
+      noStreaksForRemote: 'Нет серий — начни с главной',
     },
     photo: {
       savedDocuments: 'Фото сохранено в Документы',
@@ -326,8 +331,7 @@ const overrides = {
     redirect: { toProfile: 'Переход в профиль...' },
     memories: {
       title: 'Лента воспоминаний',
-      description:
-        'Скоро здесь можно будет листать ваши встречи — как вы менялись за месяц и год.',
+      description: 'Скоро здесь можно будет листать ваши встречи — как вы менялись за месяц и год.',
     },
     notFound: {
       title: 'Страница не найдена',
@@ -404,7 +408,10 @@ const overrides = {
     home: { title: 'Inicio', findPerson: 'Buscar persona', streaks: 'Rachas' },
     settings: { title: 'Ajustes', signOut: 'Cerrar sesión', deleteAccount: 'Eliminar cuenta' },
     notFound: { title: 'Página no encontrada', goHome: 'Ir al inicio' },
-    mobileGate: { title: 'Abre en tu teléfono', description: 'StreakMeet solo está disponible en smartphone' },
+    mobileGate: {
+      title: 'Abre en tu teléfono',
+      description: 'StreakMeet solo está disponible en smartphone',
+    },
   },
   zh: {
     nav: { home: '首页', map: '地图', memories: '动态', profile: '个人' },
@@ -448,7 +455,10 @@ const overrides = {
     home: { title: 'ホーム', findPerson: 'ユーザーを探す', streaks: 'ストリーク' },
     settings: { title: '設定', signOut: 'ログアウト', deleteAccount: 'アカウント削除' },
     notFound: { title: 'ページが見つかりません', goHome: 'ホームへ' },
-    mobileGate: { title: 'スマートフォンで開いてください', description: 'StreakMeetはスマートフォンのみ対応' },
+    mobileGate: {
+      title: 'スマートフォンで開いてください',
+      description: 'StreakMeetはスマートフォンのみ対応',
+    },
   },
   de: {
     nav: { home: 'Start', map: 'Karte', memories: 'Feed', profile: 'Profil' },
@@ -470,7 +480,10 @@ const overrides = {
     home: { title: 'Start', findPerson: 'Person finden', streaks: 'Serien' },
     settings: { title: 'Einstellungen', signOut: 'Abmelden', deleteAccount: 'Konto löschen' },
     notFound: { title: 'Seite nicht gefunden', goHome: 'Zur Startseite' },
-    mobileGate: { title: 'Auf dem Handy öffnen', description: 'StreakMeet ist nur auf dem Smartphone verfügbar' },
+    mobileGate: {
+      title: 'Auf dem Handy öffnen',
+      description: 'StreakMeet ist nur auf dem Smartphone verfügbar',
+    },
   },
   fr: {
     nav: { home: 'Accueil', map: 'Carte', memories: 'Fil', profile: 'Profil' },
@@ -490,9 +503,16 @@ const overrides = {
       signIn: 'Se connecter',
     },
     home: { title: 'Accueil', findPerson: 'Trouver une personne', streaks: 'Séries' },
-    settings: { title: 'Paramètres', signOut: 'Se déconnecter', deleteAccount: 'Supprimer le compte' },
+    settings: {
+      title: 'Paramètres',
+      signOut: 'Se déconnecter',
+      deleteAccount: 'Supprimer le compte',
+    },
     notFound: { title: 'Page introuvable', goHome: "Retour à l'accueil" },
-    mobileGate: { title: 'Ouvrez sur votre téléphone', description: 'StreakMeet est disponible uniquement sur smartphone' },
+    mobileGate: {
+      title: 'Ouvrez sur votre téléphone',
+      description: 'StreakMeet est disponible uniquement sur smartphone',
+    },
   },
   pt: {
     nav: { home: 'Início', map: 'Mapa', memories: 'Feed', profile: 'Perfil' },
@@ -514,7 +534,10 @@ const overrides = {
     home: { title: 'Início', findPerson: 'Encontrar pessoa', streaks: 'Sequências' },
     settings: { title: 'Configurações', signOut: 'Sair', deleteAccount: 'Excluir conta' },
     notFound: { title: 'Página não encontrada', goHome: 'Ir para o início' },
-    mobileGate: { title: 'Abra no celular', description: 'StreakMeet está disponível apenas em smartphone' },
+    mobileGate: {
+      title: 'Abra no celular',
+      description: 'StreakMeet está disponível apenas em smartphone',
+    },
   },
   it: {
     nav: { home: 'Home', map: 'Mappa', memories: 'Feed', profile: 'Profilo' },
@@ -536,7 +559,10 @@ const overrides = {
     home: { title: 'Home', findPerson: 'Trova persona', streaks: 'Serie' },
     settings: { title: 'Impostazioni', signOut: 'Esci', deleteAccount: 'Elimina account' },
     notFound: { title: 'Pagina non trovata', goHome: 'Vai alla home' },
-    mobileGate: { title: 'Apri sul telefono', description: 'StreakMeet è disponibile solo su smartphone' },
+    mobileGate: {
+      title: 'Apri sul telefono',
+      description: 'StreakMeet è disponibile solo su smartphone',
+    },
   },
   ko: {
     nav: { home: '홈', map: '지도', memories: '피드', profile: '프로필' },
@@ -558,7 +584,10 @@ const overrides = {
     home: { title: '홈', findPerson: '사용자 찾기', streaks: '스트릭' },
     settings: { title: '설정', signOut: '로그아웃', deleteAccount: '계정 삭제' },
     notFound: { title: '페이지를 찾을 수 없음', goHome: '홈으로' },
-    mobileGate: { title: '휴대폰에서 열기', description: 'StreakMeet는 스마트폰에서만 사용 가능합니다' },
+    mobileGate: {
+      title: '휴대폰에서 열기',
+      description: 'StreakMeet는 스마트폰에서만 사용 가능합니다',
+    },
   },
   ar: {
     nav: { home: 'الرئيسية', map: 'الخريطة', memories: 'الخلاصة', profile: 'الملف' },
@@ -624,7 +653,10 @@ const overrides = {
     home: { title: 'Ana Sayfa', findPerson: 'Kişi bul', streaks: 'Seriler' },
     settings: { title: 'Ayarlar', signOut: 'Çıkış yap', deleteAccount: 'Hesabı sil' },
     notFound: { title: 'Sayfa bulunamadı', goHome: 'Ana sayfaya git' },
-    mobileGate: { title: 'Telefonda aç', description: 'StreakMeet yalnızca akıllı telefonda kullanılabilir' },
+    mobileGate: {
+      title: 'Telefonda aç',
+      description: 'StreakMeet yalnızca akıllı telefonda kullanılabilir',
+    },
   },
   pl: {
     nav: { home: 'Start', map: 'Mapa', memories: 'Feed', profile: 'Profil' },
@@ -646,7 +678,10 @@ const overrides = {
     home: { title: 'Start', findPerson: 'Znajdź osobę', streaks: 'Serie' },
     settings: { title: 'Ustawienia', signOut: 'Wyloguj', deleteAccount: 'Usuń konto' },
     notFound: { title: 'Nie znaleziono strony', goHome: 'Strona główna' },
-    mobileGate: { title: 'Otwórz na telefonie', description: 'StreakMeet jest dostępny tylko na smartfonie' },
+    mobileGate: {
+      title: 'Otwórz na telefonie',
+      description: 'StreakMeet jest dostępny tylko na smartfonie',
+    },
   },
   id: {
     nav: { home: 'Beranda', map: 'Peta', memories: 'Feed', profile: 'Profil' },
@@ -675,9 +710,11 @@ const overrides = {
 mkdirSync(localesDir, { recursive: true })
 
 for (const [code, override] of Object.entries(overrides)) {
-  const merged = merge(en, override)
-  writeFileSync(join(localesDir, `${code}.json`), JSON.stringify(merged, null, 2) + '\n')
-  console.log(`Wrote ${code}.json`)
+  if (code === 'ru') {
+    const merged = merge(en, override)
+    writeFileSync(join(localesDir, `${code}.json`), JSON.stringify(merged, null, 2) + '\n')
+    console.log(`Wrote ${code}.json (merged)`)
+  }
 }
 
-console.log('Done. en.json is the source; other locales merge overrides on top.')
+console.log('Done. Only ru is regenerated here; edit other locale files directly.')

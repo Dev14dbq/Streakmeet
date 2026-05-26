@@ -26,16 +26,9 @@ export default function RemoteSelfieCameraModal({
   const isReply = mode === 'reply'
   const friendLabel = friendNickname ?? t('common.friend')
 
-  const pip =
+  const splitTop =
     isReply && friendPhotoUrl ? (
-      <div className="fullscreen-camera__pip-inner">
-        <CachedImage path={friendPhotoUrl} alt="" />
-        <span className="fullscreen-camera__pip-label">@{friendLabel}</span>
-      </div>
-    ) : isReply ? (
-      <div className="fullscreen-camera__pip-inner flex items-center justify-center bg-zinc-900">
-        <span className="text-[10px] text-zinc-400 px-1 text-center">{friendLabel}</span>
-      </div>
+      <CachedImage path={friendPhotoUrl} alt="" className="w-full h-full object-cover" />
     ) : undefined
 
   return (
@@ -46,7 +39,8 @@ export default function RemoteSelfieCameraModal({
       confirmLabel={t('camera.continue')}
       processing={uploading}
       processingLabel={isReply ? t('camera.sending') : t('camera.processing')}
-      pip={pip}
+      splitTop={splitTop}
+      splitTopLabel={isReply ? `@${friendLabel}` : undefined}
       closeDisabled={uploading}
     />
   )

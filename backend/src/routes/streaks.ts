@@ -39,6 +39,7 @@ async function getPartnerTimezones(userId: string, partnerId: string) {
 // GET /api/streaks
 router.get('/', async (req: AuthRequest, res: Response) => {
   const userId = req.userId!
+  const pendingSince = new Date(Date.now() - REMOTE_SELFIE_TTL_MS)
 
   const streaks = await prisma.streak.findMany({
     where: {
@@ -48,18 +49,39 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     include: {
       userA: { select: { id: true, nickname: true, avatarUrl: true } },
       userB: { select: { id: true, nickname: true, avatarUrl: true } },
+      remoteSelfies: {
+        where: {
+          status: 'PENDING',
+          createdAt: { gte: pendingSince },
+          OR: [{ receiverId: userId }, { senderId: userId }],
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        include: { sender: { select: { id: true, nickname: true } } },
+      },
     },
   })
 
   const formatted = streaks.map((s) => {
     const isUserA = s.userAId === userId
     const partner = isUserA ? s.userB : s.userA
+    const pending = s.remoteSelfies[0]
     return {
       id: s.id,
       count: s.count,
       lastMetDate: s.lastMetDate,
       timezone: s.timezone,
       partner,
+      pendingRemoteSelfie: pending
+        ? {
+            id: pending.id,
+            senderId: pending.senderId,
+            receiverId: pending.receiverId,
+            senderPhotoUrl: pending.senderPhotoUrl,
+            needsReply: pending.receiverId === userId,
+            senderNickname: pending.sender.nickname,
+          }
+        : null,
     }
   })
 

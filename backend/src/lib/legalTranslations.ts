@@ -98,6 +98,8 @@ const PRIVACY_EN = `<p>Last updated: May 26, 2026</p>
 <h2>8. Your Rights</h2>
 <p>Access, rectification, erasure, restriction, portability, and withdrawal of consent — via app settings or contacting us.</p>`
 
+import { getLegalHtml } from './legalContentLocales.js'
+
 /** Russian HTML imported from legacy seed — kept for ru locale */
 export function getLocalizedLegal(
   slug: 'TERMS' | 'PRIVACY',
@@ -113,6 +115,9 @@ export function getLocalizedLegal(
   if (locale === 'en') {
     return { title, content: slug === 'TERMS' ? TERMS_EN : PRIVACY_EN }
   }
-  // Other locales: localized title + English body (professional legal translation recommended)
+  const localizedHtml = getLegalHtml(slug, locale)
+  if (localizedHtml) {
+    return { title, content: localizedHtml }
+  }
   return { title, content: slug === 'TERMS' ? TERMS_EN : PRIVACY_EN }
 }
