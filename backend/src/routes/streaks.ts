@@ -2,7 +2,12 @@ import { Router, type Response } from 'express'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../lib/prisma.js'
 import { notifyUser } from '../lib/socket.js'
-import { saveBase64ImageAsAvif, computePhotoHash, combineTwoImages } from '../lib/saveImage.js'
+import {
+  saveBase64ImageAsAvif,
+  computePhotoHash,
+  combineRemoteSelfieImages,
+  hashImageFile,
+} from '../lib/saveImage.js'
 import {
   detectFacesFromBase64,
   ensureFaceService,
@@ -405,6 +410,14 @@ router.post('/:streakId/remote-selfie/init', async (req: AuthRequest, res: Respo
   )
 
   // Create request
+  const existingPending = await prisma.remoteSelfieRequest.findFirst({
+    where: { streakId: streak.id, status: 'PENDING' },
+  })
+  if (existingPending) {
+    res.status(409).json({ error: 'Уже есть активный запрос на селфи' })
+    return
+  }
+
   const request = await prisma.remoteSelfieRequest.create({
     data: {
       streakId: streak.id,
@@ -465,7 +478,7 @@ router.post(
     // Combine images
     let combinedUrl: string
     try {
-      combinedUrl = await combineTwoImages(
+      combinedUrl = await combineRemoteSelfieImages(
         request.senderPhotoUrl,
         photoBase64,
         `combined_${Date.now()}_${streakId}`
@@ -473,6 +486,15 @@ router.post(
     } catch (e) {
       console.error('Error combining images', e)
       res.status(500).json({ error: 'Ошибка при объединении фото' })
+      return
+    }
+
+    let photoHash: string
+    try {
+      photoHash = await hashImageFile(combinedUrl)
+    } catch (e) {
+      console.error('Error hashing combined image', e)
+      res.status(500).json({ error: 'Ошибка при сохранении фото' })
       return
     }
 
@@ -485,9 +507,6 @@ router.post(
     // Add MeetProof and extend streak
     const userTimezone = await getUserTimezone(userId)
     const today = getLocalDateString(userTimezone)
-    const photoHash = await computePhotoHash(combinedUrl) // we can just hash the combined URL or the base64, let's just use a random hash for now or compute it
-    // Wait, computePhotoHash expects base64. Let's just generate a random hash since it's combined by server
-    const randomHash = Math.random().toString(36).substring(2, 15)
 
     let streakDay = await prisma.streakDay.findUnique({
       where: { streakId_date: { streakId: streak.id, date: today } },
@@ -504,8 +523,8 @@ router.post(
         streakDayId: streakDay.id,
         uploadedById: userId,
         photoUrl: combinedUrl,
-        photoHash: randomHash,
-        facesDetected: 2, // assume 2
+        photoHash,
+        facesDetected: 2,
       },
     })
 
@@ -549,7 +568,7 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
   if (isLegacyId) {
     streak = await prisma.streak.findUnique({
       where: { id: param },
-      include: streakDetailInclude(page, limit),
+      include: streakDetailInclude(page, limit, userId),
     })
   } else {
     const partner = await prisma.user.findFirst({
@@ -568,7 +587,7 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
           { userAId: partner.id, userBId: userId },
         ],
       },
-      include: streakDetailInclude(page, limit),
+      include: streakDetailInclude(page, limit, userId),
     })
   }
 
@@ -580,12 +599,17 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
   res.json(streak)
 })
 
-function streakDetailInclude(page: number, limit: number) {
+function streakDetailInclude(page: number, limit: number, userId: string) {
   return {
     userA: { select: { id: true, nickname: true, avatarUrl: true } },
     userB: { select: { id: true, nickname: true, avatarUrl: true } },
     remoteSelfies: {
-      where: { status: 'PENDING' as const },
+      where: {
+        status: 'PENDING' as const,
+        OR: [{ receiverId: userId }, { senderId: userId }],
+      },
+      orderBy: { createdAt: 'desc' as const },
+      take: 1,
       include: { sender: { select: { id: true, nickname: true } } },
     },
     streakDays: {

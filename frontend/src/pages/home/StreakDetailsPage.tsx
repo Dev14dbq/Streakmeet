@@ -1,17 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  Flame,
-  ArrowLeft,
-  Bell,
-  Camera,
-  Check,
-  Image as ImageIcon,
-  X,
-  Smartphone,
-} from 'lucide-react'
+import { Flame, ArrowLeft, Bell, Camera, Check, Image as ImageIcon, Smartphone } from 'lucide-react'
 import useSWRInfinite from 'swr/infinite'
-import Webcam from 'react-webcam'
 import {
   fetcher,
   remindStreak,
@@ -21,6 +11,7 @@ import {
 } from '../../lib/api'
 import CachedImage from '../../components/CachedImage'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
+import RemoteSelfieCameraModal from '../../components/RemoteSelfieCameraModal'
 import { vibrateRemind } from '../../lib/haptics'
 import { getLocalToday } from '../../lib/timezone'
 import { toastError, toastSuccess } from '../../lib/toast'
@@ -142,8 +133,8 @@ export default function StreakDetailsPage() {
 
   const [showRemoteSelfieCamera, setShowRemoteSelfieCamera] = useState(false)
   const [remoteSelfieUploading, setRemoteSelfieUploading] = useState(false)
+  const [remoteSelfieMode, setRemoteSelfieMode] = useState<'init' | 'reply'>('init')
   const [replyingToRequest, setReplyingToRequest] = useState<string | null>(null)
-  const webcamRef = useRef<Webcam>(null)
 
   const comboTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const particleId = useRef(0)
@@ -216,32 +207,45 @@ export default function StreakDetailsPage() {
     }
   }, [nickname, spawnParticles, triggerScreenShake])
 
-  const handleCaptureRemoteSelfie = useCallback(async () => {
-    if (!webcamRef.current || !streakMeta) return
-    const imageSrc = webcamRef.current.getScreenshot()
-    if (!imageSrc) return
+  const handleSendRemoteSelfie = useCallback(
+    async (photoBase64: string) => {
+      if (!streakMeta) return
 
-    setRemoteSelfieUploading(true)
-    try {
-      if (replyingToRequest) {
-        const { data } = await replyRemoteSelfie(streakMeta.id, replyingToRequest, imageSrc)
-        if (data.success) {
-          toastSuccess('Селфи объединено! Серия продлена 🎉')
+      setRemoteSelfieUploading(true)
+      try {
+        if (replyingToRequest) {
+          const { data } = await replyRemoteSelfie(streakMeta.id, replyingToRequest, photoBase64)
+          if (data.success) {
+            toastSuccess('Селфи объединено! Серия продлена 🎉')
+            setSize(1)
+          }
+        } else {
+          await initRemoteSelfie(streakMeta.id, photoBase64)
+          toastSuccess('Запрос на селфи отправлен!')
           setSize(1)
         }
-      } else {
-        await initRemoteSelfie(streakMeta.id, imageSrc)
-        toastSuccess('Запрос на селфи отправлен!')
-        setSize(1)
+        setShowRemoteSelfieCamera(false)
+        setReplyingToRequest(null)
+      } catch (e: any) {
+        toastError(e.response?.data?.error || 'Ошибка при отправке селфи')
+      } finally {
+        setRemoteSelfieUploading(false)
       }
-      setShowRemoteSelfieCamera(false)
-      setReplyingToRequest(null)
-    } catch (e: any) {
-      toastError(e.response?.data?.error || 'Ошибка при отправке селфи')
-    } finally {
-      setRemoteSelfieUploading(false)
-    }
-  }, [replyingToRequest, streakMeta, setSize])
+    },
+    [replyingToRequest, streakMeta, setSize]
+  )
+
+  function openRemoteSelfieInit() {
+    setRemoteSelfieMode('init')
+    setReplyingToRequest(null)
+    setShowRemoteSelfieCamera(true)
+  }
+
+  function openRemoteSelfieReply(requestId: string) {
+    setRemoteSelfieMode('reply')
+    setReplyingToRequest(requestId)
+    setShowRemoteSelfieCamera(true)
+  }
 
   if (loading) {
     return (
@@ -445,10 +449,7 @@ export default function StreakDetailsPage() {
         {pendingRemoteSelfie && !isMyRequest ? (
           <button
             type="button"
-            onClick={() => {
-              setReplyingToRequest(pendingRemoteSelfie.id)
-              setShowRemoteSelfieCamera(true)
-            }}
+            onClick={() => openRemoteSelfieReply(pendingRemoteSelfie.id)}
             className="w-full rounded-full py-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold text-base shadow-[0_8px_30px_rgba(139,92,246,0.4)] transition active:scale-[0.96] flex items-center justify-center gap-2"
           >
             <Camera size={20} />
@@ -462,10 +463,7 @@ export default function StreakDetailsPage() {
         ) : !metToday ? (
           <button
             type="button"
-            onClick={() => {
-              setReplyingToRequest(null)
-              setShowRemoteSelfieCamera(true)
-            }}
+            onClick={openRemoteSelfieInit}
             className="w-full rounded-full py-4 bg-[var(--color-surface-container-high)] text-white font-bold text-sm transition active:scale-[0.96] hover:bg-[var(--color-surface-container-highest)] flex items-center justify-center gap-2"
           >
             <Smartphone size={18} />
@@ -562,50 +560,19 @@ export default function StreakDetailsPage() {
         <PhotoViewerModal photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
       )}
 
-      {/* Remote Selfie Camera Modal */}
-      {showRemoteSelfieCamera && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-          <div className="flex items-center justify-between p-6 pb-2">
-            <h2 className="text-white font-bold text-xl">Селфи на расстоянии</h2>
-            <button
-              type="button"
-              onClick={() => setShowRemoteSelfieCamera(false)}
-              className="p-2 bg-zinc-900 rounded-full text-white"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <div className="flex-1 relative overflow-hidden rounded-3xl mx-4 mb-6 bg-zinc-900 flex items-center justify-center">
-            <Webcam
-              ref={webcamRef}
-              audio={false}
-              screenshotFormat="image/jpeg"
-              videoConstraints={{ facingMode: 'user' }}
-              className="w-full h-full object-cover max-w-md"
-              onUserMediaError={() => toastError('Ошибка доступа к камере')}
-            />
-            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6 text-center">
-              <div className="w-full max-w-xs aspect-[3/4] border-2 border-dashed border-white/50 rounded-3xl" />
-              <p className="text-white/70 text-sm font-medium mt-4 drop-shadow-md">
-                {replyingToRequest ? 'Сделай фото для объединения' : 'Сделай фото и отправь другу'}
-              </p>
-            </div>
-          </div>
-
-          <div className="px-6 pb-12">
-            <button
-              type="button"
-              onClick={handleCaptureRemoteSelfie}
-              disabled={remoteSelfieUploading}
-              className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 font-bold text-lg text-white transition active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)] flex items-center justify-center gap-2"
-            >
-              <Camera size={22} />
-              {remoteSelfieUploading ? 'Отправка...' : replyingToRequest ? 'Ответить' : 'Отправить'}
-            </button>
-          </div>
-        </div>
-      )}
+      <RemoteSelfieCameraModal
+        open={showRemoteSelfieCamera}
+        mode={remoteSelfieMode}
+        friendPhotoUrl={pendingRemoteSelfie?.senderPhotoUrl}
+        friendNickname={pendingRemoteSelfie?.sender.nickname}
+        uploading={remoteSelfieUploading}
+        onClose={() => {
+          if (remoteSelfieUploading) return
+          setShowRemoteSelfieCamera(false)
+          setReplyingToRequest(null)
+        }}
+        onSend={handleSendRemoteSelfie}
+      />
     </div>
   )
 }

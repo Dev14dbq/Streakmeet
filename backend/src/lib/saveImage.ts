@@ -56,11 +56,8 @@ export async function combineTwoImages(
   const bufA = fs.readFileSync(filePathA)
   const bufB = parseBase64Image(photoBase64B)
 
-  const imgA = sharp(bufA).rotate()
-  const imgB = sharp(bufB).rotate()
-
-  const metaA = await imgA.metadata()
-  const metaB = await imgB.metadata()
+  const metaA = await sharp(bufA).rotate().metadata()
+  const metaB = await sharp(bufB).rotate().metadata()
 
   const isVertical = (metaA.height || 0) > (metaA.width || 0)
 
@@ -68,8 +65,14 @@ export async function combineTwoImages(
   const targetWidth = isVertical ? 1080 : 1440
   const targetHeight = isVertical ? 1440 : 1080
 
-  const resizedA = await imgA.resize(targetWidth, targetHeight, { fit: 'cover' }).toBuffer()
-  const resizedB = await imgB.resize(targetWidth, targetHeight, { fit: 'cover' }).toBuffer()
+  const resizedA = await sharp(bufA)
+    .rotate()
+    .resize(targetWidth, targetHeight, { fit: 'cover' })
+    .toBuffer()
+  const resizedB = await sharp(bufB)
+    .rotate()
+    .resize(targetWidth, targetHeight, { fit: 'cover' })
+    .toBuffer()
 
   // If vertical, side-by-side: width = targetWidth * 2, height = targetHeight
   // If horizontal, top-bottom: width = targetWidth, height = targetHeight * 2
@@ -95,4 +98,57 @@ export async function combineTwoImages(
     .toFile(filePath)
 
   return `/uploads/${fileName}`
+}
+
+export async function combineRemoteSelfieImages(
+  photoUrlA: string,
+  photoBase64B: string,
+  nameWithoutExt: string
+): Promise<string> {
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true })
+  }
+
+  const filePathA = path.join(UPLOADS_DIR, photoUrlA.replace('/uploads/', ''))
+  const bufA = fs.readFileSync(filePathA)
+  const bufB = parseBase64Image(photoBase64B)
+
+  // Горизонтальные селфи: два кадра 16:9 рядом
+  const targetWidth = 960
+  const targetHeight = 540
+
+  const resizedA = await sharp(bufA)
+    .rotate()
+    .resize(targetWidth, targetHeight, { fit: 'cover' })
+    .toBuffer()
+  const resizedB = await sharp(bufB)
+    .rotate()
+    .resize(targetWidth, targetHeight, { fit: 'cover' })
+    .toBuffer()
+
+  const fileName = `${nameWithoutExt}.avif`
+  const filePath = path.join(UPLOADS_DIR, fileName)
+
+  await sharp({
+    create: {
+      width: targetWidth * 2,
+      height: targetHeight,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 1 },
+    },
+  })
+    .composite([
+      { input: resizedA, top: 0, left: 0 },
+      { input: resizedB, top: 0, left: targetWidth },
+    ])
+    .avif({ quality: 65, effort: 4 })
+    .toFile(filePath)
+
+  return `/uploads/${fileName}`
+}
+
+export async function hashImageFile(relativeUrl: string): Promise<string> {
+  const filePath = path.join(UPLOADS_DIR, relativeUrl.replace(/^\/uploads\//, ''))
+  const buf = await fs.promises.readFile(filePath)
+  return crypto.createHash('sha256').update(buf).digest('hex')
 }
