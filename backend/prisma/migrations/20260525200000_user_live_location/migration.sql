@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN "sharingLocation" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "users" ADD COLUMN "lastLatitude" DOUBLE PRECISION;
+ALTER TABLE "users" ADD COLUMN "lastLongitude" DOUBLE PRECISION;
+ALTER TABLE "users" ADD COLUMN "lastLocationAt" TIMESTAMP(3);

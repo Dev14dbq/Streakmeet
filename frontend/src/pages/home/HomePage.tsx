@@ -67,7 +67,7 @@ export default function HomePage({ user }: Props) {
       } finally {
         setLoadingSearch(false)
       }
-    }, 500)
+    }, 300)
     return () => clearTimeout(timer)
   }, [query])
 
@@ -191,7 +191,7 @@ export default function HomePage({ user }: Props) {
             <input
               type="text"
               autoFocus
-              placeholder="Найти @ник..."
+              placeholder="Найти по нику (часть ника)..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full bg-[var(--color-surface-container-high)] text-white rounded-full py-4 pl-14 pr-12 outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] transition"
@@ -240,14 +240,21 @@ export default function HomePage({ user }: Props) {
                   key={u.id}
                   className="flex items-center justify-between glass-card p-3 rounded-2xl"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <Link
+                    to={`/${u.nickname}`}
+                    onClick={() => {
+                      setShowSearch(false)
+                      setQuery('')
+                    }}
+                    className="flex items-center gap-3 min-w-0 flex-1 active:opacity-80"
+                  >
                     <Avatar url={u.avatarUrl} size="sm" />
                     <span className="font-bold text-white truncate">@{u.nickname}</span>
-                  </div>
+                  </Link>
                   <button
                     type="button"
                     onClick={() => handleAdd(u.id)}
-                    className="p-2.5 bg-[var(--color-brand-primary)] text-white rounded-full active:scale-95"
+                    className="p-2.5 bg-[var(--color-brand-primary)] text-white rounded-full active:scale-95 shrink-0 ml-2"
                   >
                     <UserPlus size={18} />
                   </button>

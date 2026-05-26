@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import { io, Socket } from 'socket.io-client'
@@ -12,7 +12,7 @@ import RegisterDetailsPage from './pages/auth/RegisterDetailsPage'
 import FaceEnrollmentPage from './pages/auth/FaceEnrollmentPage'
 import AccountDeletedPage from './pages/auth/AccountDeletedPage'
 import HomePage from './pages/home/HomePage'
-import MapPage from './pages/map/MapPage'
+const MapPage = lazy(() => import('./pages/map/MapPage'))
 import MemoriesPage from './pages/memories/MemoriesPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import SettingsPage from './pages/settings/SettingsPage'
@@ -23,6 +23,7 @@ import {
   registerNotificationTapHandler,
   scheduleStreakNotifications,
 } from './lib/streakNotifications'
+import { resumeLocationSharingIfNeeded } from './lib/locationSharing'
 import { App as CapApp } from '@capacitor/app'
 
 import StreakDetailsPage from './pages/home/StreakDetailsPage'
@@ -66,6 +67,11 @@ export default function App() {
       if (user.faceEnrolled) void scheduleStreakNotifications()
     })
   }, [user?.id, user?.faceEnrolled])
+
+  useEffect(() => {
+    if (!user) return
+    void resumeLocationSharingIfNeeded()
+  }, [user?.id])
 
   useEffect(() => {
     if (!user) return
@@ -200,7 +206,15 @@ export default function App() {
                 <Navigate to="/face-enrollment" replace />
               ) : (
                 <AppLayout>
-                  <MapPage />
+                  <Suspense
+                    fallback={
+                      <div className="flex min-h-[60vh] items-center justify-center text-sm text-[var(--color-on-surface-variant)]">
+                        Загрузка карты…
+                      </div>
+                    }
+                  >
+                    <MapPage />
+                  </Suspense>
                 </AppLayout>
               )
             }

@@ -32,6 +32,9 @@ export default defineConfig({
     basicSsl(), // Включает HTTPS для локальной разработки (обязательно для камеры на телефоне)
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+      },
       manifest: {
         name: 'StreakMeet',
         short_name: 'StreakMeet',

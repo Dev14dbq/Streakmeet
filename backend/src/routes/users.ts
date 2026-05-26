@@ -128,11 +128,15 @@ router.get('/search', async (req: AuthRequest, res: Response) => {
   const users = await prisma.user.findMany({
     where: {
       deletedAt: null,
-      OR: [{ nickname: query }, { qrCodeId: query }],
       NOT: { id: req.userId },
+      OR: [
+        { nickname: { contains: query, mode: 'insensitive' } },
+        { qrCodeId: { contains: query, mode: 'insensitive' } },
+      ],
     },
     select: { id: true, nickname: true, avatarUrl: true },
-    take: 5,
+    take: 10,
+    orderBy: { nickname: 'asc' },
   })
 
   res.json(users)

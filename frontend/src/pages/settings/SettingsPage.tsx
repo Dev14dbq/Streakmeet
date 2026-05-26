@@ -20,6 +20,7 @@ import { fetcher, deleteAccount, syncDeviceTimezone, type AuthUser } from '../..
 import { toastError, toastInfo } from '../../lib/toast'
 import { formatTimezoneLabel, getDeviceTimezone } from '../../lib/timezone'
 import { scheduleStreakNotifications } from '../../lib/streakNotifications'
+import { stopLocationSharing } from '../../lib/locationSharing'
 
 const SETTINGS_KEY = 'streakmeet_settings'
 
@@ -157,8 +158,9 @@ export default function SettingsPage({ user: initialUser }: Props) {
     }
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     if (!confirm('Выйти из аккаунта?')) return
+    await stopLocationSharing().catch(() => {})
     localStorage.clear()
     window.location.href = '/login'
   }
@@ -173,6 +175,7 @@ export default function SettingsPage({ user: initialUser }: Props) {
     }
     try {
       await deleteAccount()
+      await stopLocationSharing().catch(() => {})
       localStorage.clear()
       window.location.href = '/login'
     } catch {

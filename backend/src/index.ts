@@ -7,6 +7,7 @@ import authRouter from './routes/auth.js'
 import usersRouter from './routes/users.js'
 import friendsRouter from './routes/friends.js'
 import streaksRouter from './routes/streaks.js'
+import locationRouter from './routes/location.js'
 import publicRouter from './routes/public.js'
 import { initSocket } from './lib/socket.js'
 import { UPLOADS_DIR } from './lib/paths.js'
@@ -38,6 +39,7 @@ app.use('/api/public', publicRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/friends', friendsRouter)
 app.use('/api/streaks', streaksRouter)
+app.use('/api/location', locationRouter)
 
 httpServer.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`)

@@ -97,6 +97,29 @@ export const getStreak = (partnerNickname: string) =>
 export const createStreak = (partnerId: string) => api.post('/api/streaks', { partnerId })
 export const remindStreak = (partnerNickname: string) =>
   api.post<{ ok: true }>(`/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}/remind`)
+
+export interface FriendLocation {
+  id: string
+  nickname: string
+  avatarUrl: string | null
+  latitude: number
+  longitude: number
+  updatedAt: string
+}
+
+export interface MyLocationState {
+  sharingLocation: boolean
+  latitude: number | null
+  longitude: number | null
+  updatedAt: string | null
+}
+
+export const getFriendLocations = () => api.get<FriendLocation[]>('/api/location/friends')
+export const getMyLocation = () => api.get<MyLocationState>('/api/location/me')
+export const setLocationSharing = (enabled: boolean) =>
+  api.post<MyLocationState>('/api/location/sharing', { enabled })
+export const updateMyLocation = (latitude: number, longitude: number) =>
+  api.post<{ ok: true }>('/api/location/update', { latitude, longitude })
 export interface MagicMeetPartner {
   nickname: string
   avatarUrl?: string | null

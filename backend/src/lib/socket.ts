@@ -39,3 +39,13 @@ export function notifyUser(userId: string, event: string, data: any) {
     io.to(socketId).emit(event, data)
   }
 }
+
+export function broadcastToUsers(userIds: string[], event: string, data: unknown) {
+  if (!io) return
+  for (const userId of userIds) {
+    const socketId = userSockets.get(userId)
+    if (socketId) {
+      io.to(socketId).emit(event, data)
+    }
+  }
+}

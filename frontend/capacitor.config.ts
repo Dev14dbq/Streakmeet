@@ -4,6 +4,14 @@ const config: CapacitorConfig = {
   appId: 'com.streakmeet.app',
   appName: 'streakmeet',
   webDir: 'dist',
+  android: {
+    useLegacyBridge: true,
+  },
+  plugins: {
+    CapacitorHttp: {
+      enabled: true,
+    },
+  },
 }
 
 export default config

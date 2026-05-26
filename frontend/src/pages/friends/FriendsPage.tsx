@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, UserPlus, Clock } from 'lucide-react'
 import useSWR from 'swr'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { searchUsers, requestFriend, acceptFriend, createStreak, fetcher } from '../../lib/api'
 import { toastError, toastLink } from '../../lib/toast'
 
@@ -26,7 +26,7 @@ export default function FriendsPage() {
       } finally {
         setLoadingSearch(false)
       }
-    }, 500)
+    }, 300)
     return () => clearTimeout(timer)
   }, [query])
 
@@ -74,7 +74,7 @@ export default function FriendsPage() {
         />
         <input
           type="text"
-          placeholder="Поиск по нику или QR-коду..."
+          placeholder="Найти по нику (часть ника) или QR..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full bg-[var(--color-surface-container-high)] text-white rounded-full py-4 pl-14 pr-6 outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] transition shadow-inner"
@@ -98,8 +98,12 @@ export default function FriendsPage() {
                   key={u.id}
                   className="flex items-center justify-between glass-card p-4 rounded-3xl"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-[var(--color-surface-container-highest)] flex items-center justify-center text-xl shadow-inner border border-white/5 overflow-hidden">
+                  <Link
+                    to={`/${u.nickname}`}
+                    onClick={() => setQuery('')}
+                    className="flex items-center gap-4 min-w-0 flex-1 active:opacity-80"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-[var(--color-surface-container-highest)] flex items-center justify-center text-xl shadow-inner border border-white/5 overflow-hidden shrink-0">
                       {u.avatarUrl ? (
                         <img
                           src={import.meta.env.VITE_API_URL + u.avatarUrl}
@@ -110,11 +114,14 @@ export default function FriendsPage() {
                         <span>👤</span>
                       )}
                     </div>
-                    <span className="font-bold text-white tracking-tight">@{u.nickname}</span>
-                  </div>
+                    <span className="font-bold text-white tracking-tight truncate">
+                      @{u.nickname}
+                    </span>
+                  </Link>
                   <button
+                    type="button"
                     onClick={() => handleAdd(u.id)}
-                    className="p-3 bg-[var(--color-brand-primary)] text-white rounded-full hover:bg-[var(--color-primary-container)] transition active:scale-95 shadow-[0_4px_15px_rgba(255,26,79,0.3)]"
+                    className="p-3 bg-[var(--color-brand-primary)] text-white rounded-full hover:bg-[var(--color-primary-container)] transition active:scale-95 shadow-[0_4px_15px_rgba(255,26,79,0.3)] shrink-0 ml-2"
                   >
                     <UserPlus size={20} />
                   </button>

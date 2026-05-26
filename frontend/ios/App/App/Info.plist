@@ -49,6 +49,14 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Камера нужна для Magic Meet и регистрации лица</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Карта показывает, где сейчас ваши друзья</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Трансляция геолокации работает в фоне, пока вы её не выключите</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Напомним, когда серия с друзьями скоро сгорит</string>
 </dict>

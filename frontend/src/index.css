@@ -273,3 +273,116 @@ body {
   background: var(--color-secondary-container);
   border-radius: 10px;
 }
+
+/* Leaflet map — dark StreakMeet theme */
+.streak-map .leaflet-container {
+  background: #0d0e12;
+  font-family: var(--font-sans);
+}
+
+.streak-map .leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.55) !important;
+  color: #8e8e93 !important;
+  font-size: 10px;
+  border-radius: 8px;
+  margin: 0 8px 96px 0;
+}
+
+.streak-map .leaflet-control-attribution a {
+  color: #ff1a4f !important;
+}
+
+.streak-map .leaflet-control-zoom {
+  border: none !important;
+  margin: 0 12px 108px 0 !important;
+  overflow: hidden;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.streak-map .leaflet-control-zoom a {
+  background: rgba(28, 28, 30, 0.92) !important;
+  color: #fff !important;
+  border: none !important;
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+}
+
+.map-marker-wrap {
+  background: transparent !important;
+  border: none !important;
+}
+
+.map-friend-marker {
+  position: relative;
+  width: 52px;
+  height: 52px;
+}
+
+.map-friend-marker__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid rgba(255, 26, 79, 0.85);
+  box-shadow: 0 8px 24px rgba(255, 26, 79, 0.35);
+}
+
+.map-friend-marker--selected .map-friend-marker__ring {
+  border-color: #fff;
+  box-shadow: 0 0 0 4px rgba(255, 26, 79, 0.35);
+}
+
+.map-friend-marker__avatar {
+  position: absolute;
+  inset: 4px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: #292a2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.map-friend-marker__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.map-self-marker {
+  position: relative;
+  width: 28px;
+  height: 28px;
+}
+
+.map-self-marker__pulse {
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  background: rgba(255, 26, 79, 0.25);
+  animation: map-self-pulse 2s ease-out infinite;
+}
+
+.map-self-marker__dot {
+  position: absolute;
+  inset: 6px;
+  border-radius: 9999px;
+  background: #ff1a4f;
+  border: 3px solid #fff;
+  box-shadow: 0 4px 14px rgba(255, 26, 79, 0.55);
+}
+
+@keyframes map-self-pulse {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
