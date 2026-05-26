@@ -19,7 +19,12 @@ import SettingsPage from './pages/settings/SettingsPage'
 import TermsPage from './pages/legal/TermsPage'
 import PrivacyPage from './pages/legal/PrivacyPage'
 import type { AuthUser, LegalConsentStatus } from './lib/api'
-import { getLegalConsentStatus, getRealtimeServerUrl, syncDeviceTimezone } from './lib/api'
+import {
+  getLegalConsentStatus,
+  getRealtimeServerUrl,
+  setUnauthorizedHandler,
+  syncDeviceTimezone,
+} from './lib/api'
 import { promptEssentialPermissionsOnFirstLaunch } from './lib/nativePermissions'
 import {
   registerNotificationTapHandler,
@@ -71,7 +76,13 @@ export default function App() {
         if (!cancelled) setLegalStatus(data)
       })
       .catch(() => {
-        if (!cancelled) setLegalStatus(null)
+        if (!cancelled) {
+          setLegalStatus({
+            needsAcceptance: true,
+            terms: { version: 0, accepted: false, updatedAt: null },
+            privacy: { version: 0, accepted: false, updatedAt: null },
+          })
+        }
       })
       .finally(() => {
         if (!cancelled) setLegalChecked(true)
@@ -117,6 +128,14 @@ export default function App() {
   }, [user?.id])
 
   useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setUser(null)
+      navigate('/login', { replace: true })
+    })
+    return () => setUnauthorizedHandler(() => {})
+  }, [navigate])
+
+  useEffect(() => {
     if (!user) return
     let cleanup: (() => void) | undefined
     void CapApp.addListener('appStateChange', ({ isActive }) => {
@@ -141,8 +160,11 @@ export default function App() {
       })
 
       socket.on('notification', (data: AppNotificationPayload) => {
-        void showInstantPushNotification(data)
-        if (!appActiveRef.current) return
+        window.dispatchEvent(new CustomEvent('app-notification', { detail: data }))
+        if (!appActiveRef.current) {
+          void showInstantPushNotification(data)
+          return
+        }
         if (data.route) {
           toastLink(data.message, data.route, navigate)
         } else {
@@ -154,7 +176,7 @@ export default function App() {
     return () => {
       if (socket) socket.disconnect()
     }
-  }, [user])
+  }, [user?.id, navigate])
 
   function handleAuth(authUser: AuthUser, token: string, fromSignup = false, returnTo?: string) {
     localStorage.setItem('accessToken', token)

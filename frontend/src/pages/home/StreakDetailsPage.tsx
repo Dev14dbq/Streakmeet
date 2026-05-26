@@ -116,7 +116,7 @@ export default function StreakDetailsPage() {
     return `/api/streaks/${encodeURIComponent(nickname.toLowerCase())}?page=${pageIndex + 1}&limit=10`
   }
 
-  const { data, size, setSize, error } = useSWRInfinite(getKey, fetcher)
+  const { data, size, setSize, error, mutate } = useSWRInfinite(getKey, fetcher)
 
   const loading = !data && !error
   const streakMeta = data?.[0]
@@ -150,6 +150,16 @@ export default function StreakDetailsPage() {
     }
     return [...map.entries()]
   }, [streakDays])
+
+  useEffect(() => {
+    function onNotification(event: Event) {
+      const detail = (event as CustomEvent<{ type?: string }>).detail
+      if (!detail?.type?.startsWith('remote_selfie')) return
+      void mutate()
+    }
+    window.addEventListener('app-notification', onNotification)
+    return () => window.removeEventListener('app-notification', onNotification)
+  }, [mutate])
 
   useEffect(() => {
     if (!streakMeta || !nickname) return

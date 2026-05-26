@@ -14,6 +14,7 @@ import {
 } from '../lib/accountDeletion.js'
 import { isValidTimezone, normalizeTimezone } from '../lib/timezone.js'
 import { acceptCurrentLegalForUser } from '../lib/legalDocuments.js'
+import { getJwtSecret } from '../lib/jwtSecret.js'
 
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 
@@ -90,11 +91,10 @@ router.post('/enroll-face', requireAuth, async (req: AuthRequest, res: Response)
   }
 })
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'dev_secret'
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '7d'
 
 function makeTokens(userId: string) {
-  const accessToken = jwt.sign({ sub: userId }, JWT_SECRET, {
+  const accessToken = jwt.sign({ sub: userId }, getJwtSecret(), {
     expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
   })
   return { accessToken }
@@ -333,7 +333,7 @@ router.post('/register', async (req: Request, res: Response) => {
     username?: string
     timezone?: string
   }
-  if (!email || !password || !nickname || !username) {
+  if (!email || !password || !username) {
     res.status(400).json({ error: 'All fields are required' })
     return
   }

@@ -12,6 +12,24 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+let onUnauthorized: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: () => void) {
+  onUnauthorized = handler
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('user')
+      onUnauthorized?.()
+    }
+    return Promise.reject(error)
+  }
+)
+
 // SWR Fetcher
 export const fetcher = (url: string) => api.get(url).then((res) => res.data)
 
@@ -75,7 +93,8 @@ export function getDeletedAccountInfo(err: unknown): DeletedAccountInfo | null {
   return null
 }
 
-export const searchUsers = (q: string) => api.get<AuthUser[]>(`/api/users/search?q=${q}`)
+export const searchUsers = (q: string) =>
+  api.get<AuthUser[]>(`/api/users/search?q=${encodeURIComponent(q)}`)
 export const uploadAvatar = (photoBase64: string) =>
   api.post<{ avatarUrl: string }>('/api/users/avatar', { photoBase64 })
 export const updateEmail = (email: string) => api.patch<AuthUser>('/api/users/email', { email })

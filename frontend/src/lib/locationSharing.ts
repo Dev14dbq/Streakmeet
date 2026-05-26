@@ -36,10 +36,14 @@ async function pushLocation(latitude: number, longitude: number): Promise<void> 
     }
   }
 
-  lastSentAt = now
-  lastSentLat = latitude
-  lastSentLng = longitude
-  await updateMyLocation(latitude, longitude)
+  try {
+    await updateMyLocation(latitude, longitude)
+    lastSentAt = now
+    lastSentLat = latitude
+    lastSentLng = longitude
+  } catch (e) {
+    console.warn('[location-sharing] update failed', e)
+  }
 }
 
 async function startWatcher(): Promise<void> {
@@ -125,7 +129,10 @@ export async function resumeLocationSharingIfNeeded(): Promise<void> {
     const { data } = await getMyLocation()
     if (!data.sharingLocation) return
     const granted = await ensureLocationPermission()
-    if (!granted) return
+    if (!granted) {
+      await setLocationSharing(false).catch(() => {})
+      return
+    }
     await startWatcher()
   } catch {
     /* ignore */

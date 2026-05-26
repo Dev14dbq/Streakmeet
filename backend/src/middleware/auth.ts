@@ -1,6 +1,7 @@
 import { type Request, type Response, type NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { prisma } from '../lib/prisma.js'
+import { getJwtSecret } from '../lib/jwtSecret.js'
 
 export interface AuthRequest extends Request {
   userId?: string
@@ -20,8 +21,7 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   }
 
   try {
-    const secret = process.env.JWT_SECRET ?? 'dev_secret'
-    const payload = jwt.verify(token, secret) as { sub: string }
+    const payload = jwt.verify(token, getJwtSecret()) as { sub: string }
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
       select: { deletedAt: true },
@@ -54,8 +54,7 @@ export async function optionalAuth(req: AuthRequest, _res: Response, next: NextF
   }
 
   try {
-    const secret = process.env.JWT_SECRET ?? 'dev_secret'
-    const payload = jwt.verify(token, secret) as { sub: string }
+    const payload = jwt.verify(token, getJwtSecret()) as { sub: string }
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
       select: { deletedAt: true },

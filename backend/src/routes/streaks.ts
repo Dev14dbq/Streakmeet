@@ -16,6 +16,8 @@ import {
   legacyEmbeddingMessage,
 } from '../lib/face.js'
 import { getLocalDateString, normalizeTimezone } from '../lib/timezone.js'
+import { expireStaleRemoteSelfieRequests, REMOTE_SELFIE_TTL_MS } from '../lib/remoteSelfie.js'
+import { parsePagination } from '../lib/pagination.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -403,13 +405,8 @@ router.post('/:streakId/remote-selfie/init', async (req: AuthRequest, res: Respo
   const partner = streak.userAId === userId ? streak.userB : streak.userA
   const sender = streak.userAId === userId ? streak.userA : streak.userB
 
-  // Save the sender's photo temporarily or permanently
-  const savedPhotoUrl = await saveBase64ImageAsAvif(
-    photoBase64,
-    `remote_selfie_${Date.now()}_${userId}`
-  )
+  await expireStaleRemoteSelfieRequests(streak.id)
 
-  // Create request
   const existingPending = await prisma.remoteSelfieRequest.findFirst({
     where: { streakId: streak.id, status: 'PENDING' },
   })
@@ -417,6 +414,11 @@ router.post('/:streakId/remote-selfie/init', async (req: AuthRequest, res: Respo
     res.status(409).json({ error: 'Уже есть активный запрос на селфи' })
     return
   }
+
+  const savedPhotoUrl = await saveBase64ImageAsAvif(
+    photoBase64,
+    `remote_selfie_${Date.now()}_${userId}`
+  )
 
   const request = await prisma.remoteSelfieRequest.create({
     data: {
@@ -465,14 +467,39 @@ router.post(
       return
     }
 
+    const claimed = await prisma.remoteSelfieRequest.updateMany({
+      where: {
+        id: requestId,
+        streakId,
+        receiverId: userId,
+        status: 'PENDING',
+      },
+      data: { status: 'COMPLETED' },
+    })
+    if (claimed.count === 0) {
+      res.status(409).json({ error: 'Запрос уже обработан или истек' })
+      return
+    }
+
     const streak = await prisma.streak.findUnique({
       where: { id: streakId },
       include: { userA: true, userB: true },
     })
 
     if (!streak) {
+      await prisma.remoteSelfieRequest.update({
+        where: { id: requestId },
+        data: { status: 'PENDING' },
+      })
       res.status(404).json({ error: 'Серия не найдена' })
       return
+    }
+
+    async function revertClaim() {
+      await prisma.remoteSelfieRequest.update({
+        where: { id: requestId },
+        data: { status: 'PENDING' },
+      })
     }
 
     // Combine images
@@ -485,6 +512,7 @@ router.post(
       )
     } catch (e) {
       console.error('Error combining images', e)
+      await revertClaim()
       res.status(500).json({ error: 'Ошибка при объединении фото' })
       return
     }
@@ -494,15 +522,10 @@ router.post(
       photoHash = await hashImageFile(combinedUrl)
     } catch (e) {
       console.error('Error hashing combined image', e)
+      await revertClaim()
       res.status(500).json({ error: 'Ошибка при сохранении фото' })
       return
     }
-
-    // Mark request as completed
-    await prisma.remoteSelfieRequest.update({
-      where: { id: requestId },
-      data: { status: 'COMPLETED' },
-    })
 
     // Add MeetProof and extend streak
     const userTimezone = await getUserTimezone(userId)
@@ -559,17 +582,14 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
       : req.params.partnerNickname
   )
   const userId = req.userId!
-  const page = parseInt(req.query.page as string) || 1
-  const limit = parseInt(req.query.limit as string) || 10
+  const { page, limit } = parsePagination(req.query, { limit: 10, maxLimit: 30 })
 
   const isLegacyId = /^c[a-z0-9]{20,}$/i.test(param)
+  const include = streakDetailInclude(page, limit, userId)
 
-  let streak
+  let streakId: string | null = null
   if (isLegacyId) {
-    streak = await prisma.streak.findUnique({
-      where: { id: param },
-      include: streakDetailInclude(page, limit, userId),
-    })
+    streakId = param
   } else {
     const partner = await prisma.user.findFirst({
       where: { nickname: param.toLowerCase(), deletedAt: null },
@@ -579,7 +599,7 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
       res.status(404).json({ error: 'Streak not found' })
       return
     }
-    streak = await prisma.streak.findFirst({
+    const meta = await prisma.streak.findFirst({
       where: {
         active: true,
         OR: [
@@ -587,9 +607,22 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
           { userAId: partner.id, userBId: userId },
         ],
       },
-      include: streakDetailInclude(page, limit, userId),
+      select: { id: true },
     })
+    streakId = meta?.id ?? null
   }
+
+  if (!streakId) {
+    res.status(404).json({ error: 'Streak not found' })
+    return
+  }
+
+  await expireStaleRemoteSelfieRequests(streakId)
+
+  const streak = await prisma.streak.findUnique({
+    where: { id: streakId },
+    include,
+  })
 
   if (!streak || (streak.userAId !== userId && streak.userBId !== userId)) {
     res.status(404).json({ error: 'Streak not found' })
@@ -600,12 +633,14 @@ router.get('/:partnerNickname', async (req: AuthRequest, res: Response) => {
 })
 
 function streakDetailInclude(page: number, limit: number, userId: string) {
+  const pendingSince = new Date(Date.now() - REMOTE_SELFIE_TTL_MS)
   return {
     userA: { select: { id: true, nickname: true, avatarUrl: true } },
     userB: { select: { id: true, nickname: true, avatarUrl: true } },
     remoteSelfies: {
       where: {
         status: 'PENDING' as const,
+        createdAt: { gte: pendingSince },
         OR: [{ receiverId: userId }, { senderId: userId }],
       },
       orderBy: { createdAt: 'desc' as const },

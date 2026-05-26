@@ -46,6 +46,15 @@ router.post('/request', async (req: AuthRequest, res: Response) => {
     return
   }
 
+  const friend = await prisma.user.findFirst({
+    where: { id: friendId, deletedAt: null },
+    select: { id: true },
+  })
+  if (!friend) {
+    res.status(404).json({ error: 'User not found' })
+    return
+  }
+
   // Проверяем, нет ли уже связи
   const existing = await prisma.friendship.findFirst({
     where: {
@@ -91,6 +100,11 @@ router.post('/accept', async (req: AuthRequest, res: Response) => {
   const friendship = await prisma.friendship.findUnique({ where: { id: friendshipId } })
   if (!friendship || friendship.userBId !== userId) {
     res.status(404).json({ error: 'Request not found' })
+    return
+  }
+
+  if (friendship.status !== 'PENDING') {
+    res.status(400).json({ error: 'Request is not pending' })
     return
   }
 

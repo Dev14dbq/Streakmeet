@@ -240,6 +240,17 @@ export default function PublicProfilePage({ currentUser }: Props) {
             <p className="text-[var(--color-on-surface-variant)] text-sm text-center py-10 opacity-70">
               Загрузка...
             </p>
+          ) : photosError ? (
+            <div className="glass-card rounded-3xl p-8 text-center border border-white/5">
+              <p className="text-white font-semibold mb-2">Не удалось загрузить фото</p>
+              <button
+                type="button"
+                onClick={() => setSize(1)}
+                className="text-sm font-bold text-[var(--color-brand-primary)]"
+              >
+                Повторить
+              </button>
+            </div>
           ) : photos.length === 0 ? (
             <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-white/5">
               <ImageIcon

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText, Shield } from 'lucide-react'
 import { acceptLegalDocuments, type LegalConsentStatus } from '../lib/api'
@@ -9,12 +10,18 @@ interface Props {
 }
 
 export default function LegalConsentModal({ status, onAccepted }: Props) {
+  const [accepting, setAccepting] = useState(false)
+
   async function handleAccept() {
+    if (accepting) return
+    setAccepting(true)
     try {
       await acceptLegalDocuments()
       onAccepted()
     } catch {
       toastError('Не удалось сохранить согласие')
+    } finally {
+      setAccepting(false)
     }
   }
 
@@ -77,9 +84,10 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
         <button
           type="button"
           onClick={handleAccept}
-          className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition active:scale-95"
+          disabled={accepting}
+          className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition active:scale-95 disabled:opacity-60"
         >
-          Принимаю
+          {accepting ? 'Сохранение...' : 'Принимаю'}
         </button>
       </div>
     </div>

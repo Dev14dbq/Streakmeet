@@ -1,6 +1,7 @@
 import { Router, type Response } from 'express'
 import { optionalAuth, type AuthRequest } from '../middleware/auth.js'
 import { prisma } from '../lib/prisma.js'
+import { parsePagination } from '../lib/pagination.js'
 
 const router = Router()
 
@@ -37,9 +38,23 @@ async function getFriendship(viewerId: string | undefined, profileUserId: string
   }
 }
 
-async function getUserPhotos(userId: string, page: number, limit: number) {
+async function getUserPhotos(
+  userId: string,
+  page: number,
+  limit: number,
+  options?: { mutualWithUserId?: string }
+) {
+  const streakWhere = options?.mutualWithUserId
+    ? {
+        OR: [
+          { userAId: userId, userBId: options.mutualWithUserId },
+          { userAId: options.mutualWithUserId, userBId: userId },
+        ],
+      }
+    : { OR: [{ userAId: userId }, { userBId: userId }] }
+
   const streaks = await prisma.streak.findMany({
-    where: { OR: [{ userAId: userId }, { userBId: userId }] },
+    where: streakWhere,
     select: { id: true },
   })
   const streakIds = streaks.map((s) => s.id)
@@ -108,9 +123,10 @@ router.get('/users/:nickname/photos', optionalAuth, async (req: AuthRequest, res
     return
   }
 
-  const page = parseInt(req.query.page as string) || 1
-  const limit = parseInt(req.query.limit as string) || 12
-  const photos = await getUserPhotos(user.id, page, limit)
+  const { page, limit } = parsePagination(req.query)
+  const mutualWithUserId =
+    !user.isPublic && isFriendOrSelf && req.userId !== user.id ? req.userId : undefined
+  const photos = await getUserPhotos(user.id, page, limit, { mutualWithUserId })
   res.json(photos)
 })
 

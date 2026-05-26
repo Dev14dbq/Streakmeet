@@ -139,7 +139,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-export default function SettingsPage({ user: initialUser }: Props) {
+export default function SettingsPage({ user: initialUser, onUserUpdate }: Props) {
   const navigate = useNavigate()
   const { data: me, mutate } = useSWR<AuthUser & { timezone?: string }>('/api/users/me', fetcher)
   const [local, setLocal] = useState<LocalSettings>(loadLocalSettings)
@@ -194,7 +194,9 @@ export default function SettingsPage({ user: initialUser }: Props) {
   async function handleTogglePublic(v: boolean) {
     try {
       const { data: updated } = await updatePublicProfile(v)
-      mutate({ ...(me ?? initialUser), ...updated }, false)
+      const next = { ...(me ?? initialUser), ...updated }
+      mutate(next, false)
+      onUserUpdate?.(next)
     } catch {
       toastError('Не удалось обновить настройки профиля')
     }
@@ -209,7 +211,9 @@ export default function SettingsPage({ user: initialUser }: Props) {
     }
     try {
       const { data: updated } = await updateEmail(newEmail)
-      mutate({ ...(me ?? initialUser), ...updated }, false)
+      const next = { ...(me ?? initialUser), ...updated }
+      mutate(next, false)
+      onUserUpdate?.(next)
       toastSuccess('Email успешно изменён')
     } catch (e: any) {
       toastError(e.response?.data?.error || 'Не удалось изменить email')

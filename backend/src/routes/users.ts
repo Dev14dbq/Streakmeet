@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js'
 import { saveBase64ImageAsAvif } from '../lib/saveImage.js'
 import { isValidTimezone } from '../lib/timezone.js'
 import { findUserByEmail } from '../lib/accountDeletion.js'
+import { parsePagination } from '../lib/pagination.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -24,6 +25,10 @@ router.get('/me', async (req: AuthRequest, res: Response) => {
       isPublic: true,
     },
   })
+  if (!user) {
+    res.status(404).json({ error: 'User not found' })
+    return
+  }
   res.json(user)
 })
 
@@ -142,8 +147,7 @@ router.post('/avatar', async (req: AuthRequest, res: Response) => {
 
 // GET /api/users/photos
 router.get('/photos', async (req: AuthRequest, res: Response) => {
-  const page = parseInt(req.query.page as string) || 1
-  const limit = parseInt(req.query.limit as string) || 12
+  const { page, limit } = parsePagination(req.query)
 
   const streaks = await prisma.streak.findMany({
     where: {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, X } from 'lucide-react'
 import { QRCode } from 'react-qr-code'
@@ -16,6 +16,7 @@ interface Props {
 export default function ProfileQrModal({ nickname, open, onClose }: Props) {
   const navigate = useNavigate()
   const [showScanner, setShowScanner] = useState(false)
+  const scanningRef = useRef(false)
 
   if (!open && !showScanner) return null
 
@@ -49,10 +50,12 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
         <div className="flex-1 relative overflow-hidden rounded-3xl mx-4 mb-12 bg-zinc-900 flex items-center justify-center">
           <Scanner
             onScan={async (result) => {
-              if (!result?.length) return
+              if (!result?.length || scanningRef.current) return
+              scanningRef.current = true
               const target = parseQrScanTarget(result[0].rawValue)
               if (!target) {
                 toastError('Некорректный QR-код')
+                scanningRef.current = false
                 return
               }
               try {
@@ -68,6 +71,8 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
                 onClose()
               } catch {
                 toastError('Ошибка или запрос уже отправлен')
+              } finally {
+                scanningRef.current = false
               }
             }}
             components={{ finder: true }}

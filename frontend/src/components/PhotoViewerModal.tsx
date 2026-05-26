@@ -61,6 +61,7 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
         toastSuccess('Фото сохранено в Документы')
       } else {
         const response = await fetch(remoteUrl)
+        if (!response.ok) throw new Error('Download failed')
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -90,6 +91,7 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
         // Web share API might not support sharing image blobs directly easily without File objects
         // Let's try to fetch and share as File
         const response = await fetch(remoteUrl)
+        if (!response.ok) throw new Error('Share fetch failed')
         const blob = await response.blob()
         const file = new File([blob], `StreakMeet_${photo.id}.jpg`, { type: blob.type })
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -107,7 +109,9 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
         toastError('Поделиться не поддерживается на этом устройстве')
       }
     } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') return
       console.error('Share error:', e)
+      toastError('Не удалось поделиться фото')
     }
   }
 

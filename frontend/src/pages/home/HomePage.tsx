@@ -25,6 +25,7 @@ export default function HomePage({ user }: Props) {
     { id: string; nickname: string; avatarUrl?: string }[]
   >([])
   const [loadingSearch, setLoadingSearch] = useState(false)
+  const [searchError, setSearchError] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showQr, setShowQr] = useState(false)
 
@@ -41,13 +42,18 @@ export default function HomePage({ user }: Props) {
   useEffect(() => {
     if (query.length < 3) {
       setSearchResults([])
+      setSearchError(false)
       return
     }
     const timer = setTimeout(async () => {
       setLoadingSearch(true)
+      setSearchError(false)
       try {
         const { data } = await searchUsers(query)
         setSearchResults(data)
+      } catch {
+        setSearchResults([])
+        setSearchError(true)
       } finally {
         setLoadingSearch(false)
       }
@@ -216,6 +222,8 @@ export default function HomePage({ user }: Props) {
           <div className="mt-3 flex flex-col gap-2">
             {loadingSearch ? (
               <p className="text-[var(--color-on-surface-variant)] text-sm py-2">Поиск...</p>
+            ) : searchError ? (
+              <p className="text-[var(--color-error)] text-sm py-2">Не удалось выполнить поиск</p>
             ) : searchResults.length === 0 ? (
               <p className="text-[var(--color-on-surface-variant)] text-sm py-2">Никого не нашли</p>
             ) : (
@@ -251,6 +259,17 @@ export default function HomePage({ user }: Props) {
 
       {loading ? (
         <p className="text-zinc-500 text-center py-10">Загрузка...</p>
+      ) : streaksError ? (
+        <div className="glass-card rounded-3xl p-8 text-center border border-white/5">
+          <p className="text-white font-semibold mb-2">Не удалось загрузить данные</p>
+          <button
+            type="button"
+            onClick={() => mutateStreaks()}
+            className="text-sm font-bold text-[var(--color-brand-primary)]"
+          >
+            Повторить
+          </button>
+        </div>
       ) : (
         <>
           {incoming.length > 0 && (

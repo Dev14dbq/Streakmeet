@@ -1,6 +1,8 @@
 import { Server } from 'socket.io'
 import type { Server as HttpServer } from 'http'
 import jwt from 'jsonwebtoken'
+import { prisma } from './prisma.js'
+import { getJwtSecret } from './jwtSecret.js'
 
 let io: Server
 
@@ -9,11 +11,16 @@ const userSockets = new Map<string, string>()
 export function initSocket(server: HttpServer) {
   io = new Server(server, { cors: { origin: '*' } })
 
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth.token
     if (!token) return next(new Error('Authentication error'))
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET ?? 'dev_secret') as { sub: string }
+      const payload = jwt.verify(token, getJwtSecret()) as { sub: string }
+      const user = await prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { deletedAt: true },
+      })
+      if (!user || user.deletedAt) return next(new Error('Authentication error'))
       socket.data.userId = payload.sub
       next()
     } catch {

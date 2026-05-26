@@ -19,6 +19,10 @@ export default function ProfilePage({ user: initialUser }: Props) {
   const location = useLocation()
   const [user, setUser] = useState(initialUser)
 
+  useEffect(() => {
+    setUser(initialUser)
+  }, [initialUser])
+
   const getKey = (pageIndex: number, previousPageData: unknown[]) => {
     if (previousPageData && !previousPageData.length) return null
     return `/api/users/photos?page=${pageIndex + 1}&limit=12`
