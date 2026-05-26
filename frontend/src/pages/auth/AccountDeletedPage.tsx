@@ -28,8 +28,12 @@ export default function AccountDeletedPage({ onAuth }: Props) {
     setLoading(true)
     try {
       let payload
-      if (state.provider === 'google' && state.accessToken) {
-        payload = { provider: 'google' as const, accessToken: state.accessToken }
+      if (state.provider === 'google' && (state.accessToken || state.idToken)) {
+        payload = {
+          provider: 'google' as const,
+          accessToken: state.accessToken,
+          idToken: state.idToken,
+        }
       } else if (state.provider === 'apple' && state.idToken) {
         payload = { provider: 'apple' as const, idToken: state.idToken }
       } else if (state.email && state.password) {

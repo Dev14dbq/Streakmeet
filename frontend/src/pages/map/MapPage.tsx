@@ -5,13 +5,26 @@ import { io, type Socket } from 'socket.io-client'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
-import { MapPin, Radio, Smartphone, Users, X } from 'lucide-react'
-import { getFriendLocations, getMyLocation, type FriendLocation } from '../../lib/api'
+import { MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-react'
+import {
+  getFriendLocations,
+  getMyLocation,
+  type AuthUser,
+  type FriendLocation,
+} from '../../lib/api'
 import {
   isLocationSharingActive,
   startLocationSharing,
   stopLocationSharing,
 } from '../../lib/locationSharing'
+import { openAlwaysLocationSettings } from '../../lib/alwaysLocationPermission'
+import {
+  distanceMeters,
+  formatCoords,
+  formatDistance,
+  openNavigationRoute,
+  reverseGeocode,
+} from '../../lib/mapGeo'
 import { toastError } from '../../lib/toast'
 
 const API_BASE = import.meta.env.VITE_API_URL || ''
@@ -29,23 +42,35 @@ function formatUpdatedAt(iso: string): string {
   return `${h} ч назад`
 }
 
-function friendMarkerHtml(friend: FriendLocation, selected: boolean): string {
-  const avatar = friend.avatarUrl
-    ? `<img src="${API_BASE}${friend.avatarUrl}" alt="" />`
-    : `<span>${friend.nickname.slice(0, 1).toUpperCase()}</span>`
-  return `
-    <div class="map-friend-marker ${selected ? 'map-friend-marker--selected' : ''}">
-      <div class="map-friend-marker__ring"></div>
-      <div class="map-friend-marker__avatar">${avatar}</div>
-    </div>
-  `
+function avatarSrc(url: string | null | undefined): string | null {
+  if (!url) return null
+  if (url.startsWith('http')) return url
+  const base = API_BASE || window.location.origin
+  return `${base}${url}`
 }
 
-function selfMarkerHtml(): string {
+function userMarkerHtml(opts: {
+  nickname: string
+  avatarUrl?: string | null
+  variant: 'self' | 'friend'
+  selected?: boolean
+}): string {
+  const src = avatarSrc(opts.avatarUrl)
+  const initial = opts.nickname.slice(0, 1).toUpperCase() || '?'
+  const avatar = src ? `<img src="${src}" alt="" loading="lazy" />` : `<span>${initial}</span>`
+  const classes = [
+    'map-user-marker',
+    opts.variant === 'self' ? 'map-user-marker--self' : 'map-user-marker--friend',
+    opts.selected ? 'map-user-marker--selected' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return `
-    <div class="map-self-marker">
-      <div class="map-self-marker__pulse"></div>
-      <div class="map-self-marker__dot"></div>
+    <div class="${classes}">
+      ${opts.variant === 'self' ? '<div class="map-user-marker__pulse"></div>' : ''}
+      <div class="map-user-marker__ring"></div>
+      <div class="map-user-marker__avatar">${avatar}</div>
     </div>
   `
 }
@@ -76,12 +101,56 @@ export default function MapPage() {
   const [sharingBusy, setSharingBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<FriendLocation | null>(null)
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
+  const [addressLoading, setAddressLoading] = useState(false)
   const [selfPos, setSelfPos] = useState<{ lat: number; lng: number } | null>(null)
+
+  const me = useMemo<AuthUser>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}') as AuthUser
+    } catch {
+      return {} as AuthUser
+    }
+  }, [])
+
+  const markerSize = 56
+  const markerAnchor = markerSize / 2
 
   const onlineCount = useMemo(
     () => friends.filter((f) => Date.now() - new Date(f.updatedAt).getTime() < 5 * 60_000).length,
     [friends]
   )
+
+  const selectedDistance = useMemo(() => {
+    if (!selected || !selfPos) return null
+    return formatDistance(
+      distanceMeters(selfPos.lat, selfPos.lng, selected.latitude, selected.longitude)
+    )
+  }, [selected, selfPos])
+
+  useEffect(() => {
+    if (!selected) {
+      setSelectedAddress(null)
+      setAddressLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setAddressLoading(true)
+    setSelectedAddress(null)
+
+    void reverseGeocode(selected.latitude, selected.longitude)
+      .then((address) => {
+        if (!cancelled) setSelectedAddress(address)
+      })
+      .finally(() => {
+        if (!cancelled) setAddressLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selected?.id, selected?.latitude, selected?.longitude])
 
   const upsertFriend = useCallback((friend: FriendLocation) => {
     setFriends((prev) => {
@@ -165,7 +234,7 @@ export default function MapPage() {
       maxZoom: 20,
     }).addTo(map)
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map)
+    L.control.zoom({ position: 'topright' }).addTo(map)
     mapRef.current = map
 
     void Geolocation.getCurrentPosition({
@@ -196,9 +265,14 @@ export default function MapPage() {
     for (const friend of friends) {
       const icon = L.divIcon({
         className: 'map-marker-wrap',
-        html: friendMarkerHtml(friend, selected?.id === friend.id),
-        iconSize: [52, 52],
-        iconAnchor: [26, 26],
+        html: userMarkerHtml({
+          nickname: friend.nickname,
+          avatarUrl: friend.avatarUrl,
+          variant: 'friend',
+          selected: selected?.id === friend.id,
+        }),
+        iconSize: [markerSize, markerSize],
+        iconAnchor: [markerAnchor, markerAnchor],
       })
 
       const existing = markersRef.current.get(friend.id)
@@ -219,7 +293,7 @@ export default function MapPage() {
         markersRef.current.delete(id)
       }
     }
-  }, [friends, selected])
+  }, [friends, selected, markerSize, markerAnchor])
 
   useEffect(() => {
     const map = mapRef.current
@@ -227,18 +301,23 @@ export default function MapPage() {
 
     const icon = L.divIcon({
       className: 'map-marker-wrap',
-      html: selfMarkerHtml(),
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
+      html: userMarkerHtml({
+        nickname: me.nickname || 'Я',
+        avatarUrl: me.avatarUrl,
+        variant: 'self',
+      }),
+      iconSize: [markerSize, markerSize],
+      iconAnchor: [markerAnchor, markerAnchor],
     })
 
     if (selfMarkerRef.current) {
       selfMarkerRef.current.setLatLng([selfPos.lat, selfPos.lng])
+      selfMarkerRef.current.setIcon(icon)
     } else {
       selfMarkerRef.current = L.marker([selfPos.lat, selfPos.lng], { icon, zIndexOffset: 1000 })
       selfMarkerRef.current.addTo(map)
     }
-  }, [selfPos])
+  }, [selfPos, me.nickname, me.avatarUrl, markerSize, markerAnchor])
 
   useEffect(() => {
     if (!selected || !mapRef.current) return
@@ -264,7 +343,11 @@ export default function MapPage() {
         mapRef.current?.setView([pos.coords.latitude, pos.coords.longitude], 15)
       }
     } catch (e) {
-      if ((e as Error).message === 'permission_denied') {
+      const code = (e as Error).message
+      if (code === 'not_always') {
+        toastError('Выбери «Разрешить всегда», не «При использовании»')
+        void openAlwaysLocationSettings()
+      } else if (code === 'permission_denied') {
         toastError('Нужен доступ к геолокации')
       } else {
         toastError('Не удалось переключить трансляцию')
@@ -274,13 +357,28 @@ export default function MapPage() {
     }
   }
 
+  async function openRouteToSelected() {
+    if (!selected) return
+    try {
+      await openNavigationRoute({
+        lat: selected.latitude,
+        lng: selected.longitude,
+        label: `@${selected.nickname}`,
+        originLat: selfPos?.lat,
+        originLng: selfPos?.lng,
+      })
+    } catch {
+      toastError('Не удалось открыть навигатор')
+    }
+  }
+
   if (!isNative) return <NativeAppGate />
 
   return (
     <div className="relative h-[calc(100dvh-5.5rem)] min-h-[420px] w-full overflow-hidden">
       <div ref={mapElRef} className="absolute inset-0 z-0 streak-map" />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-black/85 via-black/35 to-transparent px-5 pb-10 pt-4">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-black/85 via-black/35 to-transparent px-5 pb-10 pt-[max(3rem,calc(env(safe-area-inset-top)+1rem))]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-brand-primary)]">
@@ -303,39 +401,78 @@ export default function MapPage() {
       </div>
 
       {selected && (
-        <div className="absolute inset-x-4 top-28 z-20">
-          <div className="glass-card flex items-center gap-3 rounded-[24px] border border-white/10 px-4 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
-            <div className="h-12 w-12 overflow-hidden rounded-full bg-[var(--color-surface-container-high)]">
-              {selected.avatarUrl ? (
-                <img
-                  src={API_BASE + selected.avatarUrl}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-lg">👤</div>
-              )}
+        <div className="absolute inset-x-4 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-20">
+          <div className="glass-card rounded-[28px] border border-white/10 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.55)]">
+            <div className="mb-3 flex items-start gap-3">
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-container-high)] ring-2 ring-[var(--color-brand-primary)]">
+                {selected.avatarUrl ? (
+                  <img
+                    src={avatarSrc(selected.avatarUrl) ?? ''}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xl font-bold text-white">
+                    {selected.nickname.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="truncate text-lg font-black text-white">@{selected.nickname}</p>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    className="shrink-0 rounded-full p-1.5 text-[var(--color-on-surface-variant)]"
+                    aria-label="Закрыть"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <p className="mt-0.5 text-xs text-[var(--color-on-surface-variant)]">
+                  {formatUpdatedAt(selected.updatedAt)}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-bold text-white">@{selected.nickname}</p>
-              <p className="text-xs text-[var(--color-on-surface-variant)]">
-                {formatUpdatedAt(selected.updatedAt)}
-              </p>
+
+            <div className="mb-3 space-y-2 rounded-2xl bg-black/25 px-3 py-3">
+              <div className="flex items-start gap-2">
+                <MapPin size={15} className="mt-0.5 shrink-0 text-[var(--color-brand-primary)]" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)]">
+                    Адрес
+                  </p>
+                  <p className="text-sm leading-snug text-white">
+                    {addressLoading ? 'Определяем…' : (selectedAddress ?? '—')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 border-t border-white/5 pt-2 text-xs">
+                <span className="text-[var(--color-on-surface-variant)]">
+                  {formatCoords(selected.latitude, selected.longitude)}
+                </span>
+                <span className="font-semibold text-white">
+                  {selectedDistance ? `~${selectedDistance} от тебя` : 'Расстояние неизвестно'}
+                </span>
+              </div>
             </div>
-            <Link
-              to={`/${selected.nickname}`}
-              className="rounded-full bg-white/10 px-3 py-2 text-xs font-semibold text-white"
-            >
-              Профиль
-            </Link>
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              className="rounded-full p-2 text-[var(--color-on-surface-variant)]"
-              aria-label="Закрыть"
-            >
-              <X size={16} />
-            </button>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void openRouteToSelected()}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] py-3.5 text-sm font-black text-white shadow-[0_8px_24px_rgba(255,26,79,0.4)] active:scale-[0.98]"
+              >
+                <Navigation size={18} />
+                Построить маршрут
+              </button>
+              <Link
+                to={`/${selected.nickname}`}
+                className="flex items-center justify-center rounded-full bg-white/10 px-5 py-3.5 text-sm font-semibold text-white"
+              >
+                Профиль
+              </Link>
+            </div>
           </div>
         </div>
       )}

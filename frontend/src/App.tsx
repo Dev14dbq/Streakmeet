@@ -24,6 +24,7 @@ import {
   scheduleStreakNotifications,
 } from './lib/streakNotifications'
 import { resumeLocationSharingIfNeeded } from './lib/locationSharing'
+import { initGoogleAuth } from './lib/googleAuth'
 import { App as CapApp } from '@capacitor/app'
 
 import StreakDetailsPage from './pages/home/StreakDetailsPage'
@@ -60,6 +61,10 @@ export default function App() {
   useEffect(() => {
     return registerNotificationTapHandler((route) => navigate(route))
   }, [navigate])
+
+  useEffect(() => {
+    void initGoogleAuth()
+  }, [])
 
   useEffect(() => {
     if (!user) return

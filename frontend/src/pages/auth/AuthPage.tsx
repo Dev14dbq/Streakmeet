@@ -1,7 +1,17 @@
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useGoogleLogin } from '@react-oauth/google'
-import { api, getDeletedAccountInfo, type AuthUser } from '../../lib/api'
-import { getDeviceTimezone } from '../../lib/timezone'
+import type { AuthUser } from '../../lib/api'
+import { completeGoogleSignIn } from '../../lib/completeGoogleSignIn'
+import {
+  consumeGoogleRedirectTokens,
+  initGoogleAuth,
+  isGoogleAuthCancelled,
+  signInWithGoogleNative,
+  startGoogleRedirectLogin,
+  useGoogleRedirectFlow,
+  useNativeGoogleSignIn,
+} from '../../lib/googleAuth'
 import { toastError, toastInfo } from '../../lib/toast'
 
 interface Props {
@@ -12,38 +22,87 @@ export default function AuthPage({ onAuth }: Props) {
   const navigate = useNavigate()
   const location = useLocation()
   const returnTo = (location.state as { returnTo?: string } | null)?.returnTo
+  const [googleLoading, setGoogleLoading] = useState(false)
 
-  // ─── Google ──────────────────────────────────────────────────────────────────
-  const googleLogin = useGoogleLogin({
+  async function finishGoogleSignIn(tokens: { accessToken?: string; idToken?: string }) {
+    const result = await completeGoogleSignIn(tokens)
+    if (result.ok) {
+      localStorage.setItem('accessToken', result.accessToken)
+      onAuth(result.user, result.accessToken, false, returnTo)
+      return
+    }
+    if (result.deleted) {
+      navigate('/account-deleted', {
+        replace: true,
+        state: {
+          provider: 'google',
+          accessToken: result.tokens.accessToken,
+          idToken: result.tokens.idToken,
+          email: result.deleted.email,
+          daysRemaining: result.deleted.daysRemaining,
+        },
+      })
+      return
+    }
+    toastError('Ошибка входа через Google')
+  }
+
+  useEffect(() => {
+    void initGoogleAuth()
+  }, [])
+
+  useEffect(() => {
+    if (!useGoogleRedirectFlow()) return
+    const tokens = consumeGoogleRedirectTokens()
+    if (!tokens) return
+
+    setGoogleLoading(true)
+    void finishGoogleSignIn(tokens).finally(() => setGoogleLoading(false))
+  }, [])
+
+  const googleLoginPopup = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
+      setGoogleLoading(true)
       try {
-        // Получаем idToken через userinfo (access_token → id_token через отдельный запрос)
-        // useGoogleLogin возвращает access_token, получаем профиль и отправляем access_token
-        const { data } = await api.post<{ accessToken: string; user: AuthUser }>(
-          '/api/auth/google',
-          { accessToken: tokenResponse.access_token, timezone: getDeviceTimezone() }
-        )
-        localStorage.setItem('accessToken', data.accessToken)
-        onAuth(data.user, data.accessToken, false, returnTo)
-      } catch (err) {
-        const deleted = getDeletedAccountInfo(err)
-        if (deleted) {
-          navigate('/account-deleted', {
-            replace: true,
-            state: {
-              provider: 'google',
-              accessToken: tokenResponse.access_token,
-              email: deleted.email,
-              daysRemaining: deleted.daysRemaining,
-            },
-          })
-          return
-        }
-        toastError('Ошибка входа через Google')
+        await finishGoogleSignIn({ accessToken: tokenResponse.access_token })
+      } finally {
+        setGoogleLoading(false)
       }
     },
     onError: () => toastInfo('Google авторизация отменена'),
   })
+
+  async function handleGoogle() {
+    if (googleLoading) return
+
+    if (useNativeGoogleSignIn()) {
+      setGoogleLoading(true)
+      try {
+        const tokens = await signInWithGoogleNative()
+        await finishGoogleSignIn(tokens)
+      } catch (err) {
+        if (isGoogleAuthCancelled(err)) {
+          toastInfo('Google авторизация отменена')
+        } else {
+          toastError('Ошибка входа через Google')
+        }
+      } finally {
+        setGoogleLoading(false)
+      }
+      return
+    }
+
+    if (useGoogleRedirectFlow()) {
+      try {
+        startGoogleRedirectLogin()
+      } catch {
+        toastError('Google вход не настроен')
+      }
+      return
+    }
+
+    googleLoginPopup()
+  }
 
   // ─── Apple ───────────────────────────────────────────────────────────────────
   function handleApple() {
@@ -92,9 +151,10 @@ export default function AuthPage({ onAuth }: Props) {
         />
         <AuthButton
           icon={<GoogleIcon />}
-          label="Войти через Google"
-          onClick={() => googleLogin()}
-          className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)]"
+          label={googleLoading ? 'Подключение…' : 'Войти через Google'}
+          onClick={handleGoogle}
+          disabled={googleLoading}
+          className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)] disabled:opacity-60"
         />
         <AuthButton
           icon={<MailIcon />}
@@ -123,15 +183,18 @@ function AuthButton({
   label,
   onClick,
   className,
+  disabled,
 }: {
   icon: React.ReactNode
   label: string
   onClick: () => void
   className: string
+  disabled?: boolean
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={`flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-4 text-sm font-semibold transition active:scale-95 ${className}`}
     >
       {icon}

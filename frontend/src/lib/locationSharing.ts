@@ -2,6 +2,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 import { Geolocation } from '@capacitor/geolocation'
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation'
 import { setLocationSharing, updateMyLocation, getMyLocation } from './api'
+import { requestAlwaysLocationPermission } from './alwaysLocationPermission'
 
 const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>('BackgroundGeolocation')
 
@@ -48,7 +49,7 @@ async function startWatcher(): Promise<void> {
     {
       backgroundTitle: 'StreakMeet',
       backgroundMessage: 'Трансляция геолокации для друзей',
-      requestPermissions: true,
+      requestPermissions: false,
       stale: false,
       distanceFilter: 0,
     },
@@ -73,11 +74,11 @@ async function stopWatcher(): Promise<void> {
 }
 
 export async function ensureLocationPermission(): Promise<boolean> {
-  if (!Capacitor.isNativePlatform()) return false
-  const current = await Geolocation.checkPermissions()
-  if (current.location === 'granted') return true
-  const requested = await Geolocation.requestPermissions()
-  return requested.location === 'granted'
+  try {
+    return await requestAlwaysLocationPermission()
+  } catch {
+    return false
+  }
 }
 
 export async function startLocationSharing(): Promise<void> {
@@ -85,8 +86,10 @@ export async function startLocationSharing(): Promise<void> {
     throw new Error('native_only')
   }
 
-  const granted = await ensureLocationPermission()
-  if (!granted) {
+  try {
+    await requestAlwaysLocationPermission()
+  } catch (e) {
+    if (e instanceof Error && e.message === 'not_always') throw e
     throw new Error('permission_denied')
   }
 

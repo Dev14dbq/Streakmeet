@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import appleSignin from 'apple-signin-auth'
+import { OAuth2Client } from 'google-auth-library'
 import { prisma } from '../lib/prisma.js'
 import { averageEmbeddings, embedFaceFromBase64, ensureFaceService } from '../lib/face.js'
 import {
@@ -16,6 +17,38 @@ import { isValidTimezone, normalizeTimezone } from '../lib/timezone.js'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 
 const router = Router()
+
+async function resolveGoogleProfile(body: {
+  accessToken?: string
+  idToken?: string
+}): Promise<{ email: string; name?: string }> {
+  const { accessToken, idToken } = body
+  if (!accessToken && !idToken) {
+    throw new Error('token_required')
+  }
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    throw new Error('not_configured')
+  }
+
+  if (idToken) {
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    })
+    const payload = ticket.getPayload()
+    if (!payload?.email) throw new Error('no_email')
+    return { email: payload.email, name: payload.name }
+  }
+
+  const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!infoRes.ok) throw new Error('invalid_access_token')
+  const info = (await infoRes.json()) as { email?: string; name?: string }
+  if (!info.email) throw new Error('no_email')
+  return { email: info.email, name: info.name }
+}
 
 // POST /api/auth/enroll-face
 router.post('/enroll-face', requireAuth, async (req: AuthRequest, res: Response) => {
@@ -215,16 +248,12 @@ router.post('/restore-account', async (req: Request, res: Response) => {
     let userEmail: string | undefined
 
     if (provider === 'google') {
-      if (!accessToken) {
-        res.status(400).json({ error: 'accessToken is required' })
+      if (!accessToken && !idToken) {
+        res.status(400).json({ error: 'accessToken or idToken is required' })
         return
       }
-      const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      })
-      if (!infoRes.ok) throw new Error('Failed to get Google userinfo')
-      const info = (await infoRes.json()) as { email?: string }
-      userEmail = info.email
+      const profile = await resolveGoogleProfile({ accessToken, idToken })
+      userEmail = profile.email
     } else if (provider === 'apple') {
       if (!idToken) {
         res.status(400).json({ error: 'idToken is required' })
@@ -356,11 +385,15 @@ router.post('/register', async (req: Request, res: Response) => {
 
 // ─── Google OAuth ─────────────────────────────────────────────────────────────
 
-// POST /api/auth/google  { accessToken }
+// POST /api/auth/google  { accessToken?, idToken? }
 router.post('/google', async (req: Request, res: Response) => {
-  const { accessToken, timezone } = req.body as { accessToken?: string; timezone?: string }
-  if (!accessToken) {
-    res.status(400).json({ error: 'accessToken is required' })
+  const { accessToken, idToken, timezone } = req.body as {
+    accessToken?: string
+    idToken?: string
+    timezone?: string
+  }
+  if (!accessToken && !idToken) {
+    res.status(400).json({ error: 'accessToken or idToken is required' })
     return
   }
   if (!process.env.GOOGLE_CLIENT_ID) {
@@ -368,12 +401,7 @@ router.post('/google', async (req: Request, res: Response) => {
     return
   }
   try {
-    const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    if (!infoRes.ok) throw new Error('Failed to get Google userinfo')
-    const info = (await infoRes.json()) as { email?: string; name?: string }
-    if (!info.email) throw new Error('No email in Google profile')
+    const info = await resolveGoogleProfile({ accessToken, idToken })
 
     const user = await findOrCreateOAuthUser({
       email: info.email,

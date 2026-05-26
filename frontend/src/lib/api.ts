@@ -62,7 +62,7 @@ export interface DeletedAccountInfo {
 
 export type RestoreAccountPayload =
   | { email: string; password: string }
-  | { provider: 'google'; accessToken: string }
+  | { provider: 'google'; accessToken?: string; idToken?: string }
   | { provider: 'apple'; idToken: string }
 
 export function getDeletedAccountInfo(err: unknown): DeletedAccountInfo | null {
