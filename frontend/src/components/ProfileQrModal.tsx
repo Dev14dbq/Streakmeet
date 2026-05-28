@@ -13,6 +13,7 @@ import {
   getApiErrorMessage,
 } from '../lib/api'
 import { shareProfileLink } from '../lib/shareProfile'
+import { useOverlayTransition } from '../lib/useOverlayTransition'
 import { toastError, toastSuccess, toastLink } from '../lib/toast'
 
 interface Props {
@@ -27,7 +28,10 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
   const [showScanner, setShowScanner] = useState(false)
   const scanningRef = useRef(false)
 
-  if (!open && !showScanner) return null
+  const visible = open || showScanner
+  const { mounted, screenClass, panelClass } = useOverlayTransition(visible, 'fade')
+
+  if (!mounted) return null
 
   async function handleShareProfile() {
     const url = profileUrl(nickname)
@@ -44,19 +48,20 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
 
   if (showScanner) {
     return (
-      <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+      <div className={`fixed inset-0 z-[100] flex flex-col bg-black ${screenClass}`}>
         <div className="flex items-center justify-between p-6 pb-2">
-          <h2 className="text-white font-bold text-xl">{t('common.qr')}</h2>
+          <h2 className="text-xl font-bold text-white">{t('common.qr')}</h2>
           <button
             type="button"
             onClick={() => setShowScanner(false)}
-            className="p-2 bg-zinc-900 rounded-full text-white"
+            className="rounded-full bg-zinc-900 p-2 text-white"
+            aria-label={t('common.close')}
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="flex-1 relative overflow-hidden rounded-3xl mx-4 mb-12 bg-zinc-900 flex items-center justify-center">
+        <div className="relative mx-4 mb-12 flex flex-1 items-center justify-center overflow-hidden rounded-3xl bg-zinc-900">
           <Scanner
             onScan={async (result) => {
               if (!result?.length || scanningRef.current) return
@@ -92,49 +97,51 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
     )
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex flex-col items-center p-6">
-      <div className="w-full max-w-[600px] flex justify-start pt-6">
-        <button
-          type="button"
-          onClick={handleCloseAll}
-          className="p-3 bg-[var(--color-surface-container-high)] rounded-full text-white transition active:scale-95 hover:bg-[var(--color-surface-container-highest)]"
-          aria-label={t('common.back')}
-        >
-          <ArrowLeft size={24} />
-        </button>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center w-full">
-        <div className="glass-card rounded-[32px] p-10 flex flex-col items-center relative overflow-hidden w-full max-w-sm">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-[var(--color-brand-primary)] opacity-10 blur-3xl rounded-full pointer-events-none" />
-          <div className="bg-white p-5 rounded-3xl mb-6 relative z-10 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-            <QRCode value={profileUrl(nickname)} size={200} />
-          </div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">@{nickname}</h2>
+    <div
+      className={`fixed inset-0 z-[100] flex flex-col items-center bg-black/90 p-6 backdrop-blur-md ${screenClass}`}
+    >
+      <div className={`mx-auto flex min-h-0 w-full max-w-[600px] flex-1 flex-col ${panelClass}`}>
+        <div className="flex justify-start pt-6">
+          <button
+            type="button"
+            onClick={handleCloseAll}
+            className="rounded-full bg-[var(--color-surface-container-high)] p-3 text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+            aria-label={t('common.back')}
+          >
+            <ArrowLeft size={24} />
+          </button>
         </div>
-      </div>
 
-      <div className="w-full max-w-sm pb-8 flex flex-col gap-4">
-        <button
-          type="button"
-          onClick={handleShareProfile}
-          className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 font-bold text-lg text-white transition active:scale-95 shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
-        >
-          {t('profile.shareDialogTitle')}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            onClose()
-            setShowScanner(true)
-          }}
-          className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 font-bold text-lg text-white transition active:scale-95 hover:bg-[var(--color-surface-container-highest)]"
-        >
-          {t('common.qr')}
-        </button>
+        <div className="flex w-full flex-1 items-center justify-center py-6">
+          <div className="glass-card relative flex w-full max-w-sm flex-col items-center overflow-hidden rounded-[32px] p-10">
+            <div className="pointer-events-none absolute top-1/2 left-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--color-brand-primary)] opacity-10 blur-3xl" />
+            <div className="relative z-10 mb-6 rounded-3xl bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+              <QRCode value={profileUrl(nickname)} size={200} />
+            </div>
+            <h2 className="text-3xl font-extrabold tracking-tight text-white">@{nickname}</h2>
+          </div>
+        </div>
+
+        <div className="flex w-full max-w-sm flex-col gap-4 pb-8">
+          <button
+            type="button"
+            onClick={handleShareProfile}
+            className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-lg font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition active:scale-95"
+          >
+            {t('profile.shareDialogTitle')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onClose()
+              setShowScanner(true)
+            }}
+            className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 text-lg font-bold text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+          >
+            {t('common.qr')}
+          </button>
+        </div>
       </div>
     </div>
   )

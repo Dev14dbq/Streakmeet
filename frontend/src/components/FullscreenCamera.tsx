@@ -5,6 +5,7 @@ import Webcam from 'react-webcam'
 import { captureVideoFrame } from '../lib/captureVideoFrame'
 import { triggerCameraShutterFeedback } from '../lib/cameraShutter'
 import { ensureCameraAccess, waitForLiveVideo } from '../lib/webCamera'
+import { useOverlayTransition } from '../lib/useOverlayTransition'
 import { toastError } from '../lib/toast'
 
 type TorchTrack = MediaStreamTrack & {
@@ -129,6 +130,7 @@ export default function FullscreenCamera({
   const isFront = facingMode === 'user'
   const useSplit = !!splitTop && phase === 'live'
   const showModeSwitcher = !!(modeOptions?.length && onCaptureModeChange && phase === 'live')
+  const { mounted, screenClass } = useOverlayTransition(open, 'slideUp', 360)
 
   const resetLive = useCallback(() => {
     setPhase('live')
@@ -327,13 +329,13 @@ export default function FullscreenCamera({
     await onConfirm(capturedPhoto, burst)
   }
 
-  if (!open) return null
+  if (!mounted) return null
 
   const showLive = phase === 'live'
   const showPreview = phase === 'preview' || phase === 'processing'
 
   return (
-    <div className="fullscreen-camera" style={{ height: '100dvh' }}>
+    <div className={`fullscreen-camera ${screenClass}`} style={{ height: '100dvh' }}>
       <div className="fullscreen-camera__viewport">
         {showPreview && capturedPhoto ? (
           <img src={capturedPhoto} alt="" className="fullscreen-camera__media" />

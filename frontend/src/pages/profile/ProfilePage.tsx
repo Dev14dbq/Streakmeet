@@ -11,6 +11,7 @@ import { uploadAvatar, getApiErrorMessage, type AuthUser } from '../../lib/api'
 import { avatarInitial } from '../../lib/avatarInitial'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { invalidateCachedImage } from '../../lib/remoteImageCache'
+import { useOverlayTransition } from '../../lib/useOverlayTransition'
 import { toastError } from '../../lib/toast'
 
 interface Props {
@@ -46,6 +47,11 @@ export default function ProfilePage({ user: initialUser }: Props) {
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoData | null>(null)
   const webcamRef = useRef<Webcam>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { mounted: cameraMounted, screenClass: cameraScreenClass } = useOverlayTransition(
+    showCamera,
+    'slideUp',
+    360
+  )
 
   useEffect(() => {
     const navState = location.state as { openAvatarSheet?: boolean } | null
@@ -372,8 +378,8 @@ export default function ProfilePage({ user: initialUser }: Props) {
       <ProfileQrModal nickname={user.nickname} open={showQR} onClose={() => setShowQR(false)} />
 
       {/* Camera Modal for Avatar */}
-      {showCamera && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+      {cameraMounted && (
+        <div className={`fixed inset-0 z-[100] flex flex-col bg-black ${cameraScreenClass}`}>
           <div className="flex items-center justify-between p-6 pb-2">
             <h2 className="text-white font-bold text-xl">{t('settings.profilePhoto')}</h2>
             <button

@@ -1009,3 +1009,51 @@ body {
   transform: translateX(0);
   pointer-events: auto;
 }
+
+/* Full-screen overlays (QR, camera, …) */
+.overlay-screen {
+  will-change: opacity, transform;
+}
+
+.overlay-screen--fade {
+  transition: opacity 0.32s ease;
+}
+
+.overlay-screen--fade.overlay-screen--closed {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.overlay-screen--fade.overlay-screen--open {
+  opacity: 1;
+}
+
+.overlay-screen--slideUp {
+  transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.overlay-screen--slideUp.overlay-screen--closed {
+  transform: translateY(100%);
+  pointer-events: none;
+}
+
+.overlay-screen--slideUp.overlay-screen--open {
+  transform: translateY(0);
+}
+
+.overlay-panel {
+  will-change: opacity, transform;
+  transition:
+    opacity 0.32s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.overlay-panel--pop.overlay-panel--closed {
+  opacity: 0;
+  transform: translateY(1.25rem) scale(0.96);
+}
+
+.overlay-panel--pop.overlay-panel--open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
