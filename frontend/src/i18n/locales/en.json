@@ -51,6 +51,13 @@
     "title": "Language",
     "description": "App interface language"
   },
+  "theme": {
+    "title": "Appearance",
+    "description": "Light, dark, or match system",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
   "auth": {
     "signInApple": "Sign in with Apple",
     "signInGoogle": "Sign in with Google",
@@ -202,7 +209,9 @@
     "sharingOn": "Sharing enabled",
     "sharingOff": "Sharing disabled",
     "shareLocation": "Share location",
-    "backgroundMessage": "Sharing location for friends"
+    "backgroundMessage": "Sharing location for friends",
+    "locateMe": "My location",
+    "locateFailed": "Could not get your location"
   },
   "profile": {
     "avatarUploadFailed": "Avatar upload failed",

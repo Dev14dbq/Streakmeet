@@ -63,6 +63,13 @@ const overrides = {
     },
     distance: { meters: '{{count}} м', km: '{{count}} км', kmDecimal: '{{value}} км' },
     language: { title: 'Язык', description: 'Язык интерфейса приложения' },
+    theme: {
+      title: 'Оформление',
+      description: 'Светлая, тёмная или как в системе',
+      light: 'Светлая',
+      dark: 'Тёмная',
+      system: 'Как в системе',
+    },
     auth: {
       signInApple: 'Войти через Apple',
       signInGoogle: 'Войти через Google',
@@ -192,6 +199,8 @@ const overrides = {
       sharingOff: 'Трансляция выключена',
       shareLocation: 'Транслировать геолокацию',
       backgroundMessage: 'Трансляция геолокации для друзей',
+      locateMe: 'Где я',
+      locateFailed: 'Не удалось определить местоположение',
     },
     profile: {
       avatarUploadFailed: 'Ошибка загрузки аватара',

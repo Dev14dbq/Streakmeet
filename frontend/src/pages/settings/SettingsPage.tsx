@@ -29,6 +29,7 @@ import { toastError, toastInfo, toastSuccess } from '../../lib/toast'
 import { scheduleStreakNotifications } from '../../lib/streakNotifications'
 import { stopLocationSharing } from '../../lib/locationSharing'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
+import ThemeSwitcher from '../../components/ThemeSwitcher'
 
 const SETTINGS_KEY = 'streakmeet_settings'
 
@@ -84,7 +85,7 @@ function SettingsRow({
           <Icon size={18} className="text-[var(--color-on-surface-variant)]" />
         </div>
         <div className="min-w-0">
-          <p className="text-white font-medium text-sm">{label}</p>
+          <p className="text-[var(--color-on-surface)] font-medium text-sm">{label}</p>
           {description && (
             <p className="text-[var(--color-on-surface-variant)] text-xs mt-0.5 truncate">
               {description}
@@ -229,10 +230,13 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
         >
           <ArrowLeft size={22} />
         </button>
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">{t('settings.title')}</h1>
+        <h1 className="text-2xl font-extrabold text-[var(--color-on-surface)] tracking-tight">
+          {t('settings.title')}
+        </h1>
       </div>
 
       <Section title={t('settings.account')}>
+        <ThemeSwitcher />
         <LanguageSwitcher />
         <SettingsRow icon={Mail} label="Email" description={email} onClick={handleChangeEmail} />
         <SettingsRow

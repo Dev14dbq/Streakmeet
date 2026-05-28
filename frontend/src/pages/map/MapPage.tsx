@@ -7,7 +7,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
 import CachedImage from '../../components/CachedImage'
-import { MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-react'
+import { LocateFixed, MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-react'
 import {
   getFriendLocations,
   getMyLocation,
@@ -21,7 +21,10 @@ import {
   startLocationSharing,
   stopLocationSharing,
 } from '../../lib/locationSharing'
-import { openAlwaysLocationSettings } from '../../lib/alwaysLocationPermission'
+import {
+  checkAlwaysLocationPermission,
+  openAlwaysLocationSettings,
+} from '../../lib/alwaysLocationPermission'
 import {
   distanceMeters,
   formatCoords,
@@ -33,9 +36,9 @@ import { resolveBackendImageUrl } from '../../lib/remoteImageUrl'
 import { useCachedImageSrcMap } from '../../lib/useCachedImageSrc'
 import { formatRelativeTime } from '../../i18n/format'
 import { toastError } from '../../lib/toast'
+import { MAP_TILE_URLS, useResolvedTheme } from '../../lib/theme'
 
 const SHARE_UI_COMPACT_KEY = 'map_share_ui_compact'
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
 const TILE_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
 
@@ -93,8 +96,10 @@ function NativeAppGate() {
 export default function MapPage() {
   const { t } = useTranslation()
   const isNative = Capacitor.isNativePlatform()
+  const resolvedTheme = useResolvedTheme()
   const mapElRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
+  const tileLayerRef = useRef<L.TileLayer | null>(null)
   const markersRef = useRef<Map<string, L.Marker>>(new Map())
   const selfMarkerRef = useRef<L.Marker | null>(null)
 
@@ -110,6 +115,7 @@ export default function MapPage() {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
   const [addressLoading, setAddressLoading] = useState(false)
   const [selfPos, setSelfPos] = useState<{ lat: number; lng: number } | null>(null)
+  const [locating, setLocating] = useState(false)
 
   const me = useMemo<AuthUser>(() => {
     try {
@@ -259,11 +265,12 @@ export default function MapPage() {
       attributionControl: true,
     }).setView([55.751, 37.618], 12)
 
-    L.tileLayer(TILE_URL, {
+    const tileLayer = L.tileLayer(MAP_TILE_URLS[resolvedTheme], {
       attribution: TILE_ATTRIBUTION,
       subdomains: 'abcd',
       maxZoom: 20,
     }).addTo(map)
+    tileLayerRef.current = tileLayer
 
     L.control.zoom({ position: 'topright' }).addTo(map)
     mapRef.current = map
@@ -284,10 +291,17 @@ export default function MapPage() {
     return () => {
       map.remove()
       mapRef.current = null
+      tileLayerRef.current = null
       markersRef.current.clear()
       selfMarkerRef.current = null
     }
   }, [isNative])
+
+  useEffect(() => {
+    const layer = tileLayerRef.current
+    if (!layer) return
+    layer.setUrl(MAP_TILE_URLS[resolvedTheme])
+  }, [resolvedTheme])
 
   useEffect(() => {
     const map = mapRef.current
@@ -393,7 +407,15 @@ export default function MapPage() {
     localStorage.setItem(SHARE_UI_COMPACT_KEY, '1')
   }
 
-  function requestEnableSharing() {
+  async function tryEnableSharing() {
+    if (sharingBusy) return
+
+    const { granted } = await checkAlwaysLocationPermission()
+    if (granted) {
+      await setSharingEnabled(true)
+      return
+    }
+
     setShareExplainOpen(true)
   }
 
@@ -404,7 +426,7 @@ export default function MapPage() {
 
   async function handleStartBroadcast() {
     dismissSharePrompt()
-    requestEnableSharing()
+    await tryEnableSharing()
   }
 
   async function toggleSharing() {
@@ -412,7 +434,30 @@ export default function MapPage() {
       await setSharingEnabled(false)
       return
     }
-    requestEnableSharing()
+    await tryEnableSharing()
+  }
+
+  async function centerOnMe() {
+    if (locating) return
+    setLocating(true)
+    try {
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 12_000,
+        maximumAge: 0,
+      })
+      const lat = pos.coords.latitude
+      const lng = pos.coords.longitude
+      setSelfPos({ lat, lng })
+      const map = mapRef.current
+      if (map) {
+        map.flyTo([lat, lng], Math.max(map.getZoom(), 15), { duration: 0.6 })
+      }
+    } catch {
+      toastError(t('map.locateFailed'))
+    } finally {
+      setLocating(false)
+    }
   }
 
   async function openRouteToSelected() {
@@ -436,16 +481,18 @@ export default function MapPage() {
     <div className="relative h-[calc(100dvh-5.5rem)] min-h-[420px] w-full overflow-hidden">
       <div ref={mapElRef} className="absolute inset-0 z-0 streak-map" />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 bg-gradient-to-b from-black/85 via-black/35 to-transparent px-5 pb-10 pt-[max(3rem,calc(env(safe-area-inset-top)+1rem))]">
+      <div className="map-page-header pointer-events-none absolute inset-x-0 top-0 z-10 px-5 pb-10 pt-[max(3rem,calc(env(safe-area-inset-top)+1rem))]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-brand-primary)]">
               Live map
             </p>
-            <h1 className="text-2xl font-black text-white">{t('map.friendsMapTitle')}</h1>
+            <h1 className="text-2xl font-black text-[var(--color-on-surface)]">
+              {t('map.friendsMapTitle')}
+            </h1>
             <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">{mapStatusText}</p>
           </div>
-          <div className="glass-card pointer-events-auto flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-white">
+          <div className="glass-card pointer-events-auto flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-[var(--color-on-surface)]">
             <Users size={14} className="text-[var(--color-brand-primary)]" />
             {broadcastingCount}
           </div>
@@ -531,8 +578,24 @@ export default function MapPage() {
         </div>
       )}
 
+      <div className="map-map-control map-map-control--locate pointer-events-auto">
+        <button
+          type="button"
+          disabled={locating}
+          onClick={() => void centerOnMe()}
+          aria-label={t('map.locateMe')}
+          title={t('map.locateMe')}
+          className="map-map-control__btn"
+        >
+          <LocateFixed
+            size={18}
+            className={locating ? 'animate-pulse text-[var(--color-brand-primary)]' : ''}
+          />
+        </button>
+      </div>
+
       {compactShareUi && (
-        <div className="map-share-toggle pointer-events-auto">
+        <div className="map-map-control map-map-control--share pointer-events-auto">
           <button
             type="button"
             disabled={sharingBusy}
@@ -540,20 +603,21 @@ export default function MapPage() {
             aria-label={sharing ? t('map.disableSharing') : t('map.enableSharing')}
             aria-pressed={sharing}
             title={sharing ? t('map.sharingOn') : t('map.sharingOff')}
-            className={`map-share-toggle__btn ${sharing ? 'map-share-toggle__btn--on' : ''}`}
+            className={`map-map-control__btn ${sharing ? 'map-map-control__btn--on' : ''}`}
           >
             <Radio
               size={18}
-              className={
-                sharing ? 'animate-pulse text-[var(--color-brand-primary)]' : 'text-white/70'
-              }
+              className={sharing ? 'animate-pulse text-[var(--color-brand-primary)]' : 'opacity-70'}
             />
           </button>
         </div>
       )}
 
       {shareExplainOpen && (
-        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center">
+        <div
+          className="fixed inset-0 z-[200] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center"
+          style={{ background: 'var(--map-modal-scrim)' }}
+        >
           <div
             className="w-full max-w-md rounded-3xl border border-white/10 bg-[var(--color-surface-container-high)] p-6 shadow-2xl"
             role="dialog"
