@@ -1,5 +1,6 @@
-import { Router, type Response, type Request } from 'express'
+import { Router, type Response } from 'express'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
+import { requireEmailVerified } from '../middleware/requireEmailVerified.js'
 import { prisma } from '../lib/prisma.js'
 import { saveBase64ImageAsAvif } from '../lib/saveImage.js'
 import { isValidBase64Image } from '../lib/httpErrors.js'
@@ -8,32 +9,35 @@ import { isValidTimezone } from '../lib/timezone.js'
 import { findUserByEmail } from '../lib/accountDeletion.js'
 import { parsePagination } from '../lib/pagination.js'
 import { reconcileStreakTimezonesForUser } from '../lib/streakCalendar.js'
+import { userProfileSelect, userProfilePayload } from '../lib/userPayload.js'
+import { issueEmailVerification } from '../lib/emailVerify.js'
 
 const router = Router()
 router.use(requireAuth)
 
-// GET /api/users/me
+// GET /api/users/me — доступен до подтверждения email
 router.get('/me', async (req: AuthRequest, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
-    select: {
-      id: true,
-      email: true,
-      nickname: true,
-      qrCodeId: true,
-      gemsBalance: true,
-      faceEnrolled: true,
-      avatarUrl: true,
-      timezone: true,
-      isPublic: true,
-    },
+    select: userProfileSelect,
   })
   if (!user) {
     sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
     return
   }
-  res.json(user)
+  res.json(userProfilePayload(user))
 })
+
+// DELETE /api/users/me — доступен до подтверждения email
+router.delete('/me', async (req: AuthRequest, res: Response) => {
+  await prisma.user.update({
+    where: { id: req.userId },
+    data: { deletedAt: new Date() },
+  })
+  res.json({ success: true })
+})
+
+router.use(requireEmailVerified)
 
 // PATCH /api/users/settings
 router.patch('/settings', async (req: AuthRequest, res: Response) => {
@@ -51,21 +55,35 @@ router.patch('/settings', async (req: AuthRequest, res: Response) => {
   const user = await prisma.user.update({
     where: { id: req.userId },
     data: { timezone },
-    select: {
-      id: true,
-      email: true,
-      nickname: true,
-      qrCodeId: true,
-      gemsBalance: true,
-      faceEnrolled: true,
-      avatarUrl: true,
-      timezone: true,
-      isPublic: true,
-    },
+    select: userProfileSelect,
   })
   await reconcileStreakTimezonesForUser(req.userId!)
-  res.json(user)
+  res.json(userProfilePayload(user))
 })
+
+// PATCH /api/users/preferences
+router.patch('/preferences', async (req: AuthRequest, res: Response) => {
+  const { notifyFriends, notifyMeet, geoOnPhotos } = req.body as {
+    notifyFriends?: boolean
+    notifyMeet?: boolean
+    geoOnPhotos?: boolean
+  }
+  const data: Record<string, boolean> = {}
+  if (typeof notifyFriends === 'boolean') data.notifyFriends = notifyFriends
+  if (typeof notifyMeet === 'boolean') data.notifyMeet = notifyMeet
+  if (typeof geoOnPhotos === 'boolean') data.geoOnPhotos = geoOnPhotos
+  if (Object.keys(data).length === 0) {
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
+    return
+  }
+  const user = await prisma.user.update({
+    where: { id: req.userId },
+    data,
+    select: userProfileSelect,
+  })
+  res.json(userProfilePayload(user))
+})
+
 router.patch('/email', async (req: AuthRequest, res: Response) => {
   const { email } = req.body as { email?: string }
   if (!email || !email.includes('@')) {
@@ -81,22 +99,31 @@ router.patch('/email', async (req: AuthRequest, res: Response) => {
     return
   }
 
+  const current = await prisma.user.findUnique({
+    where: { id: req.userId },
+    select: { passwordHash: true },
+  })
+
   const user = await prisma.user.update({
     where: { id: req.userId },
-    data: { email: normalizedEmail },
-    select: {
-      id: true,
-      email: true,
-      nickname: true,
-      qrCodeId: true,
-      gemsBalance: true,
-      faceEnrolled: true,
-      avatarUrl: true,
-      timezone: true,
-      isPublic: true,
+    data: {
+      email: normalizedEmail,
+      ...(current?.passwordHash
+        ? { emailVerifiedAt: null, emailVerifyToken: null }
+        : {}),
     },
+    select: userProfileSelect,
   })
-  res.json(user)
+
+  if (current?.passwordHash) {
+    try {
+      await issueEmailVerification(req.userId!, normalizedEmail)
+    } catch (e) {
+      console.error('[users/email] verification send failed:', e)
+    }
+  }
+
+  res.json(userProfilePayload(user))
 })
 
 // PATCH /api/users/public
@@ -110,19 +137,9 @@ router.patch('/public', async (req: AuthRequest, res: Response) => {
   const user = await prisma.user.update({
     where: { id: req.userId },
     data: { isPublic },
-    select: {
-      id: true,
-      email: true,
-      nickname: true,
-      qrCodeId: true,
-      gemsBalance: true,
-      faceEnrolled: true,
-      avatarUrl: true,
-      timezone: true,
-      isPublic: true,
-    },
+    select: userProfileSelect,
   })
-  res.json(user)
+  res.json(userProfilePayload(user))
 })
 
 // POST /api/users/avatar
@@ -210,15 +227,6 @@ router.get('/search', async (req: AuthRequest, res: Response) => {
   })
 
   res.json(users)
-})
-
-// DELETE /api/users/me — soft delete (30-day retention)
-router.delete('/me', async (req: AuthRequest, res: Response) => {
-  await prisma.user.update({
-    where: { id: req.userId },
-    data: { deletedAt: new Date() },
-  })
-  res.json({ success: true })
 })
 
 export default router

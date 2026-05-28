@@ -1,12 +1,13 @@
 import { Router, type Response } from 'express'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
+import { requireEmailVerified } from '../middleware/requireEmailVerified.js'
 import { prisma } from '../lib/prisma.js'
 
 import { notifyUser } from '../lib/socket.js'
 import { ErrorCodes, sendError } from '../lib/apiErrors.js'
 
 const router = Router()
-router.use(requireAuth)
+router.use(requireAuth, requireEmailVerified)
 
 // GET /api/friends
 router.get('/', async (req: AuthRequest, res: Response) => {

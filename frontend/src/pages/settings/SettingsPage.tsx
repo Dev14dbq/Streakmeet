@@ -21,43 +21,23 @@ import {
   syncDeviceTimezone,
   updateEmail,
   updatePublicProfile,
+  updatePreferences,
   getApiErrorMessage,
   type AuthUser,
 } from '../../lib/api'
 import { SWR_KEYS } from '../../lib/swrKeys'
-import { toastError, toastInfo, toastSuccess } from '../../lib/toast'
+import { toastError, toastSuccess } from '../../lib/toast'
 import { scheduleStreakNotifications } from '../../lib/streakNotifications'
+import { getNotificationPrefs, saveLocalStreakPref } from '../../lib/userPreferences'
 import { stopLocationSharing } from '../../lib/locationSharing'
 import LanguageSwitcher from '../../components/LanguageSwitcher'
 import ThemeSwitcher from '../../components/ThemeSwitcher'
-
-const SETTINGS_KEY = 'streakmeet_settings'
 
 interface LocalSettings {
   notifyStreak: boolean
   notifyFriends: boolean
   notifyMeet: boolean
   geoOnPhotos: boolean
-}
-
-const defaultLocal: LocalSettings = {
-  notifyStreak: true,
-  notifyFriends: true,
-  notifyMeet: true,
-  geoOnPhotos: true,
-}
-
-function loadLocalSettings(): LocalSettings {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
-    return raw ? { ...defaultLocal, ...JSON.parse(raw) } : defaultLocal
-  } catch {
-    return defaultLocal
-  }
-}
-
-function saveLocalSettings(s: LocalSettings) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s))
 }
 
 interface Props {
@@ -147,7 +127,15 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: me, mutate } = useSWR<AuthUser & { timezone?: string }>(SWR_KEYS.me)
-  const [local, setLocal] = useState<LocalSettings>(loadLocalSettings)
+  const [local, setLocal] = useState<LocalSettings>(() => {
+    const prefs = getNotificationPrefs()
+    return {
+      notifyStreak: prefs.notifyStreak,
+      notifyFriends: prefs.notifyFriends,
+      notifyMeet: prefs.notifyMeet,
+      geoOnPhotos: prefs.geoOnPhotos,
+    }
+  })
 
   useEffect(() => {
     syncDeviceTimezone()
@@ -158,12 +146,31 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function updateLocal(patch: Partial<LocalSettings>) {
+  async function updateLocal(patch: Partial<LocalSettings>) {
     const next = { ...local, ...patch }
     setLocal(next)
-    saveLocalSettings(next)
+
     if ('notifyStreak' in patch) {
+      saveLocalStreakPref(next.notifyStreak)
       void scheduleStreakNotifications()
+    }
+
+    const serverPatch: Parameters<typeof updatePreferences>[0] = {}
+    if ('notifyFriends' in patch) serverPatch.notifyFriends = patch.notifyFriends
+    if ('notifyMeet' in patch) serverPatch.notifyMeet = patch.notifyMeet
+    if ('geoOnPhotos' in patch) serverPatch.geoOnPhotos = patch.geoOnPhotos
+
+    if (Object.keys(serverPatch).length > 0) {
+      try {
+        const { data: updated } = await updatePreferences(serverPatch)
+        const merged = { ...(me ?? initialUser), ...updated }
+        mutate(merged, false)
+        onUserUpdate?.(merged)
+        localStorage.setItem('user', JSON.stringify(merged))
+      } catch (e) {
+        toastError(getApiErrorMessage(e, t('settings.prefsUpdateFailed')))
+        setLocal(local)
+      }
     }
   }
 
@@ -255,13 +262,13 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
 
       <Section title={t('settings.notifications')}>
         <SettingsRow icon={Bell} label={t('settings.streakReminders')}>
-          <Toggle on={local.notifyStreak} onChange={(v) => updateLocal({ notifyStreak: v })} />
+          <Toggle on={local.notifyStreak} onChange={(v) => void updateLocal({ notifyStreak: v })} />
         </SettingsRow>
         <SettingsRow icon={Bell} label={t('settings.friends')}>
-          <Toggle on={local.notifyFriends} onChange={(v) => updateLocal({ notifyFriends: v })} />
+          <Toggle on={local.notifyFriends} onChange={(v) => void updateLocal({ notifyFriends: v })} />
         </SettingsRow>
         <SettingsRow icon={Bell} label={t('settings.meets')}>
-          <Toggle on={local.notifyMeet} onChange={(v) => updateLocal({ notifyMeet: v })} />
+          <Toggle on={local.notifyMeet} onChange={(v) => void updateLocal({ notifyMeet: v })} />
         </SettingsRow>
       </Section>
 
@@ -270,9 +277,8 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
           <Toggle on={isPublic} onChange={handleTogglePublic} />
         </SettingsRow>
         <SettingsRow icon={MapPin} label={t('settings.geoOnPhotos')}>
-          <Toggle on={local.geoOnPhotos} onChange={(v) => updateLocal({ geoOnPhotos: v })} />
+          <Toggle on={local.geoOnPhotos} onChange={(v) => void updateLocal({ geoOnPhotos: v })} />
         </SettingsRow>
-        <SettingsRow icon={Shield} label={t('settings.biometric')} />
       </Section>
 
       <Section title={t('settings.about')}>
@@ -290,7 +296,9 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
           icon={HelpCircle}
           label={t('settings.support')}
           description="support@streakmeet.app"
-          onClick={() => toastInfo(t('common.soon'))}
+          onClick={() => {
+            window.location.href = 'mailto:support@streakmeet.app'
+          }}
         />
         <div className="px-4 py-3 text-center">
           <span className="text-[var(--color-on-surface-variant)] text-xs">{t('app.version')}</span>

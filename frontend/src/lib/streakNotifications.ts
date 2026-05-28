@@ -5,7 +5,8 @@ import { getStreaks } from './api'
 import { isStreakMetToday, streakToday } from './streakCalendar'
 import { addDaysToDateString, getDeviceTimezone, localTimeInZoneToDate } from './timezone'
 
-const SETTINGS_KEY = 'streakmeet_settings'
+import { getNotificationPrefs } from './userPreferences'
+
 export const NOTIFICATION_CHANNEL_ID = 'streakmeet'
 
 let channelReady: Promise<void> | null = null
@@ -19,13 +20,7 @@ interface StreakRow {
 }
 
 function streakNotificationsEnabled(): boolean {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
-    if (!raw) return true
-    return JSON.parse(raw).notifyStreak !== false
-  } catch {
-    return true
-  }
+  return getNotificationPrefs().notifyStreak
 }
 
 function notificationId(streakId: string, kind: string): number {

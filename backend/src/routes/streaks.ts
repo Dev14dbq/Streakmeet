@@ -1,5 +1,6 @@
 import { Router, type Response } from 'express'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
+import { requireEmailVerified } from '../middleware/requireEmailVerified.js'
 import { prisma } from '../lib/prisma.js'
 import { notifyUser } from '../lib/socket.js'
 import {
@@ -29,7 +30,7 @@ import { parsePagination } from '../lib/pagination.js'
 import { faceErrorFromException, ErrorCodes, sendError } from '../lib/apiErrors.js'
 
 const router = Router()
-router.use(requireAuth)
+router.use(requireAuth, requireEmailVerified)
 
 async function getPartnerTimezones(userId: string, partnerId: string) {
   const [self, partner] = await Promise.all([

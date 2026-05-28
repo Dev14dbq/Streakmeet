@@ -13,6 +13,9 @@ import EmailAuthPage from './pages/auth/EmailAuthPage'
 import RegisterDetailsPage from './pages/auth/RegisterDetailsPage'
 import FaceEnrollmentPage from './pages/auth/FaceEnrollmentPage'
 import AccountDeletedPage from './pages/auth/AccountDeletedPage'
+import VerifyEmailPage from './pages/auth/VerifyEmailPage'
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import HomePage from './pages/home/HomePage'
 const MapPage = lazy(() => import('./pages/map/MapPage'))
 import MemoriesPage from './pages/memories/MemoriesPage'
@@ -78,6 +81,10 @@ export default function App() {
   const [legalFetchFailed, setLegalFetchFailed] = useState(false)
 
   function applyPendingNavigation(pending: PendingNavigation, authUser: AuthUser) {
+    if (!authUser.emailVerified) {
+      navigate('/verify-email', { replace: true })
+      return
+    }
     if (pending.returnTo && authUser.faceEnrolled) {
       navigate(pending.returnTo, { replace: true })
       return
@@ -90,6 +97,16 @@ export default function App() {
         state: pending.fromSignup ? { autoStart: true } : undefined,
       })
     }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('user')
+    setUser(null)
+    setLegalStatus(null)
+    setLegalChecked(false)
+    setBootstrapPhase('hidden')
+    navigate('/login', { replace: true })
   }
 
   useEffect(() => {
@@ -230,7 +247,8 @@ export default function App() {
 
   const isLoggedIn = !!user
   const showApp = bootstrapPhase === 'hidden' || bootstrapPhase === 'leaving'
-  const needsFaceEnrollment = isLoggedIn && !user!.faceEnrolled
+  const needsEmailVerification = isLoggedIn && user!.emailVerified === false
+  const needsFaceEnrollment = isLoggedIn && user!.emailVerified !== false && !user!.faceEnrolled
   const needsLegalConsent =
     isLoggedIn &&
     legalChecked &&
@@ -239,11 +257,9 @@ export default function App() {
     location.pathname !== '/privacy'
 
   function loggedInRedirect() {
-    return needsFaceEnrollment ? (
-      <Navigate to="/face-enrollment" replace />
-    ) : (
-      <Navigate to="/" replace />
-    )
+    if (needsEmailVerification) return <Navigate to="/verify-email" replace />
+    if (needsFaceEnrollment) return <Navigate to="/face-enrollment" replace />
+    return <Navigate to="/" replace />
   }
 
   if (!showApp) {
@@ -312,11 +328,25 @@ export default function App() {
             element={isLoggedIn ? loggedInRedirect() : <RegisterDetailsPage onAuth={handleAuth} />}
           />
           <Route path="/account-deleted" element={<AccountDeletedPage onAuth={handleAuth} />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route
+            path="/verify-email"
+            element={
+              !isLoggedIn ? (
+                <Navigate to="/login" replace />
+              ) : (
+                <VerifyEmailPage user={user!} onLogout={handleLogout} onUserUpdate={setUser} />
+              )
+            }
+          />
           <Route
             path="/face-enrollment"
             element={
               !isLoggedIn ? (
                 <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
               ) : (
                 <FaceEnrollmentPage onUserUpdate={setUser} />
               )
@@ -328,6 +358,10 @@ export default function App() {
             element={
               !isLoggedIn ? (
                 <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
               ) : needsFaceEnrollment ? (
                 <Navigate to="/face-enrollment" replace />
               ) : (
@@ -342,6 +376,8 @@ export default function App() {
             element={
               !isLoggedIn ? (
                 <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
               ) : needsFaceEnrollment ? (
                 <Navigate to="/face-enrollment" replace />
               ) : (
@@ -356,6 +392,8 @@ export default function App() {
             element={
               !isLoggedIn ? (
                 <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
               ) : needsFaceEnrollment ? (
                 <Navigate to="/face-enrollment" replace />
               ) : (
@@ -378,6 +416,8 @@ export default function App() {
             element={
               !isLoggedIn ? (
                 <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
               ) : needsFaceEnrollment ? (
                 <Navigate to="/face-enrollment" replace />
               ) : (
@@ -393,6 +433,8 @@ export default function App() {
             element={
               !isLoggedIn ? (
                 <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
               ) : needsFaceEnrollment ? (
                 <Navigate to="/face-enrollment" replace />
               ) : (
@@ -407,6 +449,8 @@ export default function App() {
             element={
               !isLoggedIn ? (
                 <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
               ) : needsFaceEnrollment ? (
                 <Navigate to="/face-enrollment" replace />
               ) : (
@@ -419,6 +463,8 @@ export default function App() {
             element={
               !isLoggedIn ? (
                 <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
               ) : needsFaceEnrollment ? (
                 <Navigate to="/face-enrollment" replace />
               ) : (
@@ -436,7 +482,15 @@ export default function App() {
             path="/404"
             element={
               <NotFoundPage
-                homeTo={!isLoggedIn ? '/login' : needsFaceEnrollment ? '/face-enrollment' : '/'}
+                homeTo={
+                  !isLoggedIn
+                    ? '/login'
+                    : needsEmailVerification
+                      ? '/verify-email'
+                      : needsFaceEnrollment
+                        ? '/face-enrollment'
+                        : '/'
+                }
               />
             }
           />
@@ -446,7 +500,15 @@ export default function App() {
             path="*"
             element={
               <NotFoundPage
-                homeTo={!isLoggedIn ? '/login' : needsFaceEnrollment ? '/face-enrollment' : '/'}
+                homeTo={
+                  !isLoggedIn
+                    ? '/login'
+                    : needsEmailVerification
+                      ? '/verify-email'
+                      : needsFaceEnrollment
+                        ? '/face-enrollment'
+                        : '/'
+                }
               />
             }
           />

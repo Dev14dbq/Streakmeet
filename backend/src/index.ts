@@ -12,12 +12,17 @@ import publicRouter from './routes/public.js'
 import legalRouter from './routes/legal.js'
 import { errorHandler } from './lib/httpErrors.js'
 import { initSocket } from './lib/socket.js'
+import fs from 'fs'
+import path from 'path'
 import { UPLOADS_DIR } from './lib/paths.js'
+import { getObjectStream, isMediaUrl } from './lib/mediaStorage.js'
 import { ensureFaceService } from './lib/face.js'
 import { ensureLegalDocuments } from './lib/legalDocuments.js'
 import { purgeExpiredDeletedUsers } from './lib/accountDeletion.js'
 import { processStreakNotifications } from './lib/streakNotifications.js'
 import { reconcileAllStreakTimezones } from './lib/streakCalendar.js'
+import { prisma } from './lib/prisma.js'
+import { ensureBucket } from './lib/mediaStorage.js'
 
 dotenv.config()
 
@@ -31,8 +36,38 @@ app.use(helmet({ crossOriginResourcePolicy: false })) // Разрешаем за
 app.use(cors())
 app.use(express.json({ limit: '50mb' }))
 
-// Раздаем папку uploads статически
-app.use('/uploads', express.static(UPLOADS_DIR))
+// Медиа из MinIO (fallback на локальную папку для миграции)
+app.get('/uploads/:filename', async (req, res) => {
+  const fileName = req.params.filename
+  if (!fileName || fileName.includes('..')) {
+    res.status(400).end()
+    return
+  }
+  const relativeUrl = `/uploads/${fileName}`
+  if (!isMediaUrl(relativeUrl)) {
+    res.status(400).end()
+    return
+  }
+  try {
+    const { stream, contentLength } = await getObjectStream(relativeUrl)
+    if (!stream) {
+      res.status(404).end()
+      return
+    }
+    res.setHeader('Content-Type', 'image/avif')
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    if (contentLength) res.setHeader('Content-Length', String(contentLength))
+    const readable = stream as NodeJS.ReadableStream
+    readable.pipe(res)
+  } catch {
+    const localPath = path.join(UPLOADS_DIR, fileName)
+    if (fs.existsSync(localPath)) {
+      res.sendFile(localPath)
+      return
+    }
+    res.status(404).end()
+  }
+})
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', message: 'StreakMeet API is running' })
@@ -50,6 +85,16 @@ app.use(errorHandler)
 
 httpServer.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`)
+  void ensureBucket().catch((e) => console.error('[s3] MinIO bucket check failed:', e))
+  void prisma.user
+    .updateMany({
+      where: { passwordHash: { not: '' }, emailVerifiedAt: null, deletedAt: null },
+      data: { emailVerifiedAt: new Date() },
+    })
+    .then((r) => {
+      if (r.count > 0) console.log(`[auth] Auto-verified ${r.count} existing email user(s)`)
+    })
+    .catch((e) => console.error('[auth] Auto-verify migration failed:', e))
   void ensureLegalDocuments().catch((e) =>
     console.error('[legal] Failed to seed legal documents:', e)
   )

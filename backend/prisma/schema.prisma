@@ -27,6 +27,13 @@ model User {
   lastLatitude    Float?
   lastLongitude   Float?
   lastLocationAt  DateTime?
+  emailVerifiedAt      DateTime?
+  emailVerifyToken     String?   @unique
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+  notifyFriends        Boolean   @default(true)
+  notifyMeet           Boolean   @default(true)
+  geoOnPhotos          Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

@@ -10,6 +10,11 @@ export const ErrorCodes = {
   OAUTH_INVALID_TOKEN: 'OAUTH_INVALID_TOKEN',
   OAUTH_NOT_CONFIGURED: 'OAUTH_NOT_CONFIGURED',
   RESTORE_ACCOUNT_FAILED: 'RESTORE_ACCOUNT_FAILED',
+  EMAIL_NOT_VERIFIED: 'EMAIL_NOT_VERIFIED',
+  EMAIL_VERIFY_TOKEN_INVALID: 'EMAIL_VERIFY_TOKEN_INVALID',
+  PASSWORD_RESET_TOKEN_INVALID: 'PASSWORD_RESET_TOKEN_INVALID',
+  RESEND_COOLDOWN: 'RESEND_COOLDOWN',
+  EMAIL_SEND_FAILED: 'EMAIL_SEND_FAILED',
 
   MISSING_FIELD: 'MISSING_FIELD',
   INVALID_EMAIL: 'INVALID_EMAIL',
@@ -81,6 +86,11 @@ const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   OAUTH_INVALID_TOKEN: 'Недействительный токен OAuth',
   OAUTH_NOT_CONFIGURED: 'OAuth не настроен на сервере',
   RESTORE_ACCOUNT_FAILED: 'Не удалось восстановить аккаунт',
+  EMAIL_NOT_VERIFIED: 'Подтвердите email, чтобы продолжить',
+  EMAIL_VERIFY_TOKEN_INVALID: 'Ссылка для подтверждения недействительна или устарела',
+  PASSWORD_RESET_TOKEN_INVALID: 'Ссылка для сброса пароля недействительна или устарела',
+  RESEND_COOLDOWN: 'Подождите минуту перед повторной отправкой',
+  EMAIL_SEND_FAILED: 'Не удалось отправить письмо',
 
   MISSING_FIELD: 'Не заполнены обязательные поля',
   INVALID_EMAIL: 'Некорректный email',

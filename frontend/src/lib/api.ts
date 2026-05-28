@@ -111,6 +111,21 @@ export const deleteAccount = () => api.delete<{ success: boolean }>('/api/users/
 export const register = (data: RegisterPayload) =>
   api.post<AuthResponse>('/api/auth/register', data)
 
+export const resendVerificationEmail = () =>
+  api.post<{ success: true }>('/api/auth/resend-verification')
+
+export const forgotPassword = (email: string) =>
+  api.post<{ success: true }>('/api/auth/forgot-password', { email })
+
+export const resetPassword = (token: string, password: string) =>
+  api.post<{ success: true }>('/api/auth/reset-password', { token, password })
+
+export const updatePreferences = (prefs: {
+  notifyFriends?: boolean
+  notifyMeet?: boolean
+  geoOnPhotos?: boolean
+}) => api.patch<AuthUser>('/api/users/preferences', prefs)
+
 export function getDeletedAccountInfo(err: unknown): DeletedAccountInfo | null {
   const data = (err as { response?: { status?: number; data?: DeletedAccountInfo } })?.response
   if ((data?.status === 403 || data?.status === 409) && data.data?.code === 'ACCOUNT_DELETED') {
@@ -188,6 +203,9 @@ export const enrollFace = (photos: string[]) =>
 export const RESERVED_PATHS = new Set([
   'login',
   'register',
+  'verify-email',
+  'forgot-password',
+  'reset-password',
   'map',
   'memories',
   'friends',

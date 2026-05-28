@@ -160,6 +160,16 @@ export default function EmailAuthPage({ onAuth }: Props) {
             </div>
           )}
 
+          {step === 'password' && (
+            <button
+              type="button"
+              onClick={() => navigate('/forgot-password')}
+              className="text-sm text-[var(--color-brand-primary)] text-left pl-1"
+            >
+              {t('auth.forgotPassword')}
+            </button>
+          )}
+
           <button
             type="submit"
             disabled={loading}

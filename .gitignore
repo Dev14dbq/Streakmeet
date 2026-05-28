@@ -18,6 +18,10 @@ face-service/.venv
 __pycache__
 *.pyc
 
+# Android signing (never commit secrets)
+frontend/android/keystore.properties
+*.keystore
+
 # Runtime / archives
 uploads/
 *.zip

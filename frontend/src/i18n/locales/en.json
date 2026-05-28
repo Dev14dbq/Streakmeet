@@ -98,7 +98,38 @@
     "restoreAccount": "Restore account",
     "keepDeleted": "No, keep deleted",
     "restoreInsufficient": "Not enough data to restore — sign in again",
-    "restoreFailed": "Could not restore account"
+    "restoreFailed": "Could not restore account",
+    "forgotPassword": "Forgot password?",
+    "emailPlaceholder": "Email"
+  },
+  "verifyEmail": {
+    "title": "Confirm your email",
+    "description": "We sent a confirmation link to",
+    "resend": "Resend email",
+    "sent": "Email sent",
+    "sendFailed": "Could not send email",
+    "checkInbox": "Check your inbox and spam folder",
+    "invalidLink": "This link is invalid or expired",
+    "verifiedTitle": "Email confirmed",
+    "verifiedDescription": "You're all set. Continue to StreakMeet.",
+    "continueApp": "Open app",
+    "continueEnrollment": "Set up face recognition"
+  },
+  "forgotPassword": {
+    "title": "Reset password",
+    "description": "Enter your email and we'll send a reset link.",
+    "submit": "Send link",
+    "sent": "If this email is registered, we sent a link",
+    "checkInbox": "Check your inbox. The link is valid for 1 hour.",
+    "error": "Could not send reset email"
+  },
+  "resetPassword": {
+    "title": "New password",
+    "description": "Choose a new password for your account.",
+    "submit": "Save password",
+    "success": "Password updated — sign in",
+    "error": "Could not reset password",
+    "invalidToken": "Invalid or expired reset link"
   },
   "face": {
     "lookStraight": "Look straight",
@@ -274,6 +305,7 @@
     "invalidEmail": "Invalid email",
     "emailChanged": "Email changed successfully",
     "emailChangeFailed": "Could not change email",
+    "prefsUpdateFailed": "Could not save settings",
     "signOut": "Sign out",
     "deleteAccount": "Delete account"
   },
@@ -421,6 +453,11 @@
     "OAUTH_INVALID_TOKEN": "Invalid OAuth token",
     "OAUTH_NOT_CONFIGURED": "OAuth is not configured on this server",
     "RESTORE_ACCOUNT_FAILED": "Could not restore account",
+    "EMAIL_NOT_VERIFIED": "Confirm your email to continue",
+    "EMAIL_VERIFY_TOKEN_INVALID": "Invalid or expired confirmation link",
+    "PASSWORD_RESET_TOKEN_INVALID": "Invalid or expired reset link",
+    "RESEND_COOLDOWN": "Wait a minute before resending",
+    "EMAIL_SEND_FAILED": "Could not send email",
     "MISSING_FIELD": "Required fields are missing",
     "INVALID_EMAIL": "Invalid email",
     "INVALID_TIMEZONE": "Invalid timezone",

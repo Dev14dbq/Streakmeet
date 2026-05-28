@@ -66,6 +66,19 @@ model EnrollFaceResponse {
   success: true;
 }
 
+model ForgotPasswordRequest {
+  email: string;
+}
+
+model ResetPasswordRequest {
+  token: string;
+  password: string;
+}
+
+model ResendVerificationResponse {
+  success: true;
+}
+
 @route("/api/auth")
 interface AuthRoutes {
   @post
@@ -96,4 +109,21 @@ interface AuthRoutes {
   @route("/enroll-face")
   @useAuth(TypeSpec.Http.BearerAuth)
   enrollFace(@body body: EnrollFaceRequest): EnrollFaceResponse;
+
+  @get
+  @route("/verify-email")
+  verifyEmail(@query token: string): void;
+
+  @post
+  @route("/resend-verification")
+  @useAuth(TypeSpec.Http.BearerAuth)
+  resendVerification(): ResendVerificationResponse;
+
+  @post
+  @route("/forgot-password")
+  forgotPassword(@body body: ForgotPasswordRequest): SuccessResponse;
+
+  @post
+  @route("/reset-password")
+  resetPassword(@body body: ResetPasswordRequest): SuccessResponse;
 }

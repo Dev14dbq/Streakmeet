@@ -1,8 +1,6 @@
-import fs from 'fs'
-import path from 'path'
 import crypto from 'crypto'
 import sharp from 'sharp'
-import { UPLOADS_DIR } from './paths.js'
+import { getObjectBuffer, uploadAvif, urlToS3Key } from './mediaStorage.js'
 
 export function parseBase64Image(photoBase64: string): Buffer {
   const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, '')
@@ -27,19 +25,17 @@ export async function saveBase64ImageAsAvif(
     throw new Error('Invalid image format')
   }
 
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true })
-  }
-
   const fileName = `${nameWithoutExt}.avif`
-  const filePath = path.join(UPLOADS_DIR, fileName)
+  const relativeUrl = `/uploads/${fileName}`
+  const key = urlToS3Key(relativeUrl)
 
-  await sharp(parseBase64Image(photoBase64))
+  const buffer = await sharp(parseBase64Image(photoBase64))
     .rotate()
     .avif({ quality: 65, effort: 4 })
-    .toFile(filePath)
+    .toBuffer()
 
-  return `/uploads/${fileName}`
+  await uploadAvif(key, buffer)
+  return relativeUrl
 }
 
 export async function combineTwoImages(
@@ -47,21 +43,12 @@ export async function combineTwoImages(
   photoBase64B: string,
   nameWithoutExt: string
 ): Promise<string> {
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true })
-  }
-
-  // photoUrlA is something like "/uploads/filename.avif"
-  const filePathA = path.join(UPLOADS_DIR, photoUrlA.replace('/uploads/', ''))
-  const bufA = fs.readFileSync(filePathA)
+  const bufA = await getObjectBuffer(photoUrlA)
   const bufB = parseBase64Image(photoBase64B)
 
   const metaA = await sharp(bufA).rotate().metadata()
-  const metaB = await sharp(bufB).rotate().metadata()
-
   const isVertical = (metaA.height || 0) > (metaA.width || 0)
 
-  // Standardize size
   const targetWidth = isVertical ? 1080 : 1440
   const targetHeight = isVertical ? 1440 : 1080
 
@@ -74,15 +61,14 @@ export async function combineTwoImages(
     .resize(targetWidth, targetHeight, { fit: 'cover' })
     .toBuffer()
 
-  // If vertical, side-by-side: width = targetWidth * 2, height = targetHeight
-  // If horizontal, top-bottom: width = targetWidth, height = targetHeight * 2
   const combinedWidth = isVertical ? targetWidth * 2 : targetWidth
   const combinedHeight = isVertical ? targetHeight : targetHeight * 2
 
   const fileName = `${nameWithoutExt}.avif`
-  const filePath = path.join(UPLOADS_DIR, fileName)
+  const relativeUrl = `/uploads/${fileName}`
+  const key = urlToS3Key(relativeUrl)
 
-  await sharp({
+  const buffer = await sharp({
     create: {
       width: combinedWidth,
       height: combinedHeight,
@@ -95,9 +81,10 @@ export async function combineTwoImages(
       { input: resizedB, top: isVertical ? 0 : targetHeight, left: isVertical ? targetWidth : 0 },
     ])
     .avif({ quality: 65, effort: 4 })
-    .toFile(filePath)
+    .toBuffer()
 
-  return `/uploads/${fileName}`
+  await uploadAvif(key, buffer)
+  return relativeUrl
 }
 
 export async function combineRemoteSelfieImages(
@@ -105,15 +92,9 @@ export async function combineRemoteSelfieImages(
   photoBase64B: string,
   nameWithoutExt: string
 ): Promise<string> {
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true })
-  }
-
-  const filePathA = path.join(UPLOADS_DIR, photoUrlA.replace('/uploads/', ''))
-  const bufA = fs.readFileSync(filePathA)
+  const bufA = await getObjectBuffer(photoUrlA)
   const bufB = parseBase64Image(photoBase64B)
 
-  // Горизонтальные селфи: два кадра 16:9 рядом
   const targetWidth = 960
   const targetHeight = 540
 
@@ -127,9 +108,10 @@ export async function combineRemoteSelfieImages(
     .toBuffer()
 
   const fileName = `${nameWithoutExt}.avif`
-  const filePath = path.join(UPLOADS_DIR, fileName)
+  const relativeUrl = `/uploads/${fileName}`
+  const key = urlToS3Key(relativeUrl)
 
-  await sharp({
+  const buffer = await sharp({
     create: {
       width: targetWidth * 2,
       height: targetHeight,
@@ -142,13 +124,13 @@ export async function combineRemoteSelfieImages(
       { input: resizedB, top: 0, left: targetWidth },
     ])
     .avif({ quality: 65, effort: 4 })
-    .toFile(filePath)
+    .toBuffer()
 
-  return `/uploads/${fileName}`
+  await uploadAvif(key, buffer)
+  return relativeUrl
 }
 
 export async function hashImageFile(relativeUrl: string): Promise<string> {
-  const filePath = path.join(UPLOADS_DIR, relativeUrl.replace(/^\/uploads\//, ''))
-  const buf = await fs.promises.readFile(filePath)
+  const buf = await getObjectBuffer(relativeUrl)
   return crypto.createHash('sha256').update(buf).digest('hex')
 }

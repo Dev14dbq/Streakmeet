@@ -21,11 +21,21 @@ import {
 import { isValidTimezone, normalizeTimezone } from '../lib/timezone.js'
 import { acceptCurrentLegalForUser } from '../lib/legalDocuments.js'
 import { getJwtSecret } from '../lib/jwtSecret.js'
-import type { AuthResponse, AuthUser } from '../types/api.js'
+import type { AuthResponse } from '../types/api.js'
+import {
+  authUserPayload,
+  userProfileSelect,
+  type UserProfileRow,
+} from '../lib/userPayload.js'
+import { issueEmailVerification, markEmailVerified, generateToken } from '../lib/emailVerify.js'
+import { sendPasswordResetEmail } from '../lib/email.js'
+import { authRateLimit, sensitiveAuthRateLimit } from '../middleware/rateLimit.js'
+import { requireEmailVerified } from '../middleware/requireEmailVerified.js'
 
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 
 const router = Router()
+router.use(authRateLimit)
 
 async function resolveGoogleProfile(body: {
   accessToken?: string
@@ -70,7 +80,7 @@ const MIN_INPUT_FRAMES = 3
 const MAX_INPUT_FRAMES = 16
 const MIN_ACCEPTED_EMBEDDINGS = 4
 
-router.post('/enroll-face', requireAuth, async (req: AuthRequest, res: Response) => {
+router.post('/enroll-face', requireAuth, requireEmailVerified, async (req: AuthRequest, res: Response) => {
   const { photos } = req.body as { photos?: string[] }
   if (!photos || !Array.isArray(photos) || photos.length === 0) {
     sendError(res, 400, ErrorCodes.PHOTOS_REQUIRED)
@@ -174,22 +184,6 @@ function makeTokens(userId: string): Pick<AuthResponse, 'accessToken'> {
   return { accessToken }
 }
 
-function authUserPayload(user: {
-  id: string
-  email: string
-  nickname: string
-  faceEnrolled: boolean
-  isPublic: boolean
-}): AuthUser {
-  return {
-    id: user.id,
-    email: user.email,
-    nickname: user.nickname,
-    faceEnrolled: user.faceEnrolled,
-    isPublic: user.isPublic,
-  }
-}
-
 async function syncUserTimezone(userId: string, timezone?: string) {
   if (!timezone || !isValidTimezone(timezone)) return
   await prisma.user.update({
@@ -250,6 +244,7 @@ async function findOrCreateOAuthUser(data: {
         email: data.email,
         passwordHash: '',
         nickname: nick,
+        emailVerifiedAt: new Date(),
         ...(timezone ? { timezone } : {}),
       },
     })
@@ -265,7 +260,14 @@ async function restoreDeletedUser(userId: string) {
   return prisma.user.update({
     where: { id: userId },
     data: { deletedAt: null },
+    select: { ...userProfileSelect, passwordHash: true },
   })
+}
+
+function toAuthPayload(
+  user: UserProfileRow & { passwordHash: string }
+): AuthResponse['user'] {
+  return authUserPayload(user)
 }
 
 // ─── Email flow ────────────────────────────────────────────────────────────────
@@ -308,7 +310,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
   res.json({
     ...makeTokens(user.id),
-    user: authUserPayload(user),
+    user: toAuthPayload(user as UserProfileRow & { passwordHash: string }),
   })
 })
 
@@ -358,7 +360,10 @@ router.post('/restore-account', async (req: Request, res: Response) => {
         return
       }
       if (!user.deletedAt) {
-        res.json({ ...makeTokens(user.id), user: authUserPayload(user) })
+        res.json({
+          ...makeTokens(user.id),
+          user: toAuthPayload(user as UserProfileRow & { passwordHash: string }),
+        })
         return
       }
       if (isRetentionExpired(user.deletedAt)) {
@@ -367,7 +372,7 @@ router.post('/restore-account', async (req: Request, res: Response) => {
         return
       }
       const restored = await restoreDeletedUser(user.id)
-      res.json({ ...makeTokens(restored.id), user: authUserPayload(restored) })
+      res.json({ ...makeTokens(restored.id), user: toAuthPayload(restored) })
       return
     }
 
@@ -382,7 +387,15 @@ router.post('/restore-account', async (req: Request, res: Response) => {
       return
     }
     if (!user.deletedAt) {
-      res.json({ ...makeTokens(user.id), user: authUserPayload(user) })
+      const full = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { ...userProfileSelect, passwordHash: true },
+      })
+      if (!full) {
+        sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
+        return
+      }
+      res.json({ ...makeTokens(full.id), user: toAuthPayload(full) })
       return
     }
     if (isRetentionExpired(user.deletedAt)) {
@@ -392,7 +405,7 @@ router.post('/restore-account', async (req: Request, res: Response) => {
     }
 
     const restored = await restoreDeletedUser(user.id)
-    res.json({ ...makeTokens(restored.id), user: authUserPayload(restored) })
+    res.json({ ...makeTokens(restored.id), user: toAuthPayload(restored) })
   } catch {
     sendError(res, 401, ErrorCodes.RESTORE_ACCOUNT_FAILED)
   }
@@ -451,11 +464,17 @@ router.post('/register', async (req: Request, res: Response) => {
       nickname: normalizedUsername,
       timezone: normalizeTimezone(timezone),
     },
+    select: { ...userProfileSelect, passwordHash: true },
   })
   await acceptCurrentLegalForUser(user.id)
+  try {
+    await issueEmailVerification(user.id, user.email)
+  } catch (e) {
+    console.error('[register] verification email failed:', e)
+  }
   res.status(201).json({
     ...makeTokens(user.id),
-    user: authUserPayload(user),
+    user: toAuthPayload(user),
   })
 })
 
@@ -488,9 +507,17 @@ router.post('/google', async (req: Request, res: Response) => {
 
     if (await resolveDeletedAccount(user, res)) return
 
+    const full = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { ...userProfileSelect, passwordHash: true },
+    })
+    if (!full) {
+      sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
+      return
+    }
     res.json({
-      ...makeTokens(user.id),
-      user: authUserPayload(user),
+      ...makeTokens(full.id),
+      user: toAuthPayload(full),
     })
   } catch {
     sendError(res, 401, ErrorCodes.OAUTH_INVALID_TOKEN)
@@ -520,13 +547,135 @@ router.post('/apple', async (req: Request, res: Response) => {
     const user = await findOrCreateOAuthUser({ email: payload.email, provider: 'apple', timezone })
     if (await resolveDeletedAccount(user, res)) return
 
+    const full = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { ...userProfileSelect, passwordHash: true },
+    })
+    if (!full) {
+      sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
+      return
+    }
     res.json({
-      ...makeTokens(user.id),
-      user: authUserPayload(user),
+      ...makeTokens(full.id),
+      user: toAuthPayload(full),
     })
   } catch {
     sendError(res, 401, ErrorCodes.OAUTH_INVALID_TOKEN)
   }
+})
+
+// GET /api/auth/verify-email?token=
+router.get('/verify-email', async (req: Request, res: Response) => {
+  const token = typeof req.query.token === 'string' ? req.query.token : ''
+  if (!token) {
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
+    return
+  }
+  const user = await prisma.user.findFirst({
+    where: { emailVerifyToken: token },
+    select: { id: true },
+  })
+  if (!user) {
+    const appUrl = (process.env.APP_PUBLIC_URL ?? 'https://spectrmod.com').replace(/\/$/, '')
+    res.redirect(302, `${appUrl}/verify-email?error=invalid`)
+    return
+  }
+  await markEmailVerified(user.id)
+  const appUrl = (process.env.APP_PUBLIC_URL ?? 'https://spectrmod.com').replace(/\/$/, '')
+  res.redirect(302, `${appUrl}/verify-email?verified=1`)
+})
+
+const lastResendAt = new Map<string, number>()
+
+// POST /api/auth/resend-verification
+router.post(
+  '/resend-verification',
+  sensitiveAuthRateLimit,
+  requireAuth,
+  async (req: AuthRequest, res: Response) => {
+    const userId = req.userId!
+    const last = lastResendAt.get(userId) ?? 0
+    if (Date.now() - last < 60_000) {
+      sendError(res, 429, ErrorCodes.RESEND_COOLDOWN)
+      return
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, emailVerifiedAt: true, passwordHash: true },
+    })
+    if (!user || !user.passwordHash) {
+      res.json({ success: true })
+      return
+    }
+    if (user.emailVerifiedAt) {
+      res.json({ success: true })
+      return
+    }
+    try {
+      await issueEmailVerification(userId, user.email)
+      lastResendAt.set(userId, Date.now())
+      res.json({ success: true })
+    } catch (e) {
+      console.error('[resend-verification]', e)
+      sendError(res, 500, ErrorCodes.EMAIL_SEND_FAILED)
+    }
+  }
+)
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', sensitiveAuthRateLimit, async (req: Request, res: Response) => {
+  const { email } = req.body as { email?: string }
+  if (!email || !email.includes('@')) {
+    sendError(res, 400, ErrorCodes.INVALID_EMAIL)
+    return
+  }
+  const user = await findUserByEmail(email)
+  if (user?.passwordHash && !user.deletedAt) {
+    const token = generateToken()
+    const expires = new Date(Date.now() + 3_600_000)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordResetToken: token, passwordResetExpires: expires },
+    })
+    try {
+      await sendPasswordResetEmail(user.email, token)
+    } catch (e) {
+      console.error('[forgot-password]', e)
+    }
+  }
+  res.json({ success: true })
+})
+
+// POST /api/auth/reset-password
+router.post('/reset-password', sensitiveAuthRateLimit, async (req: Request, res: Response) => {
+  const { token, password } = req.body as { token?: string; password?: string }
+  if (!token || !password) {
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
+    return
+  }
+  if (password.length < 6) {
+    sendError(res, 400, ErrorCodes.PASSWORD_TOO_SHORT)
+    return
+  }
+  const user = await prisma.user.findFirst({
+    where: {
+      passwordResetToken: token,
+      passwordResetExpires: { gt: new Date() },
+    },
+  })
+  if (!user) {
+    sendError(res, 400, ErrorCodes.PASSWORD_RESET_TOKEN_INVALID)
+    return
+  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash: await bcrypt.hash(password, 12),
+      passwordResetToken: null,
+      passwordResetExpires: null,
+    },
+  })
+  res.json({ success: true })
 })
 
 export default router

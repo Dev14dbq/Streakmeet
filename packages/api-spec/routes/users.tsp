@@ -16,6 +16,12 @@ model UpdatePublicRequest {
   isPublic: boolean;
 }
 
+model UpdatePreferencesRequest {
+  notifyFriends?: boolean;
+  notifyMeet?: boolean;
+  geoOnPhotos?: boolean;
+}
+
 model UploadAvatarRequest {
   photoBase64: string;
 }
@@ -50,6 +56,11 @@ interface UsersRoutes {
   @route("/public")
   @useAuth(TypeSpec.Http.BearerAuth)
   updatePublic(@body body: UpdatePublicRequest): UserProfile;
+
+  @patch
+  @route("/preferences")
+  @useAuth(TypeSpec.Http.BearerAuth)
+  updatePreferences(@body body: UpdatePreferencesRequest): UserProfile;
 
   @post
   @route("/avatar")

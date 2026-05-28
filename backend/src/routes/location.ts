@@ -1,5 +1,6 @@
 import { Router, type Response } from 'express'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
+import { requireEmailVerified } from '../middleware/requireEmailVerified.js'
 import { prisma } from '../lib/prisma.js'
 import {
   broadcastLocationOffToFriends,
@@ -9,7 +10,7 @@ import {
 import { ErrorCodes, sendError } from '../lib/apiErrors.js'
 
 const router = Router()
-router.use(requireAuth)
+router.use(requireAuth, requireEmailVerified)
 
 function mePayload(user: {
   sharingLocation: boolean

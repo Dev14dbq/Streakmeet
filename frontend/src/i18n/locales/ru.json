@@ -98,7 +98,38 @@
     "restoreAccount": "Восстановить аккаунт",
     "keepDeleted": "Нет, оставить удалённым",
     "restoreInsufficient": "Недостаточно данных для восстановления — войдите снова",
-    "restoreFailed": "Не удалось восстановить аккаунт"
+    "restoreFailed": "Не удалось восстановить аккаунт",
+    "forgotPassword": "Забыли пароль?",
+    "emailPlaceholder": "Email"
+  },
+  "verifyEmail": {
+    "title": "Подтвердите email",
+    "description": "Мы отправили ссылку для подтверждения на",
+    "resend": "Отправить снова",
+    "sent": "Письмо отправлено",
+    "sendFailed": "Не удалось отправить письмо",
+    "checkInbox": "Проверьте почту и папку «Спам»",
+    "invalidLink": "Ссылка недействительна или устарела",
+    "verifiedTitle": "Email подтверждён",
+    "verifiedDescription": "Можно продолжить пользоваться StreakMeet.",
+    "continueApp": "Открыть приложение",
+    "continueEnrollment": "Настроить распознавание лица"
+  },
+  "forgotPassword": {
+    "title": "Сброс пароля",
+    "description": "Введите email — мы отправим ссылку для сброса.",
+    "submit": "Отправить ссылку",
+    "sent": "Если email зарегистрирован, мы отправили ссылку",
+    "checkInbox": "Проверьте почту. Ссылка действует 1 час.",
+    "error": "Не удалось отправить письмо"
+  },
+  "resetPassword": {
+    "title": "Новый пароль",
+    "description": "Придумайте новый пароль для аккаунта.",
+    "submit": "Сохранить пароль",
+    "success": "Пароль обновлён — войдите снова",
+    "error": "Не удалось сбросить пароль",
+    "invalidToken": "Ссылка для сброса недействительна или устарела"
   },
   "face": {
     "lookStraight": "Смотри прямо",
@@ -274,6 +305,7 @@
     "invalidEmail": "Некорректный email",
     "emailChanged": "Email успешно изменён",
     "emailChangeFailed": "Не удалось изменить email",
+    "prefsUpdateFailed": "Не удалось сохранить настройки",
     "signOut": "Выйти",
     "deleteAccount": "Удалить аккаунт"
   },
@@ -420,7 +452,12 @@
     "ACCOUNT_RETENTION_EXPIRED": "Restore period expired — account permanently deleted",
     "OAUTH_INVALID_TOKEN": "Invalid OAuth token",
     "OAUTH_NOT_CONFIGURED": "OAuth is not configured on this server",
-    "RESTORE_ACCOUNT_FAILED": "Could not restore account",
+    "RESTORE_ACCOUNT_FAILED": "Не удалось восстановить аккаунт",
+    "EMAIL_NOT_VERIFIED": "Подтвердите email, чтобы продолжить",
+    "EMAIL_VERIFY_TOKEN_INVALID": "Ссылка для подтверждения недействительна или устарела",
+    "PASSWORD_RESET_TOKEN_INVALID": "Ссылка для сброса недействительна или устарела",
+    "RESEND_COOLDOWN": "Подождите минуту перед повторной отправкой",
+    "EMAIL_SEND_FAILED": "Не удалось отправить письмо",
     "MISSING_FIELD": "Required fields are missing",
     "INVALID_EMAIL": "Invalid email",
     "INVALID_TIMEZONE": "Invalid timezone",

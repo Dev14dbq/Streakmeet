@@ -22,9 +22,13 @@ model AuthUser {
   qrCodeId?: string;
   gemsBalance?: int32;
   faceEnrolled: boolean;
+  emailVerified: boolean;
   avatarUrl?: string;
   timezone?: string;
   isPublic?: boolean;
+  notifyFriends?: boolean;
+  notifyMeet?: boolean;
+  geoOnPhotos?: boolean;
 }
 
 /** Full user profile */
@@ -35,9 +39,19 @@ model UserProfile {
   qrCodeId?: string;
   gemsBalance?: int32;
   faceEnrolled: boolean;
+  emailVerified: boolean;
   avatarUrl?: string | null;
   timezone?: string;
   isPublic?: boolean;
+  notifyFriends?: boolean;
+  notifyMeet?: boolean;
+  geoOnPhotos?: boolean;
+}
+
+model UserPreferences {
+  notifyFriends: boolean;
+  notifyMeet: boolean;
+  geoOnPhotos: boolean;
 }
 
 model UserSummary {

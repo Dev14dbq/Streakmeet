@@ -3,7 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 import { ensureNotificationPermission, NOTIFICATION_CHANNEL_ID } from './streakNotifications'
 import { translateNotification } from './translateNotification'
 
-const SETTINGS_KEY = 'streakmeet_settings'
+import { getNotificationPrefs } from './userPreferences'
 
 export interface AppNotificationPayload {
   message: string
@@ -15,13 +15,7 @@ export interface AppNotificationPayload {
 let nextInstantId = 950_000
 
 function settingEnabled(key: 'notifyFriends' | 'notifyMeet'): boolean {
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
-    if (!raw) return true
-    return JSON.parse(raw)[key] !== false
-  } catch {
-    return true
-  }
+  return getNotificationPrefs()[key]
 }
 
 function allowsInstantPush(data: AppNotificationPayload): boolean {
