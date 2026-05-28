@@ -39,6 +39,8 @@ interface Props {
   onCaptureModeChange?: (mode: CameraCaptureMode) => void
   modeOptions?: CameraModeOption[]
   bottomOverlay?: React.ReactNode
+  /** Tap outside bottom sheet / preview → e.g. leave remote selfie mode */
+  onCancelRemote?: () => void
   shutterDisabled?: boolean
   /**
    * If > 1, the camera grabs a short burst of frames around the shutter press
@@ -107,6 +109,7 @@ export default function FullscreenCamera({
   onCaptureModeChange,
   modeOptions,
   bottomOverlay,
+  onCancelRemote,
   shutterDisabled = false,
   burstFrames = 1,
 }: Props) {
@@ -333,10 +336,15 @@ export default function FullscreenCamera({
 
   const showLive = phase === 'live'
   const showPreview = phase === 'preview' || phase === 'processing'
+  const canCancelRemote =
+    captureMode === 'remote' && !!onCancelRemote && showLive && !processing && !bottomOverlay
 
   return (
     <div className={`fullscreen-camera ${screenClass}`} style={{ height: '100dvh' }}>
-      <div className="fullscreen-camera__viewport">
+      <div
+        className={`fullscreen-camera__viewport${canCancelRemote ? ' fullscreen-camera__viewport--dismiss-remote' : ''}`}
+        onClick={canCancelRemote ? onCancelRemote : undefined}
+      >
         {showPreview && capturedPhoto ? (
           <img src={capturedPhoto} alt="" className="fullscreen-camera__media" />
         ) : useSplit ? (
@@ -448,6 +456,14 @@ export default function FullscreenCamera({
         </div>
       )}
 
+      {bottomOverlay && onCancelRemote ? (
+        <button
+          type="button"
+          className="fullscreen-camera__sheet-backdrop"
+          aria-label={t('camera.backToMeet')}
+          onClick={onCancelRemote}
+        />
+      ) : null}
       {bottomOverlay}
 
       {/* Bottom controls */}

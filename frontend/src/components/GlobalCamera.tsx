@@ -289,6 +289,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
               <CameraRemotePartnerPicker streaks={partnerOptions} onSelect={applyRemoteTarget} />
             ) : undefined
           }
+          onCancelRemote={captureMode === 'remote' ? resetRemoteState : undefined}
         />,
         document.body
       )
