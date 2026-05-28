@@ -91,19 +91,39 @@ const STEPS: StepDef[] = [
     labelKey: 'face.moveClose',
     hintKey: 'face.moveCloseHint',
     arrow: null,
-    check: (m) => m.boxWidthRatio >= 0.38 && Math.abs(m.yaw) < 0.2,
+    check: (m) => m.boxWidthRatio >= MOVE_CLOSE_MIN && Math.abs(m.yaw) < 0.2,
   },
   {
     id: 'moveFar',
     labelKey: 'face.moveFar',
     hintKey: 'face.moveFarHint',
     arrow: null,
-    check: (m) => m.boxWidthRatio >= 0.14 && m.boxWidthRatio <= 0.24 && Math.abs(m.yaw) < 0.2,
+    check: checkMoveFarPose,
   },
 ]
 
+/** Max face width during the moveClose step — moveFar must be clearly farther than this. */
+const MOVE_CLOSE_MIN = 0.34
+const MOVE_FAR_ABSOLUTE_MAX = 0.36
+
+/** Populated during moveClose; read in checkMoveFarPose. */
+const closeFaceWidthPeakRef = { current: 0 }
+
 function inFrameSize(m: FaceMetrics): boolean {
   return m.boxWidthRatio >= 0.18 && m.boxWidthRatio <= 0.55
+}
+
+function checkMoveFarPose(m: FaceMetrics): boolean {
+  if (Math.abs(m.yaw) >= 0.22) return false
+  if (m.boxWidthRatio < 0.1) return false
+
+  const closePeak = closeFaceWidthPeakRef.current
+  const maxWidth =
+    closePeak >= MOVE_CLOSE_MIN
+      ? Math.min(closePeak * 0.72, MOVE_FAR_ABSOLUTE_MAX)
+      : MOVE_FAR_ABSOLUTE_MAX
+
+  return m.boxWidthRatio < maxWidth
 }
 
 function estimateYaw(lm: faceapi.FaceLandmarks68): number {
@@ -271,6 +291,7 @@ export default function FaceEnrollmentPage({
   function handleStart() {
     photosRef.current = []
     stableRef.current = 0
+    closeFaceWidthPeakRef.current = 0
     yawHistory.current = []
     pitchHistory.current = []
     setStepIndex(0)
@@ -451,6 +472,10 @@ export default function FaceEnrollmentPage({
     }
 
     const step = STEPS[stepIndexRef.current]!
+    if (step.id === 'moveClose') {
+      closeFaceWidthPeakRef.current = Math.max(closeFaceWidthPeakRef.current, metrics.boxWidthRatio)
+    }
+
     const ok = step.check(metrics)
 
     if (ok) {
@@ -497,6 +522,7 @@ export default function FaceEnrollmentPage({
       toastError(msg)
       photosRef.current = []
       stableRef.current = 0
+      closeFaceWidthPeakRef.current = 0
       yawHistory.current = []
       pitchHistory.current = []
       setHoldPct(0)
