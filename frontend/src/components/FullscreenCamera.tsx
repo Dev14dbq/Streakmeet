@@ -118,8 +118,10 @@ export default function FullscreenCamera({
   const streamRef = useRef<MediaStream | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const burstRef = useRef<string[]>([])
-  const lastViewportTapAt = useRef(0)
-  const viewportTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastTapRef = useRef(0)
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const DOUBLE_TAP_MS = 320
 
   const [phase, setPhase] = useState<Phase>('live')
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
@@ -323,38 +325,54 @@ export default function FullscreenCamera({
     setCameraReady(false)
   }, [torchOn, setTorch])
 
-  useEffect(() => {
-    return () => {
-      if (viewportTapTimerRef.current) clearTimeout(viewportTapTimerRef.current)
-    }
-  }, [])
-
   const handleViewportTap = useCallback(() => {
-    if (phase !== 'live' || processing || countdown !== null) return
-
     const now = Date.now()
-    const sinceLast = now - lastViewportTapAt.current
+    const sinceLast = now - lastTapRef.current
+    const dismissRemote =
+      captureMode === 'remote' &&
+      !!onCancelRemote &&
+      phase === 'live' &&
+      !processing &&
+      !bottomOverlay
 
-    if (sinceLast > 0 && sinceLast < 320) {
-      if (viewportTapTimerRef.current) {
-        clearTimeout(viewportTapTimerRef.current)
-        viewportTapTimerRef.current = null
+    if (sinceLast > 0 && sinceLast < DOUBLE_TAP_MS) {
+      if (singleTapTimerRef.current) {
+        clearTimeout(singleTapTimerRef.current)
+        singleTapTimerRef.current = null
       }
-      lastViewportTapAt.current = 0
-      handleFlip()
+      lastTapRef.current = 0
+      if (phase === 'live' && !processing && countdown === null) {
+        handleFlip()
+      }
       return
     }
 
-    lastViewportTapAt.current = now
+    lastTapRef.current = now
 
-    if (captureMode === 'remote' && onCancelRemote && !bottomOverlay) {
-      viewportTapTimerRef.current = setTimeout(() => {
-        viewportTapTimerRef.current = null
-        lastViewportTapAt.current = 0
-        onCancelRemote()
-      }, 320)
+    if (dismissRemote) {
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current)
+      singleTapTimerRef.current = setTimeout(() => {
+        singleTapTimerRef.current = null
+        lastTapRef.current = 0
+        onCancelRemote?.()
+      }, DOUBLE_TAP_MS)
     }
-  }, [phase, processing, countdown, captureMode, onCancelRemote, bottomOverlay, handleFlip])
+  }, [
+    DOUBLE_TAP_MS,
+    captureMode,
+    onCancelRemote,
+    phase,
+    processing,
+    bottomOverlay,
+    countdown,
+    handleFlip,
+  ])
+
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current)
+    }
+  }, [])
 
   const handleToggleTorch = () => {
     if (!torchAvailable) return
@@ -377,12 +395,8 @@ export default function FullscreenCamera({
   return (
     <div className={`fullscreen-camera ${screenClass}`} style={{ height: '100dvh' }}>
       <div
-        className={[
-          'fullscreen-camera__viewport',
-          canCancelRemote ? 'fullscreen-camera__viewport--dismiss-remote' : '',
-          showLive && !processing ? 'fullscreen-camera__viewport--dbltap-flip' : '',
-        ].join(' ')}
-        onClick={showLive && !processing ? handleViewportTap : undefined}
+        className={`fullscreen-camera__viewport${canCancelRemote ? ' fullscreen-camera__viewport--dismiss-remote' : ''}${showLive ? ' fullscreen-camera__viewport--flip-tap' : ''}`}
+        onClick={showLive ? handleViewportTap : undefined}
       >
         {showPreview && capturedPhoto ? (
           <img src={capturedPhoto} alt="" className="fullscreen-camera__media" />

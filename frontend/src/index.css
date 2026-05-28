@@ -506,11 +506,9 @@ body {
   background: #000;
 }
 
-.fullscreen-camera__viewport--dismiss-remote {
+.fullscreen-camera__viewport--dismiss-remote,
+.fullscreen-camera__viewport--flip-tap {
   cursor: pointer;
-}
-
-.fullscreen-camera__viewport--dbltap-flip {
   touch-action: manipulation;
 }
 
