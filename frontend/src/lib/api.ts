@@ -114,6 +114,9 @@ export const register = (data: RegisterPayload) =>
 export const resendVerificationEmail = () =>
   api.post<{ success: true }>('/api/auth/resend-verification')
 
+export const confirmEmailVerification = (token: string) =>
+  api.post<{ success: true }>('/api/auth/verify-email', { token })
+
 export const forgotPassword = (email: string) =>
   api.post<{ success: true }>('/api/auth/forgot-password', { email })
 

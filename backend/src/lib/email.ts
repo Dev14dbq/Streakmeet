@@ -5,8 +5,29 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? 'StreakMeet <onboarding@resend.dev>'
 const APP_PUBLIC_URL = (process.env.APP_PUBLIC_URL ?? 'https://spectrmod.com').replace(/\/$/, '')
 
+function getResendClient(): Resend {
+  if (!resend) {
+    throw new Error('RESEND_API_KEY is not configured')
+  }
+  return resend
+}
+
+async function sendViaResend(payload: Parameters<Resend['emails']['send']>[0]): Promise<void> {
+  const client = getResendClient()
+  const { data, error } = await client.emails.send(payload)
+  if (error) {
+    console.error('[email] Resend API error:', error)
+    throw new Error(error.message)
+  }
+  if (!data?.id) {
+    console.error('[email] Resend returned no message id:', { data, error })
+    throw new Error('Resend did not accept the email')
+  }
+  console.log('[email] Sent', data.id, 'to', payload.to)
+}
+
 export function verificationLink(token: string): string {
-  return `${APP_PUBLIC_URL}/api/auth/verify-email?token=${encodeURIComponent(token)}`
+  return `${APP_PUBLIC_URL}/verify-email?token=${encodeURIComponent(token)}`
 }
 
 export function resetPasswordLink(token: string): string {
@@ -14,13 +35,8 @@ export function resetPasswordLink(token: string): string {
 }
 
 export async function sendVerificationEmail(to: string, token: string): Promise<void> {
-  if (!resend) {
-    console.warn('[email] RESEND_API_KEY not set, skipping verification email to', to)
-    console.warn('[email] Verify URL:', verificationLink(token))
-    return
-  }
   const link = verificationLink(token)
-  const { error } = await resend.emails.send({
+  await sendViaResend({
     from: FROM_EMAIL,
     to,
     subject: 'Подтвердите email — StreakMeet',
@@ -32,17 +48,11 @@ export async function sendVerificationEmail(to: string, token: string): Promise<
       <p>Ссылка действует 24 часа.</p>
     `,
   })
-  if (error) throw new Error(error.message)
 }
 
 export async function sendPasswordResetEmail(to: string, token: string): Promise<void> {
-  if (!resend) {
-    console.warn('[email] RESEND_API_KEY not set, skipping reset email to', to)
-    console.warn('[email] Reset URL:', resetPasswordLink(token))
-    return
-  }
   const link = resetPasswordLink(token)
-  const { error } = await resend.emails.send({
+  await sendViaResend({
     from: FROM_EMAIL,
     to,
     subject: 'Сброс пароля — StreakMeet',
@@ -54,5 +64,4 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
       <p>Ссылка действует 1 час. Если вы не запрашивали сброс — проигнорируйте письмо.</p>
     `,
   })
-  if (error) throw new Error(error.message)
 }

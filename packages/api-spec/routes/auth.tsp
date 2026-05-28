@@ -110,9 +110,13 @@ interface AuthRoutes {
   @useAuth(TypeSpec.Http.BearerAuth)
   enrollFace(@body body: EnrollFaceRequest): EnrollFaceResponse;
 
+  @post
+  @route("/verify-email")
+  verifyEmail(@body body: { token: string }): SuccessResponse;
+
   @get
   @route("/verify-email")
-  verifyEmail(@query token: string): void;
+  verifyEmailRedirect(@query token: string): void;
 
   @post
   @route("/resend-verification")

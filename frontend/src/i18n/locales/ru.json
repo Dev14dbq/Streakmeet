@@ -103,6 +103,10 @@
     "emailPlaceholder": "Email"
   },
   "verifyEmail": {
+    "confirming": "Подтверждаем email…",
+    "invalidTitle": "Ссылка устарела",
+    "confirmFailed": "Не удалось подтвердить email",
+    "confirmFailedHint": "Войдите в аккаунт и запросите новое письмо.",
     "title": "Подтвердите email",
     "description": "Мы отправили ссылку для подтверждения на",
     "resend": "Отправить снова",
@@ -458,6 +462,8 @@
     "PASSWORD_RESET_TOKEN_INVALID": "Ссылка для сброса недействительна или устарела",
     "RESEND_COOLDOWN": "Подождите минуту перед повторной отправкой",
     "EMAIL_SEND_FAILED": "Не удалось отправить письмо",
+    "OAUTH_ACCOUNT_NO_PASSWORD":
+      "Этот аккаунт через Google или Apple — войдите через них, сброс пароля недоступен",
     "MISSING_FIELD": "Required fields are missing",
     "INVALID_EMAIL": "Invalid email",
     "INVALID_TIMEZONE": "Invalid timezone",

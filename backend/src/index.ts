@@ -30,6 +30,9 @@ const app = express()
 const httpServer = createServer(app)
 const port = process.env.PORT ?? 3000
 
+// nginx проксирует API — нужно для rate-limit и req.ip
+app.set('trust proxy', 1)
+
 initSocket(httpServer)
 
 app.use(helmet({ crossOriginResourcePolicy: false })) // Разрешаем загрузку картинок
@@ -85,6 +88,9 @@ app.use(errorHandler)
 
 httpServer.listen(Number(port), '0.0.0.0', () => {
   console.log(`Server is running on port ${port}`)
+  console.log(
+    `[email] Resend ${process.env.RESEND_API_KEY ? 'enabled' : 'DISABLED'}, from=${process.env.RESEND_FROM_EMAIL ?? '(default)'}`
+  )
   void ensureBucket().catch((e) => console.error('[s3] MinIO bucket check failed:', e))
   void prisma.user
     .updateMany({

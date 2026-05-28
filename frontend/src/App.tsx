@@ -13,7 +13,7 @@ import EmailAuthPage from './pages/auth/EmailAuthPage'
 import RegisterDetailsPage from './pages/auth/RegisterDetailsPage'
 import FaceEnrollmentPage from './pages/auth/FaceEnrollmentPage'
 import AccountDeletedPage from './pages/auth/AccountDeletedPage'
-import VerifyEmailPage from './pages/auth/VerifyEmailPage'
+import VerifyEmailRoute from './pages/auth/VerifyEmailRoute'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import HomePage from './pages/home/HomePage'
@@ -333,11 +333,12 @@ export default function App() {
           <Route
             path="/verify-email"
             element={
-              !isLoggedIn ? (
-                <Navigate to="/login" replace />
-              ) : (
-                <VerifyEmailPage user={user!} onLogout={handleLogout} onUserUpdate={setUser} />
-              )
+              <VerifyEmailRoute
+                user={user}
+                isLoggedIn={isLoggedIn}
+                onLogout={handleLogout}
+                onUserUpdate={setUser}
+              />
             }
           />
           <Route

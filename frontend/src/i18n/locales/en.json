@@ -103,6 +103,10 @@
     "emailPlaceholder": "Email"
   },
   "verifyEmail": {
+    "confirming": "Confirming your email…",
+    "invalidTitle": "Link expired",
+    "confirmFailed": "Could not confirm email",
+    "confirmFailedHint": "Request a new link after signing in.",
     "title": "Confirm your email",
     "description": "We sent a confirmation link to",
     "resend": "Resend email",
@@ -458,6 +462,7 @@
     "PASSWORD_RESET_TOKEN_INVALID": "Invalid or expired reset link",
     "RESEND_COOLDOWN": "Wait a minute before resending",
     "EMAIL_SEND_FAILED": "Could not send email",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "This account uses Google or Apple sign-in — password reset is not available",
     "MISSING_FIELD": "Required fields are missing",
     "INVALID_EMAIL": "Invalid email",
     "INVALID_TIMEZONE": "Invalid timezone",

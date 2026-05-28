@@ -35,6 +35,45 @@ import { requireEmailVerified } from '../middleware/requireEmailVerified.js'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 
 const router = Router()
+
+// Подтверждение email по ссылке — без общего rate limit (письмо открывают один раз)
+router.post('/verify-email', async (req: Request, res: Response) => {
+  const { token } = req.body as { token?: string }
+  if (!token || typeof token !== 'string') {
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
+    return
+  }
+  const user = await prisma.user.findFirst({
+    where: { emailVerifyToken: token },
+    select: { id: true },
+  })
+  if (!user) {
+    sendError(res, 400, ErrorCodes.EMAIL_VERIFY_TOKEN_INVALID)
+    return
+  }
+  await markEmailVerified(user.id)
+  res.json({ success: true })
+})
+
+router.get('/verify-email', async (req: Request, res: Response) => {
+  const token = typeof req.query.token === 'string' ? req.query.token : ''
+  const appUrl = (process.env.APP_PUBLIC_URL ?? 'https://spectrmod.com').replace(/\/$/, '')
+  if (!token) {
+    res.redirect(302, `${appUrl}/verify-email?error=invalid`)
+    return
+  }
+  const user = await prisma.user.findFirst({
+    where: { emailVerifyToken: token },
+    select: { id: true },
+  })
+  if (!user) {
+    res.redirect(302, `${appUrl}/verify-email?error=invalid`)
+    return
+  }
+  await markEmailVerified(user.id)
+  res.redirect(302, `${appUrl}/verify-email?verified=1`)
+})
+
 router.use(authRateLimit)
 
 async function resolveGoogleProfile(body: {
@@ -564,27 +603,6 @@ router.post('/apple', async (req: Request, res: Response) => {
   }
 })
 
-// GET /api/auth/verify-email?token=
-router.get('/verify-email', async (req: Request, res: Response) => {
-  const token = typeof req.query.token === 'string' ? req.query.token : ''
-  if (!token) {
-    sendError(res, 400, ErrorCodes.MISSING_FIELD)
-    return
-  }
-  const user = await prisma.user.findFirst({
-    where: { emailVerifyToken: token },
-    select: { id: true },
-  })
-  if (!user) {
-    const appUrl = (process.env.APP_PUBLIC_URL ?? 'https://spectrmod.com').replace(/\/$/, '')
-    res.redirect(302, `${appUrl}/verify-email?error=invalid`)
-    return
-  }
-  await markEmailVerified(user.id)
-  const appUrl = (process.env.APP_PUBLIC_URL ?? 'https://spectrmod.com').replace(/\/$/, '')
-  res.redirect(302, `${appUrl}/verify-email?verified=1`)
-})
-
 const lastResendAt = new Map<string, number>()
 
 // POST /api/auth/resend-verification
@@ -629,20 +647,34 @@ router.post('/forgot-password', sensitiveAuthRateLimit, async (req: Request, res
     sendError(res, 400, ErrorCodes.INVALID_EMAIL)
     return
   }
-  const user = await findUserByEmail(email)
-  if (user?.passwordHash && !user.deletedAt) {
-    const token = generateToken()
-    const expires = new Date(Date.now() + 3_600_000)
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordResetToken: token, passwordResetExpires: expires },
-    })
-    try {
-      await sendPasswordResetEmail(user.email, token)
-    } catch (e) {
-      console.error('[forgot-password]', e)
-    }
+  const normalizedEmail = email.toLowerCase().trim()
+  const user = await findUserByEmail(normalizedEmail)
+
+  if (!user || user.deletedAt) {
+    res.json({ success: true })
+    return
   }
+
+  if (!user.passwordHash) {
+    sendError(res, 400, ErrorCodes.OAUTH_ACCOUNT_NO_PASSWORD)
+    return
+  }
+
+  const token = generateToken()
+  const expires = new Date(Date.now() + 3_600_000)
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordResetToken: token, passwordResetExpires: expires },
+  })
+
+  try {
+    await sendPasswordResetEmail(user.email, token)
+  } catch (e) {
+    console.error('[forgot-password] send failed:', e)
+    sendError(res, 500, ErrorCodes.EMAIL_SEND_FAILED)
+    return
+  }
+
   res.json({ success: true })
 })
 

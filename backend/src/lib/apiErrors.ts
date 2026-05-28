@@ -15,6 +15,7 @@ export const ErrorCodes = {
   PASSWORD_RESET_TOKEN_INVALID: 'PASSWORD_RESET_TOKEN_INVALID',
   RESEND_COOLDOWN: 'RESEND_COOLDOWN',
   EMAIL_SEND_FAILED: 'EMAIL_SEND_FAILED',
+  OAUTH_ACCOUNT_NO_PASSWORD: 'OAUTH_ACCOUNT_NO_PASSWORD',
 
   MISSING_FIELD: 'MISSING_FIELD',
   INVALID_EMAIL: 'INVALID_EMAIL',
@@ -91,6 +92,8 @@ const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   PASSWORD_RESET_TOKEN_INVALID: 'Ссылка для сброса пароля недействительна или устарела',
   RESEND_COOLDOWN: 'Подождите минуту перед повторной отправкой',
   EMAIL_SEND_FAILED: 'Не удалось отправить письмо',
+  OAUTH_ACCOUNT_NO_PASSWORD:
+    'Этот аккаунт создан через Google или Apple — войдите через них, сброс пароля недоступен',
 
   MISSING_FIELD: 'Не заполнены обязательные поля',
   INVALID_EMAIL: 'Некорректный email',
