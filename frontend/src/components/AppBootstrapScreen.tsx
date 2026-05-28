@@ -27,7 +27,7 @@ export default function AppBootstrapScreen({ leaving = false, onLeaveComplete }:
 
   return (
     <div
-      className={`fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black px-8 ${
+      className={`fixed inset-0 z-[300] flex flex-col items-center justify-center bg-[var(--color-background)] px-8 ${
         leaving ? 'bootstrap-screen--leaving' : ''
       }`}
       onAnimationEnd={(e) => {
