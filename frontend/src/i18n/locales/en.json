@@ -209,6 +209,8 @@
     "myQr": "My QR",
     "settings": "Settings",
     "changeAvatar": "Change profile photo",
+    "pickFromGallery": "Choose from gallery",
+    "savingAvatar": "Saving photo…",
     "cameraError": "Camera access error",
     "takePhoto": "Take photo",
     "loadFailed": "Could not load profile",

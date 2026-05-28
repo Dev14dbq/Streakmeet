@@ -40,6 +40,8 @@ export default function ProfilePage({ user: initialUser }: Props) {
   const [showCamera, setShowCamera] = useState(false)
   const [cameraReady, setCameraReady] = useState(false)
   const [showAvatarSheet, setShowAvatarSheet] = useState(false)
+  const [avatarSheetPhase, setAvatarSheetPhase] = useState<'choose' | 'uploading'>('choose')
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoData | null>(null)
   const webcamRef = useRef<Webcam>(null)
@@ -57,8 +59,24 @@ export default function ProfilePage({ user: initialUser }: Props) {
     if (!showCamera) setCameraReady(false)
   }, [showCamera])
 
+  useEffect(() => {
+    if (showAvatarSheet) {
+      setAvatarSheetPhase('choose')
+      setAvatarPreview(null)
+    }
+  }, [showAvatarSheet])
+
+  function closeAvatarSheet() {
+    if (uploading) return
+    setShowAvatarSheet(false)
+    setAvatarSheetPhase('choose')
+    setAvatarPreview(null)
+  }
+
   async function saveAvatar(base64: string) {
     setUploading(true)
+    setAvatarPreview(base64)
+    setAvatarSheetPhase('uploading')
     const previousAvatar = user.avatarUrl
     try {
       const { data: res } = await uploadAvatar(base64)
@@ -68,11 +86,28 @@ export default function ProfilePage({ user: initialUser }: Props) {
       localStorage.setItem('user', JSON.stringify(updatedUser))
       setShowCamera(false)
       setShowAvatarSheet(false)
+      setAvatarSheetPhase('choose')
+      setAvatarPreview(null)
     } catch (e) {
       toastError(getApiErrorMessage(e, t('profile.avatarUploadFailed')))
+      setAvatarSheetPhase('choose')
+      setAvatarPreview(null)
     } finally {
       setUploading(false)
     }
+  }
+
+  function readFileAsDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result
+        if (typeof result === 'string') resolve(result)
+        else reject(new Error('read_failed'))
+      }
+      reader.onerror = () => reject(reader.error ?? new Error('read_failed'))
+      reader.readAsDataURL(file)
+    })
   }
 
   async function handleCaptureAvatar() {
@@ -88,14 +123,20 @@ export default function ProfilePage({ user: initialUser }: Props) {
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      const base64 = ev.target?.result as string
-      if (base64) await saveAvatar(base64)
-    }
-    reader.readAsDataURL(file)
     e.target.value = ''
+    if (!file) return
+
+    setAvatarSheetPhase('uploading')
+    setUploading(true)
+    try {
+      const base64 = await readFileAsDataUrl(file)
+      await saveAvatar(base64)
+    } catch {
+      toastError(t('profile.avatarUploadFailed'))
+      setAvatarSheetPhase('choose')
+      setAvatarPreview(null)
+      setUploading(false)
+    }
   }
 
   if (!user) return null
@@ -152,16 +193,25 @@ export default function ProfilePage({ user: initialUser }: Props) {
             <div className="absolute inset-0 rounded-full blur-xl opacity-30 scale-110 z-0 bg-[var(--color-surface-container-highest)]" />
           )}
           <div className="relative z-10 w-28 h-28 rounded-full bg-[var(--color-surface-container-high)] border-2 border-white/10 overflow-hidden flex items-center justify-center">
-            {user.avatarUrl ? (
+            {uploading && avatarPreview ? (
+              <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
+            ) : user.avatarUrl ? (
               <CachedImage path={user.avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
               <span className="text-4xl font-bold text-[var(--color-brand-primary)] leading-none select-none">
                 {avatarInitial(user.nickname)}
               </span>
             )}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition flex items-center justify-center">
-              <Camera size={28} className="text-white" />
-            </div>
+            {uploading ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55">
+                <span className="h-7 w-7 animate-spin rounded-full border-2 border-white/30 border-t-[var(--color-brand-primary)]" />
+                <span className="text-[10px] font-semibold text-white">{t('common.saving')}</span>
+              </div>
+            ) : (
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition flex items-center justify-center">
+                <Camera size={28} className="text-white" />
+              </div>
+            )}
           </div>
         </button>
 
@@ -260,7 +310,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
       {showAvatarSheet && (
         <div
           className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowAvatarSheet(false)}
+          onClick={closeAvatarSheet}
         >
           <div
             className="bg-[var(--color-surface-container-high)] rounded-t-3xl px-6 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
@@ -270,32 +320,51 @@ export default function ProfilePage({ user: initialUser }: Props) {
             <h3 className="text-lg font-bold text-white mb-4 text-center">
               {t('settings.profilePhoto')}
             </h3>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAvatarSheet(false)
-                  setShowCamera(true)
-                }}
-                className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-white font-semibold active:scale-[0.99] transition"
-              >
-                {t('profile.takePhoto')}
-              </button>
-              <button
-                type="button"
-                onClick={handlePickFromGallery}
-                className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-white font-semibold active:scale-[0.99] transition"
-              >
-                {t('profile.changeAvatar')}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAvatarSheet(false)}
-                className="w-full py-4 text-[var(--color-on-surface-variant)] font-semibold"
-              >
-                {t('common.cancel')}
-              </button>
-            </div>
+
+            {avatarSheetPhase === 'uploading' ? (
+              <div className="flex flex-col items-center py-4">
+                <div className="mb-4 h-32 w-32 overflow-hidden rounded-full border-2 border-[var(--color-brand-primary)] bg-[var(--color-surface-container-highest)]">
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-[var(--color-brand-primary)]" />
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm font-semibold text-white">{t('profile.savingAvatar')}</p>
+                <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">
+                  {t('common.savingPhoto')}
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAvatarSheet(false)
+                    setShowCamera(true)
+                  }}
+                  className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-white font-semibold active:scale-[0.99] transition"
+                >
+                  {t('profile.takePhoto')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePickFromGallery}
+                  className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-white font-semibold active:scale-[0.99] transition"
+                >
+                  {t('profile.pickFromGallery')}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeAvatarSheet}
+                  className="w-full py-4 text-[var(--color-on-surface-variant)] font-semibold"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -209,6 +209,8 @@
     "myQr": "Мой QR",
     "settings": "Настройки",
     "changeAvatar": "Изменить фото профиля",
+    "pickFromGallery": "Выбрать из галереи",
+    "savingAvatar": "Сохраняем фото…",
     "cameraError": "Ошибка доступа к камере",
     "takePhoto": "Сделать фото",
     "loadFailed": "Не удалось загрузить профиль",
