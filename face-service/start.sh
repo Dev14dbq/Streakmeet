@@ -9,4 +9,5 @@ fi
 source .venv/bin/activate
 pip install -q -r requirements.txt
 
+export NO_ALBUMENTATIONS_UPDATE=1
 exec uvicorn main:app --host 127.0.0.1 --port 8001

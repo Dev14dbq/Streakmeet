@@ -52,17 +52,24 @@ pip install -q -r requirements.txt
 cd ..
 
 pm2 delete streakmeet-face 2>/dev/null || true
-pm2 start face-service/start.sh --name streakmeet-face --interpreter bash
-pm2 save
+pm2 start /home/streakmeet/face-service/start.sh \
+  --name streakmeet-face \
+  --interpreter bash \
+  --cwd /home/streakmeet/face-service
 
-echo "==> Wait for face-service..."
-for i in $(seq 1 30); do
+echo "==> Wait for face-service (модель грузится ~10–30 с)..."
+FACE_OK=0
+for i in $(seq 1 45); do
   if curl -sf http://127.0.0.1:8001/health >/dev/null 2>&1; then
     echo "Face service ready"
+    FACE_OK=1
     break
   fi
   sleep 2
 done
+if [ "$FACE_OK" -eq 0 ]; then
+  echo "WARN: face-service не ответил на :8001 — проверь: pm2 logs streakmeet-face"
+fi
 
 echo "==> Backend..."
 cd backend
@@ -84,7 +91,7 @@ cd ..
 echo "==> PM2 backend..."
 cd backend
 pm2 delete streakmeet-api 2>/dev/null || true
-pm2 start dist/index.js --name streakmeet-api
+pm2 start dist/index.js --name streakmeet-api --cwd /home/streakmeet/backend
 pm2 save
 pm2 startup systemd -u root --hp /root 2>/dev/null || true
 cd ..
