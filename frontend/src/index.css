@@ -973,3 +973,39 @@ body {
 .safe-bottom {
   padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
+
+/* Home: find person ↔ search (QR stays visible) */
+.home-add-bar__primary {
+  min-height: 3.25rem;
+}
+
+.home-add-bar__find {
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease;
+}
+
+.home-add-bar__find--hidden {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(0.97);
+  pointer-events: none;
+}
+
+.home-add-bar__search {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateX(0.65rem);
+  pointer-events: none;
+  transition:
+    opacity 0.32s ease,
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-add-bar__search--open {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}

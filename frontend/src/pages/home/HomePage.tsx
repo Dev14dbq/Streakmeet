@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import ProfileQrModal from '../../components/ProfileQrModal'
@@ -31,6 +31,7 @@ export default function HomePage({ user }: Props) {
   const [searchError, setSearchError] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showQr, setShowQr] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const {
     data: streaks = [],
@@ -40,6 +41,10 @@ export default function HomePage({ user }: Props) {
   const { data: friends = [], mutate: mutateFriends } = useSWR(SWR_KEYS.friends)
 
   const loading = !streaks && !streaksError
+
+  useEffect(() => {
+    if (showSearch) searchInputRef.current?.focus()
+  }, [showSearch])
 
   useEffect(() => {
     if (query.length < 3) {
@@ -174,51 +179,68 @@ export default function HomePage({ user }: Props) {
 
       {/* Добавить человека */}
       <div className="mb-6">
-        {showSearch ? (
-          <div className="relative">
-            <Search
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--color-on-surface-variant)]"
-              size={20}
-            />
-            <input
-              type="text"
-              autoFocus
-              placeholder={t('home.searchPlaceholder')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-[var(--color-surface-container-high)] text-white rounded-full py-4 pl-14 pr-12 outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] transition"
-            />
-            <button
-              type="button"
-              onClick={() => {
-                setShowSearch(false)
-                setQuery('')
-              }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-on-surface-variant)] text-sm font-semibold"
-            >
-              ✕
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
+        <div className="home-add-bar flex gap-2 items-stretch">
+          <div className="home-add-bar__primary relative min-w-0 flex-1">
             <button
               type="button"
               onClick={() => setShowSearch(true)}
-              className="flex-1 flex items-center justify-center gap-2 rounded-full bg-[var(--color-surface-container-high)] py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-[0.98]"
+              aria-hidden={showSearch}
+              tabIndex={showSearch ? -1 : 0}
+              className={[
+                'home-add-bar__find flex w-full items-center justify-center gap-2 rounded-full',
+                'bg-[var(--color-surface-container-high)] py-3.5 text-sm font-semibold text-white',
+                'transition hover:bg-[var(--color-surface-container-highest)] active:scale-[0.98]',
+                showSearch ? 'home-add-bar__find--hidden' : '',
+              ].join(' ')}
             >
               <Search size={18} />
               {t('home.findPerson')}
             </button>
-            <button
-              type="button"
-              onClick={() => setShowQr(true)}
-              className="flex items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)] px-5 py-3.5 text-sm font-bold transition active:scale-[0.98]"
+
+            <div
+              className={[
+                'home-add-bar__search relative',
+                showSearch ? 'home-add-bar__search--open' : '',
+              ].join(' ')}
+              aria-hidden={!showSearch}
             >
-              <QrCode size={18} />
-              {t('common.qr')}
-            </button>
+              <Search
+                className="pointer-events-none absolute left-5 top-1/2 z-10 -translate-y-1/2 text-[var(--color-on-surface-variant)]"
+                size={20}
+              />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={t('home.searchPlaceholder')}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                tabIndex={showSearch ? 0 : -1}
+                className="w-full rounded-full bg-[var(--color-surface-container-high)] py-3.5 pl-14 pr-12 text-white outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSearch(false)
+                  setQuery('')
+                }}
+                tabIndex={showSearch ? 0 : -1}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--color-on-surface-variant)]"
+                aria-label={t('common.close')}
+              >
+                ✕
+              </button>
+            </div>
           </div>
-        )}
+
+          <button
+            type="button"
+            onClick={() => setShowQr(true)}
+            className="home-add-bar__qr flex h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)] transition hover:bg-[var(--color-brand-primary)]/25 active:scale-[0.96]"
+            aria-label={t('profile.myQr')}
+          >
+            <QrCode size={22} strokeWidth={2.25} />
+          </button>
+        </div>
 
         {showSearch && query.length >= 3 && (
           <div className="mt-3 flex flex-col gap-2">
