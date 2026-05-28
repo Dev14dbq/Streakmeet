@@ -392,7 +392,10 @@ export default function HomePage({ user }: Props) {
               <div className="w-24 h-24 bg-[var(--color-surface-container-high)] rounded-full flex items-center justify-center mb-6">
                 <Flame size={40} className="text-[var(--color-on-surface-variant)] opacity-50" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">{t('home.whoMeet')}</h2>
+              <h2 className="text-xl font-bold text-white mb-2">{t('home.noFriendsYet')}</h2>
+              <p className="mb-6 max-w-xs text-sm text-[var(--color-on-surface-variant)]">
+                {t('home.emptyHint')}
+              </p>
               <button
                 type="button"
                 onClick={() => setShowSearch(true)}

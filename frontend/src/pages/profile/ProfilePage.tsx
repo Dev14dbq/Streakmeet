@@ -166,19 +166,15 @@ export default function ProfilePage({ user: initialUser }: Props) {
         </button>
 
         <h2 className="text-2xl font-extrabold text-white tracking-tight">{user.nickname}</h2>
-        <button
-          type="button"
-          onClick={() => navigate(`/${user.nickname}`)}
-          className="text-[var(--color-on-surface-variant)] text-sm font-medium mt-1 hover:text-[var(--color-brand-primary)] transition"
-        >
-          @{user.nickname} · {t('settings.publicProfile').toLowerCase()}
-        </button>
+        <p className="mt-1 text-sm font-medium text-[var(--color-on-surface-variant)]">
+          @{user.nickname}
+        </p>
       </div>
 
       {/* Photos Grid */}
       <div>
         <h3 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-4">
-          {t('settings.meets')}
+          {t('settings.selfies')}
         </h3>
 
         {loadingPhotos ? (
@@ -192,7 +188,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
               className="text-[var(--color-on-surface-variant)] opacity-50 mb-3"
             />
             <p className="text-[var(--color-on-surface-variant)] text-sm font-medium">
-              {t('home.noResults')}
+              {t('settings.noSelfies')}
             </p>
           </div>
         ) : (

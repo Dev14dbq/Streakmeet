@@ -101,6 +101,7 @@ export default function MapPage() {
   const [friends, setFriends] = useState<FriendLocation[]>([])
   const [sharing, setSharing] = useState(false)
   const [sharingBusy, setSharingBusy] = useState(false)
+  const [shareExplainOpen, setShareExplainOpen] = useState(false)
   const [compactShareUi, setCompactShareUi] = useState(
     () => localStorage.getItem(SHARE_UI_COMPACT_KEY) === '1'
   )
@@ -125,6 +126,17 @@ export default function MapPage() {
     () => friends.filter((f) => Date.now() - new Date(f.updatedAt).getTime() < 5 * 60_000).length,
     [friends]
   )
+
+  const broadcastingCount = friends.length + (sharing ? 1 : 0)
+  const onlineOnMap = onlineCount + (sharing ? 1 : 0)
+
+  const mapStatusText = loading
+    ? t('map.loading')
+    : friends.length === 0 && sharing
+      ? t('map.onlyYouSharing')
+      : friends.length === 0
+        ? t('map.nobodySharing')
+        : t('map.onMap', { count: broadcastingCount, online: onlineOnMap })
 
   const avatarPaths = useMemo(() => {
     const paths = friends.map((f) => f.avatarUrl).filter(Boolean) as string[]
@@ -381,13 +393,26 @@ export default function MapPage() {
     localStorage.setItem(SHARE_UI_COMPACT_KEY, '1')
   }
 
-  async function handleStartBroadcast() {
-    dismissSharePrompt()
+  function requestEnableSharing() {
+    setShareExplainOpen(true)
+  }
+
+  async function confirmEnableSharing() {
+    setShareExplainOpen(false)
     await setSharingEnabled(true)
   }
 
+  async function handleStartBroadcast() {
+    dismissSharePrompt()
+    requestEnableSharing()
+  }
+
   async function toggleSharing() {
-    await setSharingEnabled(!sharing)
+    if (sharing) {
+      await setSharingEnabled(false)
+      return
+    }
+    requestEnableSharing()
   }
 
   async function openRouteToSelected() {
@@ -418,17 +443,11 @@ export default function MapPage() {
               Live map
             </p>
             <h1 className="text-2xl font-black text-white">{t('map.friendsMapTitle')}</h1>
-            <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">
-              {loading
-                ? t('map.loading')
-                : friends.length === 0
-                  ? t('map.nobodySharing')
-                  : t('map.onMap', { count: friends.length, online: onlineCount })}
-            </p>
+            <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">{mapStatusText}</p>
           </div>
           <div className="glass-card pointer-events-auto flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-white">
             <Users size={14} className="text-[var(--color-brand-primary)]" />
-            {friends.length}
+            {broadcastingCount}
           </div>
         </div>
       </div>
@@ -530,6 +549,45 @@ export default function MapPage() {
               }
             />
           </button>
+        </div>
+      )}
+
+      {shareExplainOpen && (
+        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center">
+          <div
+            className="w-full max-w-md rounded-3xl border border-white/10 bg-[var(--color-surface-container-high)] p-6 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="map-share-explain-title"
+          >
+            <h2 id="map-share-explain-title" className="text-lg font-bold text-white">
+              {t('map.shareExplainTitle')}
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--color-on-surface-variant)]">
+              {t('map.shareExplainBody')}
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-[var(--color-on-surface-variant)] opacity-90">
+              {t('map.shareExplainAlways')}
+            </p>
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                type="button"
+                disabled={sharingBusy}
+                onClick={() => void confirmEnableSharing()}
+                className="w-full rounded-full bg-[var(--color-brand-primary)] py-3.5 text-sm font-black text-white shadow-[0_8px_24px_rgba(255,26,79,0.4)] disabled:opacity-60"
+              >
+                {sharingBusy ? '…' : t('map.shareExplainContinue')}
+              </button>
+              <button
+                type="button"
+                disabled={sharingBusy}
+                onClick={() => setShareExplainOpen(false)}
+                className="w-full py-3 text-sm font-semibold text-[var(--color-on-surface-variant)]"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
