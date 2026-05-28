@@ -220,7 +220,9 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
   }
 
   if (pool.length < 2) {
-    console.log(`[magic-meet] rejected: only ${pool.length} face(s) across ${photos.length} frame(s)`)
+    console.log(
+      `[magic-meet] rejected: only ${pool.length} face(s) across ${photos.length} frame(s)`
+    )
     sendError(
       res,
       400,
@@ -286,9 +288,7 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
       )
       continue
     }
-    console.log(
-      `[magic-meet] partner @${partner.nickname} matched (sim=${m.sim.toFixed(3)})`
-    )
+    console.log(`[magic-meet] partner @${partner.nickname} matched (sim=${m.sim.toFixed(3)})`)
 
     const today = instantMeetStreakDay(streak.timezone)
 
@@ -421,10 +421,7 @@ async function collectFaceCandidates(photos: string[]): Promise<MagicMeetCandida
 }
 
 /** Pick the frame with the highest sum of det_score that contains the user's face. */
-function pickBestFrame(
-  pool: MagicMeetCandidate[],
-  userCandidateIdx: number
-): number | null {
+function pickBestFrame(pool: MagicMeetCandidate[], userCandidateIdx: number): number | null {
   if (pool.length === 0) return null
   const userFrame = pool[userCandidateIdx]?.frameIndex
   const scoreByFrame = new Map<number, number>()

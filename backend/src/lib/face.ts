@@ -175,7 +175,10 @@ export const ENROLL_QUALITY: QualityThresholds = {
   maxBrightness: 240,
 }
 
-export function passesEnrollQuality(face: FaceQuality, t: QualityThresholds = ENROLL_QUALITY): {
+export function passesEnrollQuality(
+  face: FaceQuality,
+  t: QualityThresholds = ENROLL_QUALITY
+): {
   ok: boolean
   reason?: string
 } {

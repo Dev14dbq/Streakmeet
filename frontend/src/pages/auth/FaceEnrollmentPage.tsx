@@ -112,7 +112,7 @@ function estimateYaw(lm: faceapi.FaceLandmarks68): number {
 
 function estimatePitch(lm: faceapi.FaceLandmarks68): number {
   const pts = lm.positions
-  const eyeMidY = (pts.slice(36, 48).reduce((s, p) => s + p.y, 0) / 12)
+  const eyeMidY = pts.slice(36, 48).reduce((s, p) => s + p.y, 0) / 12
   const mouthMidY = pts.slice(48, 60).reduce((s, p) => s + p.y, 0) / 12
   const noseY = pts[30]!.y
   const span = mouthMidY - eyeMidY
@@ -351,7 +351,12 @@ export default function FaceEnrollmentPage({
     canvas.height = ch
 
     const curPhase = phaseRef.current
-    if (curPhase === 'saving' || curPhase === 'done' || curPhase === 'loading' || curPhase === 'intro')
+    if (
+      curPhase === 'saving' ||
+      curPhase === 'done' ||
+      curPhase === 'loading' ||
+      curPhase === 'intro'
+    )
       return
 
     const detection = await faceapi

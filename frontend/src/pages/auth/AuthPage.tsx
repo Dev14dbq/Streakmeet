@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useGoogleLogin } from '@react-oauth/google'
+import { GoogleLogin } from '@react-oauth/google'
 import type { AuthUser } from '../../lib/api'
 import { completeGoogleSignIn } from '../../lib/completeGoogleSignIn'
 import {
@@ -12,6 +12,7 @@ import {
   startGoogleRedirectLogin,
   useGoogleRedirectFlow,
   useNativeGoogleSignIn,
+  type GoogleSignInTokens,
 } from '../../lib/googleAuth'
 import { toastError, toastInfo } from '../../lib/toast'
 import { getApiErrorMessage } from '../../lib/api'
@@ -63,17 +64,24 @@ export default function AuthPage({ onAuth }: Props) {
     void finishGoogleSignIn(tokens).finally(() => setGoogleLoading(false))
   }, [])
 
-  const googleLoginPopup = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setGoogleLoading(true)
-      try {
-        await finishGoogleSignIn({ accessToken: tokenResponse.access_token })
-      } finally {
-        setGoogleLoading(false)
-      }
-    },
-    onError: () => toastInfo(t('auth.googleCancelled')),
-  })
+  const useWebCredentialButton = !useNativeGoogleSignIn() && !useGoogleRedirectFlow()
+
+  async function runGoogleSignIn(tokens: GoogleSignInTokens) {
+    setGoogleLoading(true)
+    try {
+      await finishGoogleSignIn(tokens)
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
+  function handleGoogleCredentialSuccess(credential?: string) {
+    if (!credential) {
+      toastInfo(t('auth.googleCancelled'))
+      return
+    }
+    void runGoogleSignIn({ idToken: credential })
+  }
 
   async function handleGoogle() {
     if (googleLoading) return
@@ -101,10 +109,7 @@ export default function AuthPage({ onAuth }: Props) {
       } catch {
         toastError(t('auth.googleNotConfigured'))
       }
-      return
     }
-
-    googleLoginPopup()
   }
 
   // ─── Apple ───────────────────────────────────────────────────────────────────
@@ -152,13 +157,22 @@ export default function AuthPage({ onAuth }: Props) {
           onClick={handleApple}
           className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)]"
         />
-        <AuthButton
-          icon={<GoogleIcon />}
-          label={googleLoading ? t('common.connecting') : t('auth.signInGoogle')}
-          onClick={handleGoogle}
-          disabled={googleLoading}
-          className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)] disabled:opacity-60"
-        />
+        {useWebCredentialButton ? (
+          <WebGoogleSignInButton
+            label={googleLoading ? t('common.connecting') : t('auth.signInGoogle')}
+            disabled={googleLoading}
+            onCredential={handleGoogleCredentialSuccess}
+            onCancelled={() => toastInfo(t('auth.googleCancelled'))}
+          />
+        ) : (
+          <AuthButton
+            icon={<GoogleIcon />}
+            label={googleLoading ? t('common.connecting') : t('auth.signInGoogle')}
+            onClick={handleGoogle}
+            disabled={googleLoading}
+            className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)] disabled:opacity-60"
+          />
+        )}
         <AuthButton
           icon={<MailIcon />}
           label={t('auth.continueEmail')}
@@ -176,6 +190,52 @@ export default function AuthPage({ onAuth }: Props) {
             {t('auth.privacyPolicy')}
           </a>
         </p>
+      </div>
+    </div>
+  )
+}
+
+/** Desktop browser: GIS credential button (id_token) — more reliable than token-client popup. */
+function WebGoogleSignInButton({
+  label,
+  disabled,
+  onCredential,
+  onCancelled,
+}: {
+  label: string
+  disabled?: boolean
+  onCredential: (credential?: string) => void
+  onCancelled: () => void
+}) {
+  return (
+    <div className="relative w-full min-h-[52px]">
+      <div
+        className={[
+          'absolute inset-0 z-20 flex items-center justify-center overflow-hidden',
+          disabled ? 'pointer-events-none opacity-50' : '',
+        ].join(' ')}
+        aria-hidden={disabled}
+      >
+        <div className="w-full opacity-[0.011] scale-[1.02]">
+          <GoogleLogin
+            onSuccess={(res) => onCredential(res.credential)}
+            onError={() => onCancelled()}
+            theme="outline"
+            size="large"
+            shape="pill"
+            text="signin_with"
+            width="400"
+          />
+        </div>
+      </div>
+      <div className="pointer-events-none relative z-10">
+        <AuthButton
+          icon={<GoogleIcon />}
+          label={label}
+          onClick={() => {}}
+          disabled={disabled}
+          className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)] disabled:opacity-60"
+        />
       </div>
     </div>
   )

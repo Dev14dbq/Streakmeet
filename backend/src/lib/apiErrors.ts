@@ -118,7 +118,8 @@ const DEFAULT_MESSAGES: Record<ErrorCode, string> = {
   FACE_NOT_ENROLLED: 'Сначала зарегистрируй лицо в профиле',
   FACE_LEGACY_EMBEDDING: 'Перерегистрируй лицо в настройках профиля',
   FACE_NOT_DETECTED: 'Лицо не обнаружено на фото',
-  FACE_ENROLL_LOW_QUALITY: 'Кадры слишком тёмные или размытые. Сделай ещё раз при хорошем свете и держи камеру ровно',
+  FACE_ENROLL_LOW_QUALITY:
+    'Кадры слишком тёмные или размытые. Сделай ещё раз при хорошем свете и держи камеру ровно',
   FACE_ENROLL_TOO_FEW_FRAMES: 'Нужно больше чётких ракурсов. Повтори регистрацию полностью',
   STREAK_ALREADY_MET_TODAY: 'Серия уже продлена сегодня',
   FRIENDSHIP_NOT_PENDING: 'Заявка уже обработана',

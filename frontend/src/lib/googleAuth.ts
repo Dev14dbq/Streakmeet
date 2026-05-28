@@ -107,3 +107,12 @@ export function isGoogleAuthCancelled(error: unknown): boolean {
     lower.includes('cancel') || lower.includes('popup closed') || lower.includes('user_cancelled')
   )
 }
+
+/** GIS OAuth popup returned an error object (not user closing the window). */
+export function isGoogleOAuthAccessDenied(error: { error?: string } | undefined): boolean {
+  return error?.error === 'access_denied'
+}
+
+export function isGooglePopupClosedError(error: { type?: string } | undefined): boolean {
+  return error?.type === 'popup_closed'
+}
