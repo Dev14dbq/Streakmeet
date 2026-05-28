@@ -9,7 +9,6 @@ import {
   initGoogleAuth,
   isGoogleAuthCancelled,
   signInWithGoogleNative,
-  startGoogleRedirectLogin,
   useGoogleRedirectFlow,
   useNativeGoogleSignIn,
   type GoogleSignInTokens,
@@ -62,9 +61,11 @@ export default function AuthPage({ onAuth }: Props) {
 
     setGoogleLoading(true)
     void finishGoogleSignIn(tokens).finally(() => setGoogleLoading(false))
-  }, [])
+  }, []) // legacy redirect return URL; new logins use GIS id_token
 
-  const useWebCredentialButton = !useNativeGoogleSignIn() && !useGoogleRedirectFlow()
+  // GIS id_token on all web browsers (desktop + mobile). Avoids redirect_uri_mismatch
+  // from the legacy implicit redirect flow unless explicitly configured in Google Console.
+  const useWebCredentialButton = !useNativeGoogleSignIn()
 
   async function runGoogleSignIn(tokens: GoogleSignInTokens) {
     setGoogleLoading(true)
@@ -83,32 +84,20 @@ export default function AuthPage({ onAuth }: Props) {
     void runGoogleSignIn({ idToken: credential })
   }
 
-  async function handleGoogle() {
+  async function handleGoogleNative() {
     if (googleLoading) return
-
-    if (useNativeGoogleSignIn()) {
-      setGoogleLoading(true)
-      try {
-        const tokens = await signInWithGoogleNative()
-        await finishGoogleSignIn(tokens)
-      } catch (err) {
-        if (isGoogleAuthCancelled(err)) {
-          toastInfo(t('auth.googleCancelled'))
-        } else {
-          toastError(getApiErrorMessage(err, t('auth.googleError')))
-        }
-      } finally {
-        setGoogleLoading(false)
+    setGoogleLoading(true)
+    try {
+      const tokens = await signInWithGoogleNative()
+      await finishGoogleSignIn(tokens)
+    } catch (err) {
+      if (isGoogleAuthCancelled(err)) {
+        toastInfo(t('auth.googleCancelled'))
+      } else {
+        toastError(getApiErrorMessage(err, t('auth.googleError')))
       }
-      return
-    }
-
-    if (useGoogleRedirectFlow()) {
-      try {
-        startGoogleRedirectLogin()
-      } catch {
-        toastError(t('auth.googleNotConfigured'))
-      }
+    } finally {
+      setGoogleLoading(false)
     }
   }
 
@@ -168,7 +157,7 @@ export default function AuthPage({ onAuth }: Props) {
           <AuthButton
             icon={<GoogleIcon />}
             label={googleLoading ? t('common.connecting') : t('auth.signInGoogle')}
-            onClick={handleGoogle}
+            onClick={handleGoogleNative}
             disabled={googleLoading}
             className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)] disabled:opacity-60"
           />
@@ -220,6 +209,8 @@ function WebGoogleSignInButton({
           <GoogleLogin
             onSuccess={(res) => onCredential(res.credential)}
             onError={() => onCancelled()}
+            ux_mode="popup"
+            use_fedcm_for_button={false}
             theme="outline"
             size="large"
             shape="pill"
