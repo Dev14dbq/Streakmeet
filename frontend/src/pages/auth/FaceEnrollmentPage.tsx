@@ -1,12 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
+import { App as CapApp } from '@capacitor/app'
 import Webcam from 'react-webcam'
 import * as faceapi from '@vladmandic/face-api'
 import { enrollFace, type AuthUser } from '../../lib/api'
 import { captureVideoFrame } from '../../lib/captureVideoFrame'
+import { ensureCameraAccess, waitForLiveVideo } from '../../lib/webCamera'
 import { toastError } from '../../lib/toast'
 import i18n from '../../i18n'
+
+type CameraAccess = 'idle' | 'pending' | 'granted' | 'denied'
 
 type StepId =
   | 'center1'
@@ -238,6 +243,8 @@ export default function FaceEnrollmentPage({
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const [modelsLoaded, setModelsLoaded] = useState(false)
+  const [cameraAccess, setCameraAccess] = useState<CameraAccess>('idle')
+  const [webcamKey, setWebcamKey] = useState(0)
   const [cameraReady, setCameraReady] = useState(false)
   const [phase, setPhase] = useState<Phase>('loading')
   const [stepIndex, setStepIndex] = useState(0)
@@ -293,6 +300,50 @@ export default function FaceEnrollmentPage({
   }, []) // eslint-disable-line
 
   const isScanning = STEPS.some((s) => s.id === phase)
+  const needsCamera = modelsLoaded && (phase === 'intro' || isScanning)
+
+  const startCameraAccess = useCallback(async () => {
+    setCameraAccess('pending')
+    setCameraReady(false)
+    const ok = await ensureCameraAccess()
+    if (ok) {
+      setCameraAccess('granted')
+      setWebcamKey((k) => k + 1)
+    } else {
+      setCameraAccess('denied')
+      setStatusMsg(t('face.cameraDenied'))
+    }
+  }, [t])
+
+  useEffect(() => {
+    if (!needsCamera) return
+    void startCameraAccess()
+  }, [needsCamera, startCameraAccess])
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || !needsCamera) return
+    let remove: (() => void) | undefined
+    void CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive || cameraReady) return
+      void startCameraAccess()
+    }).then((h) => {
+      remove = () => h.remove()
+    })
+    return () => remove?.()
+  }, [needsCamera, cameraReady, startCameraAccess])
+
+  const handleWebcamReady = useCallback(async () => {
+    const video = webcamRef.current?.video
+    if (!video) {
+      setCameraReady(false)
+      return
+    }
+    const live = await waitForLiveVideo(video)
+    setCameraReady(live)
+    if (!live && phase === 'intro') {
+      setStatusMsg(t('face.cameraNotReady'))
+    }
+  }, [phase, t])
 
   useEffect(() => {
     if (!modelsLoaded || !isScanning) return
@@ -496,8 +547,9 @@ export default function FaceEnrollmentPage({
             }}
           >
             <div className="absolute inset-[22px] rounded-full overflow-hidden">
-              {modelsLoaded ? (
+              {modelsLoaded && cameraAccess === 'granted' ? (
                 <Webcam
+                  key={webcamKey}
                   ref={webcamRef}
                   audio={false}
                   screenshotFormat="image/jpeg"
@@ -508,7 +560,7 @@ export default function FaceEnrollmentPage({
                     height: { ideal: 720 },
                   }}
                   className={`camera-video absolute inset-0 w-full h-full object-cover scale-x-[-1] ${cameraReady ? 'camera-video--ready' : ''}`}
-                  onUserMedia={() => setCameraReady(true)}
+                  onUserMedia={() => void handleWebcamReady()}
                   onUserMediaError={(err) => {
                     setCameraReady(false)
                     setStatusMsg(
@@ -521,6 +573,13 @@ export default function FaceEnrollmentPage({
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-5xl opacity-30 animate-pulse">👤</span>
+                </div>
+              )}
+              {cameraAccess === 'pending' && (
+                <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/50">
+                  <p className="text-xs font-medium text-white/80 animate-pulse">
+                    {t('face.cameraWaiting')}
+                  </p>
                 </div>
               )}
               <canvas
@@ -578,13 +637,25 @@ export default function FaceEnrollmentPage({
 
         <div className="w-full max-w-sm mt-auto pt-6 pb-2 flex flex-col gap-2">
           {phase === 'intro' && (
-            <button
-              type="button"
-              onClick={handleStart}
-              className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95"
-            >
-              {t('auth.continue')}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleStart}
+                disabled={!cameraReady || cameraAccess !== 'granted'}
+                className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {t('auth.continue')}
+              </button>
+              {cameraAccess === 'denied' && (
+                <button
+                  type="button"
+                  onClick={() => void startCameraAccess()}
+                  className="w-full py-3 text-sm font-semibold text-[var(--color-brand-primary)]"
+                >
+                  {t('face.cameraRetry')}
+                </button>
+              )}
+            </>
           )}
           {phase !== 'saving' && !autoStart && (
             <button

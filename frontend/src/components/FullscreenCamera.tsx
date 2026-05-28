@@ -4,6 +4,7 @@ import { ArrowLeft, SwitchCamera, Timer, X, Zap } from 'lucide-react'
 import Webcam from 'react-webcam'
 import { captureVideoFrame } from '../lib/captureVideoFrame'
 import { triggerCameraShutterFeedback } from '../lib/cameraShutter'
+import { ensureCameraAccess, waitForLiveVideo } from '../lib/webCamera'
 import { toastError } from '../lib/toast'
 
 type TorchTrack = MediaStreamTrack & {
@@ -55,6 +56,7 @@ function timerLabel(timer: CameraTimer, t: (key: string) => string): string {
 
 function LiveWebcam({
   facingMode,
+  mountKey,
   isFront,
   webcamRef,
   className,
@@ -63,6 +65,7 @@ function LiveWebcam({
   onError,
 }: {
   facingMode: 'user' | 'environment'
+  mountKey: number
   isFront: boolean
   webcamRef: React.RefObject<Webcam | null>
   className?: string
@@ -72,7 +75,7 @@ function LiveWebcam({
 }) {
   return (
     <Webcam
-      key={facingMode}
+      key={`${facingMode}-${mountKey}`}
       ref={webcamRef}
       audio={false}
       screenshotFormat="image/jpeg"
@@ -115,6 +118,7 @@ export default function FullscreenCamera({
   const [phase, setPhase] = useState<Phase>('live')
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
+  const [webcamMountKey, setWebcamMountKey] = useState(0)
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
   const [timer, setTimer] = useState<CameraTimer>('off')
   const [countdown, setCountdown] = useState<number | null>(null)
@@ -158,8 +162,22 @@ export default function FullscreenCamera({
       setTorchAvailable(false)
       setTorchOn(false)
       void setTorch(false)
+      return
     }
-  }, [open, resetLive, setTorch])
+
+    let cancelled = false
+    setCameraReady(false)
+    void (async () => {
+      const ok = await ensureCameraAccess()
+      if (cancelled) return
+      if (ok) setWebcamMountKey((k) => k + 1)
+      else toastError(t('face.cameraDenied'))
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [open, resetLive, setTorch, t])
 
   useEffect(() => {
     if (!open) return
@@ -195,9 +213,17 @@ export default function FullscreenCamera({
   const onStreamReady = useCallback(
     (stream: MediaStream) => {
       inspectStream(stream)
-      setCameraReady(true)
+      const video = webcamRef.current?.video
+      if (!video) {
+        setCameraReady(true)
+        return
+      }
+      void waitForLiveVideo(video).then((live) => {
+        setCameraReady(live)
+        if (!live) toastError(t('camera.notReady'))
+      })
     },
-    [inspectStream]
+    [inspectStream, t]
   )
 
   const onStreamError = useCallback(
@@ -323,6 +349,7 @@ export default function FullscreenCamera({
               <span className="fullscreen-camera__split-label">{t('camera.you')}</span>
               <LiveWebcam
                 facingMode={facingMode}
+                mountKey={webcamMountKey}
                 isFront={isFront}
                 webcamRef={webcamRef}
                 cameraReady={cameraReady}
@@ -334,6 +361,7 @@ export default function FullscreenCamera({
         ) : (
           <LiveWebcam
             facingMode={facingMode}
+            mountKey={webcamMountKey}
             isFront={isFront}
             webcamRef={webcamRef}
             cameraReady={cameraReady}
