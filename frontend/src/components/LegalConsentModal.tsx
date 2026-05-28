@@ -53,7 +53,7 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
             <FileText size={22} className="text-[var(--color-brand-primary)]" />
           </div>
           <div>
-            <h2 id="legal-consent-title" className="text-lg font-bold text-white">
+            <h2 id="legal-consent-title" className="text-lg font-bold text-on-surface">
               {t('legal.updated')}
             </h2>
             <p className="text-xs text-[var(--color-on-surface-variant)]">
@@ -70,7 +70,7 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
           {termsUpdated && (
             <Link
               to="/terms"
-              className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-container-highest)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-container-highest)] px-4 py-3 text-sm font-semibold text-on-surface transition hover:bg-overlay-scrim"
             >
               <FileText size={18} className="text-[var(--color-on-surface-variant)]" />
               {t('legal.readTerms')}
@@ -79,7 +79,7 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
           {privacyUpdated && (
             <Link
               to="/privacy"
-              className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-container-highest)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-container-highest)] px-4 py-3 text-sm font-semibold text-on-surface transition hover:bg-overlay-scrim"
             >
               <Shield size={18} className="text-[var(--color-on-surface-variant)]" />
               {t('legal.readPrivacy')}
