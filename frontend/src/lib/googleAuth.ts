@@ -27,8 +27,6 @@ export function initGoogleAuth(): Promise<void> {
   if (!GOOGLE_CLIENT_ID || !useNativeGoogleSignIn()) return Promise.resolve()
   if (initPromise) return initPromise
 
-  // Android: webClientId must be the Web application client ID (backend verifies id_token).
-  // The Android OAuth client (package + SHA-1 in Google Console) is picked up by Play Services automatically.
   initPromise = SocialLogin.initialize({
     google: {
       webClientId: GOOGLE_CLIENT_ID,
