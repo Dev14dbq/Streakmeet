@@ -177,7 +177,8 @@ export const updateMyLocation = (latitude: number, longitude: number) =>
   api.post<{ ok: true }>('/api/location/update', { latitude, longitude })
 
 export const magicMeet = (payload: {
-  photoBase64: string
+  photoBase64?: string
+  photosBase64?: string[]
   location?: { lat: number; lng: number }
 }) => api.post<MagicMeetResponse>('/api/streaks/magic-meet', payload, { timeout: 120_000 })
 

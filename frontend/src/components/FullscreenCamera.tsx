@@ -25,7 +25,7 @@ type Phase = 'live' | 'preview' | 'processing'
 interface Props {
   open: boolean
   onClose: () => void
-  onConfirm: (photoBase64: string) => void | Promise<void>
+  onConfirm: (photoBase64: string, burst?: string[]) => void | Promise<void>
   confirmLabel: string
   processing?: boolean
   processingLabel?: string
@@ -38,6 +38,13 @@ interface Props {
   modeOptions?: CameraModeOption[]
   bottomOverlay?: React.ReactNode
   shutterDisabled?: boolean
+  /**
+   * If > 1, the camera grabs a short burst of frames around the shutter press
+   * (preview shows the primary, but all frames are passed to `onConfirm` as
+   * a second argument). Useful for face-recognition where extra frames give
+   * the recognizer more chances to find a usable pose.
+   */
+  burstFrames?: number
 }
 
 function timerLabel(timer: CameraTimer, t: (key: string) => string): string {
@@ -51,6 +58,7 @@ function LiveWebcam({
   isFront,
   webcamRef,
   className,
+  cameraReady,
   onReady,
   onError,
 }: {
@@ -58,6 +66,7 @@ function LiveWebcam({
   isFront: boolean
   webcamRef: React.RefObject<Webcam | null>
   className?: string
+  cameraReady: boolean
   onReady: (stream: MediaStream) => void
   onError: (err: string | DOMException) => void
 }) {
@@ -73,7 +82,7 @@ function LiveWebcam({
         width: { ideal: 1920 },
         height: { ideal: 1080 },
       }}
-      className={`fullscreen-camera__media ${isFront ? 'fullscreen-camera__media--mirror' : ''} ${className ?? ''}`}
+      className={`camera-video fullscreen-camera__media ${cameraReady ? 'camera-video--ready' : ''} ${isFront ? 'fullscreen-camera__media--mirror' : ''} ${className ?? ''}`}
       onUserMedia={onReady}
       onUserMediaError={onError}
     />
@@ -95,11 +104,13 @@ export default function FullscreenCamera({
   modeOptions,
   bottomOverlay,
   shutterDisabled = false,
+  burstFrames = 1,
 }: Props) {
   const { t } = useTranslation()
   const webcamRef = useRef<Webcam>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const burstRef = useRef<string[]>([])
 
   const [phase, setPhase] = useState<Phase>('live')
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
@@ -120,6 +131,7 @@ export default function FullscreenCamera({
     setCapturedPhoto(null)
     setCountdown(null)
     setShutterFlash(false)
+    burstRef.current = []
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
@@ -221,9 +233,33 @@ export default function FullscreenCamera({
     triggerCameraShutterFeedback()
     setShutterFlash(true)
     setCapturedPhoto(imageSrc)
+    burstRef.current = [imageSrc]
     setPhase('preview')
     setCountdown(null)
-  }, [isFront, t])
+
+    // Grab a few additional frames silently to give the face recognizer extra
+    // chances. We capture from the still-live video element; the preview UI is
+    // already showing the primary frame.
+    const extras = Math.max(0, burstFrames - 1)
+    if (extras > 0) {
+      let i = 0
+      const grab = () => {
+        if (i >= extras) return
+        const v = webcamRef.current?.video
+        if (!v) return
+        const extra = captureVideoFrame(v, {
+          minWidth: 960,
+          quality: 0.9,
+          mirror: isFront,
+          enhance: false,
+        })
+        if (extra) burstRef.current.push(extra)
+        i += 1
+        if (i < extras) setTimeout(grab, 130)
+      }
+      setTimeout(grab, 130)
+    }
+  }, [isFront, t, burstFrames])
 
   const handleShutter = useCallback(() => {
     if (phase !== 'live' || countdown !== null || !cameraReady || shutterDisabled) return
@@ -261,7 +297,8 @@ export default function FullscreenCamera({
 
   async function handleConfirm() {
     if (!capturedPhoto || processing) return
-    await onConfirm(capturedPhoto)
+    const burst = burstRef.current.length > 1 ? burstRef.current.slice() : undefined
+    await onConfirm(capturedPhoto, burst)
   }
 
   if (!open) return null
@@ -288,6 +325,7 @@ export default function FullscreenCamera({
                 facingMode={facingMode}
                 isFront={isFront}
                 webcamRef={webcamRef}
+                cameraReady={cameraReady}
                 onReady={onStreamReady}
                 onError={onStreamError}
               />
@@ -298,6 +336,7 @@ export default function FullscreenCamera({
             facingMode={facingMode}
             isFront={isFront}
             webcamRef={webcamRef}
+            cameraReady={cameraReady}
             onReady={onStreamReady}
             onError={onStreamError}
           />

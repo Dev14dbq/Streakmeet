@@ -466,6 +466,27 @@ body {
   line-height: 1.6;
 }
 
+/* Webcam — hide native play overlay before stream loads (iOS / WebView) */
+.camera-video {
+  background: #000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.camera-video--ready {
+  opacity: 1;
+}
+
+.camera-video::-webkit-media-controls,
+.camera-video::-webkit-media-controls-enclosure,
+.camera-video::-webkit-media-controls-panel,
+.camera-video::-webkit-media-controls-play-button,
+.camera-video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+}
+
 /* Fullscreen camera (native-style) */
 .fullscreen-camera {
   position: fixed;

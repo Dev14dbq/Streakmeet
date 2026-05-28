@@ -4,7 +4,12 @@ import jwt from 'jsonwebtoken'
 import appleSignin from 'apple-signin-auth'
 import { OAuth2Client } from 'google-auth-library'
 import { prisma } from '../lib/prisma.js'
-import { averageEmbeddings, embedFaceFromBase64, ensureFaceService } from '../lib/face.js'
+import {
+  CURRENT_FACE_MODEL,
+  embedBurstFromBase64,
+  ensureFaceService,
+  passesEnrollQuality,
+} from '../lib/face.js'
 import { faceErrorFromException, ErrorCodes, sendError } from '../lib/apiErrors.js'
 import {
   deletedAccountPayload,
@@ -55,37 +60,104 @@ async function resolveGoogleProfile(body: {
 }
 
 // POST /api/auth/enroll-face
+//
+// Accepts a burst of frames captured during the enrollment flow (different
+// poses / expressions). Each frame is independently embedded by the Python
+// face-service; quality-poor frames are rejected. We keep ALL accepted
+// embeddings as a gallery — matching later uses max-cosine over the gallery,
+// which is dramatically more robust to pose than a single averaged centroid.
+const MIN_INPUT_FRAMES = 3
+const MAX_INPUT_FRAMES = 16
+const MIN_ACCEPTED_EMBEDDINGS = 4
+
 router.post('/enroll-face', requireAuth, async (req: AuthRequest, res: Response) => {
   const { photos } = req.body as { photos?: string[] }
   if (!photos || !Array.isArray(photos) || photos.length === 0) {
     sendError(res, 400, ErrorCodes.PHOTOS_REQUIRED)
     return
   }
+  if (photos.length < MIN_INPUT_FRAMES || photos.length > MAX_INPUT_FRAMES) {
+    sendError(res, 400, ErrorCodes.FACE_ENROLL_TOO_FEW_FRAMES)
+    return
+  }
+  for (const photo of photos) {
+    if (typeof photo !== 'string' || !photo.startsWith('data:image/')) {
+      sendError(res, 400, ErrorCodes.INVALID_PHOTO)
+      return
+    }
+  }
 
   try {
     await ensureFaceService()
-    const embeddings: number[][] = []
+    const results = await embedBurstFromBase64(photos)
 
-    for (const photo of photos) {
-      if (typeof photo !== 'string' || !photo.startsWith('data:image/')) {
-        sendError(res, 400, ErrorCodes.INVALID_PHOTO)
-        return
+    const accepted: {
+      vector: number[]
+      detScore: number
+      yaw: number
+      pitch: number
+      blurVar: number
+    }[] = []
+    const reasons: Record<string, number> = {}
+
+    for (const r of results) {
+      if (!r.face) {
+        const k = r.error ?? 'no_face'
+        reasons[k] = (reasons[k] ?? 0) + 1
+        continue
       }
-      const face = await embedFaceFromBase64(photo)
-      embeddings.push(face.embedding)
+      const q = passesEnrollQuality(r.face)
+      if (!q.ok) {
+        reasons[q.reason ?? 'low_quality'] = (reasons[q.reason ?? 'low_quality'] ?? 0) + 1
+        continue
+      }
+      accepted.push({
+        vector: r.face.embedding,
+        detScore: r.face.det_score,
+        yaw: r.face.yaw,
+        pitch: r.face.pitch,
+        blurVar: r.face.blur_var,
+      })
     }
 
-    const embedding = averageEmbeddings(embeddings)
+    console.log(
+      `[enroll-face] user=${req.userId} frames=${photos.length} accepted=${accepted.length} reasons=${JSON.stringify(reasons)}`
+    )
 
-    await prisma.user.update({
-      where: { id: req.userId },
-      data: {
-        faceEnrolled: true,
-        faceEmbedding: embedding,
-      },
+    if (accepted.length < MIN_ACCEPTED_EMBEDDINGS) {
+      sendError(res, 400, ErrorCodes.FACE_ENROLL_LOW_QUALITY, undefined, {
+        accepted: accepted.length,
+        needed: MIN_ACCEPTED_EMBEDDINGS,
+        reasons,
+      })
+      return
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.faceEmbedding.deleteMany({ where: { userId: req.userId! } })
+      await tx.faceEmbedding.createMany({
+        data: accepted.map((a) => ({
+          userId: req.userId!,
+          vector: a.vector,
+          detScore: a.detScore,
+          yaw: a.yaw,
+          pitch: a.pitch,
+          blurVar: a.blurVar,
+          faceModel: CURRENT_FACE_MODEL,
+          source: 'enrollment',
+        })),
+      })
+      await tx.user.update({
+        where: { id: req.userId! },
+        data: {
+          faceEnrolled: true,
+          faceModel: CURRENT_FACE_MODEL,
+          faceEnrolledAt: new Date(),
+        },
+      })
     })
 
-    res.json({ success: true })
+    res.json({ success: true, accepted: accepted.length, total: photos.length })
   } catch (e) {
     console.error('[enroll-face]', e)
     const { code, message } = faceErrorFromException(e)

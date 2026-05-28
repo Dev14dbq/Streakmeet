@@ -16,8 +16,9 @@ model User {
   qrCodeId      String    @unique @default(cuid())
   timezone      String    @default("UTC")
   gemsBalance   Int       @default(0)
-  faceEnrolled  Boolean   @default(false)
-  faceEmbedding Json?
+  faceEnrolled    Boolean   @default(false)
+  faceModel       String?
+  faceEnrolledAt  DateTime?
   deletedAt     DateTime?
   isPublic      Boolean   @default(true)
   acceptedTermsVersion   Int @default(0)
@@ -36,6 +37,7 @@ model User {
   streaksB        Streak[]         @relation("StreakUserB")
   gemTransactions GemTransaction[]
   meetProofs      MeetProof[]
+  faceEmbeddings  FaceEmbedding[]
   remoteSelfiesSent     RemoteSelfieRequest[] @relation("RemoteSelfieSender")
   remoteSelfiesReceived RemoteSelfieRequest[] @relation("RemoteSelfieReceiver")
 
@@ -194,6 +196,24 @@ enum RemoteSelfieStatus {
 enum LegalDocSlug {
   TERMS
   PRIVACY
+}
+
+model FaceEmbedding {
+  id         String   @id @default(cuid())
+  userId     String
+  vector     Json
+  detScore   Float
+  yaw        Float
+  pitch      Float
+  blurVar    Float
+  faceModel  String
+  source     String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("face_embeddings")
 }
 
 model LegalDocument {

@@ -9,11 +9,14 @@ import {
   hashImageFile,
 } from '../lib/saveImage.js'
 import {
+  bestFaceMatchInGallery,
+  CURRENT_FACE_MODEL,
   detectFacesFromBase64,
   ensureFaceService,
-  isFaceMatch,
-  isLegacyEmbedding,
-  legacyEmbeddingMessage,
+  FACE_MATCH_THRESHOLD_PARTNER,
+  FACE_MATCH_THRESHOLD_SELF,
+  isValidEmbedding,
+  type FaceQuality,
 } from '../lib/face.js'
 import { getLocalDateString, normalizeTimezone } from '../lib/timezone.js'
 import {
@@ -143,36 +146,72 @@ router.post('/', async (req: AuthRequest, res: Response) => {
 })
 
 // POST /api/streaks/magic-meet
+//
+// Accepts either a single `photoBase64` (legacy clients) or a `photosBase64`
+// burst from the new camera. For each frame we run InsightFace detection,
+// then collect ALL detected face embeddings into a pool. Self-match and
+// partner-match are then computed against each user's stored gallery using
+// max-cosine-similarity — far more robust than the old centroid approach.
+const MAGIC_MEET_MAX_FRAMES = 5
+
+interface MagicMeetCandidate {
+  frameIndex: number
+  faceIndexInFrame: number
+  embedding: number[]
+  detScore: number
+  bboxArea: number
+}
+
 router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
   const t0 = Date.now()
   const userId = req.userId!
-  const { photoBase64, location } = req.body as {
+  const { photoBase64, photosBase64, location } = req.body as {
     photoBase64?: string
+    photosBase64?: string[]
     location?: { lat: number; lng: number }
   }
 
+  const photos: string[] = (() => {
+    if (Array.isArray(photosBase64) && photosBase64.length > 0) {
+      return photosBase64.slice(0, MAGIC_MEET_MAX_FRAMES)
+    }
+    if (typeof photoBase64 === 'string' && photoBase64.length > 0) return [photoBase64]
+    return []
+  })()
+
   console.log(
-    `[magic-meet] request from user ${userId}, photo=${photoBase64 ? `${Math.round(photoBase64.length / 1024)}KB` : 'missing'}`
+    `[magic-meet] request from user ${userId}, frames=${photos.length}, total=${photos.reduce((s, p) => s + p.length, 0)}B`
   )
 
-  if (!photoBase64) {
+  if (photos.length === 0) {
     console.log('[magic-meet] rejected: no photo')
     sendError(res, 400, ErrorCodes.MAGIC_MEET_PHOTO_REQUIRED)
     return
   }
 
-  const currentUser = await prisma.user.findUnique({ where: { id: userId } })
-  if (!currentUser?.faceEmbedding) {
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { faceEmbeddings: true },
+  })
+  if (!currentUser?.faceEnrolled || currentUser.faceEmbeddings.length === 0) {
     console.log('[magic-meet] rejected: face not enrolled')
     sendError(res, 400, ErrorCodes.FACE_NOT_ENROLLED)
     return
   }
 
-  let descriptors: number[][]
+  const myGallery: number[][] = currentUser.faceEmbeddings
+    .map((e) => e.vector as unknown)
+    .filter(isValidEmbedding) as number[][]
+
+  if (myGallery.length === 0) {
+    sendError(res, 400, ErrorCodes.FACE_LEGACY_EMBEDDING)
+    return
+  }
+
+  let pool: MagicMeetCandidate[]
   try {
     await ensureFaceService()
-    const detections = await detectFacesFromBase64(photoBase64)
-    descriptors = detections.map((d) => d.embedding)
+    pool = await collectFaceCandidates(photos)
   } catch (e) {
     console.error('[magic-meet] face detection failed', e)
     const { code, message } = faceErrorFromException(e)
@@ -180,53 +219,48 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
     return
   }
 
-  if (descriptors.length < 2) {
-    console.log(`[magic-meet] rejected: only ${descriptors.length} face(s)`)
+  if (pool.length < 2) {
+    console.log(`[magic-meet] rejected: only ${pool.length} face(s) across ${photos.length} frame(s)`)
     sendError(
       res,
       400,
       ErrorCodes.MAGIC_MEET_MIN_FACES,
-      `На фото должно быть минимум 2 лица (найдено: ${descriptors.length})`
+      `На фото должно быть минимум 2 лица (найдено: ${pool.length})`
     )
     return
   }
 
-  const myDesc = currentUser.faceEmbedding as number[]
-  if (isLegacyEmbedding(myDesc)) {
-    console.log('[magic-meet] rejected: legacy embedding')
-    sendError(res, 400, ErrorCodes.FACE_LEGACY_EMBEDDING, legacyEmbeddingMessage())
-    return
-  }
-
-  // 1. Проверяем, есть ли Я на фото
-  let amIPresent = false
-  let myDescIndex = -1
-  for (let i = 0; i < descriptors.length; i++) {
-    if (isFaceMatch(descriptors[i]!, myDesc)) {
-      amIPresent = true
-      myDescIndex = i
-      break
-    }
-  }
-
-  if (!amIPresent) {
-    console.log('[magic-meet] rejected: user not found on photo')
+  const poolEmbeddings = pool.map((c) => c.embedding)
+  const selfMatch = bestFaceMatchInGallery(poolEmbeddings, myGallery)
+  if (selfMatch.sim < FACE_MATCH_THRESHOLD_SELF) {
+    console.log(
+      `[magic-meet] rejected: user not on photo (best self-sim=${selfMatch.sim.toFixed(3)})`
+    )
     sendError(res, 400, ErrorCodes.MAGIC_MEET_USER_NOT_ON_PHOTO)
     return
   }
+  const myFaceCandidateIdx = selfMatch.faceIndex
+  const myFrameIndex = pool[myFaceCandidateIdx]!.frameIndex
+  console.log(
+    `[magic-meet] self matched at frame=${myFrameIndex} sim=${selfMatch.sim.toFixed(3)} pool=${pool.length}`
+  )
 
-  console.log(`[magic-meet] user found at index ${myDescIndex}, matching friends...`)
+  // Pick the best frame for saving — the one containing the user's face (highest sum of det_score).
+  const bestFrameIdx = pickBestFrame(pool, myFaceCandidateIdx) ?? 0
+  const bestPhotoBase64 = photos[bestFrameIdx]!
 
-  const photoHash = await computePhotoHash(photoBase64).catch(() => null)
+  const photoHash = await computePhotoHash(bestPhotoBase64).catch(() => null)
   if (!photoHash) {
     sendError(res, 400, ErrorCodes.INVALID_PHOTO)
     return
   }
 
-  // 2. Ищем серии с друзьями, которые тоже есть на фото
   const activeStreaks = await prisma.streak.findMany({
     where: { active: true, OR: [{ userAId: userId }, { userBId: userId }] },
-    include: { userA: true, userB: true },
+    include: {
+      userA: { include: { faceEmbeddings: true } },
+      userB: { include: { faceEmbeddings: true } },
+    },
   })
 
   const extendedStreaks: { nickname: string; avatarUrl: string | null }[] = []
@@ -234,23 +268,27 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
   const duplicatePartners: string[] = []
   let savedPhotoUrl: string | null = null
 
+  // Candidates excluding the user's own face — partner search runs against this subset.
+  const partnerProbes = poolEmbeddings.filter((_, i) => i !== myFaceCandidateIdx)
+
   for (const streak of activeStreaks) {
     const partner = streak.userAId === userId ? streak.userB : streak.userA
-    if (!partner.faceEmbedding) continue
-    const partnerDesc = partner.faceEmbedding as number[]
-    if (isLegacyEmbedding(partnerDesc)) continue
+    if (!partner.faceEnrolled) continue
+    const partnerGallery: number[][] = partner.faceEmbeddings
+      .map((e) => e.vector as unknown)
+      .filter(isValidEmbedding) as number[][]
+    if (partnerGallery.length === 0) continue
 
-    // Ищем партнера на фото (кроме моего лица)
-    let partnerFound = false
-    for (let i = 0; i < descriptors.length; i++) {
-      if (i === myDescIndex) continue
-      if (isFaceMatch(descriptors[i]!, partnerDesc)) {
-        partnerFound = true
-        break
-      }
+    const m = bestFaceMatchInGallery(partnerProbes, partnerGallery)
+    if (m.sim < FACE_MATCH_THRESHOLD_PARTNER) {
+      console.log(
+        `[magic-meet] partner @${partner.nickname} not matched (best=${m.sim.toFixed(3)})`
+      )
+      continue
     }
-
-    if (!partnerFound) continue
+    console.log(
+      `[magic-meet] partner @${partner.nickname} matched (sim=${m.sim.toFixed(3)})`
+    )
 
     const today = instantMeetStreakDay(streak.timezone)
 
@@ -269,7 +307,7 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
     }
 
     if (!savedPhotoUrl) {
-      savedPhotoUrl = await saveBase64ImageAsAvif(photoBase64, `${Date.now()}_${userId}`)
+      savedPhotoUrl = await saveBase64ImageAsAvif(bestPhotoBase64, `${Date.now()}_${userId}`)
     }
 
     const alreadyMetToday = streak.lastMetDate === today
@@ -312,7 +350,12 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
         photoHash,
         latitude: location?.lat,
         longitude: location?.lng,
-        facesDetected: descriptors.length,
+        facesDetected: pool.length,
+        matchScores: {
+          self: selfMatch.sim,
+          partner: m.sim,
+          model: CURRENT_FACE_MODEL,
+        },
       },
     })
   }
@@ -356,6 +399,49 @@ router.post('/magic-meet', async (req: AuthRequest, res: Response) => {
     partners: allPartners,
   })
 })
+
+async function collectFaceCandidates(photos: string[]): Promise<MagicMeetCandidate[]> {
+  const out: MagicMeetCandidate[] = []
+  for (let frameIdx = 0; frameIdx < photos.length; frameIdx++) {
+    const photo = photos[frameIdx]!
+    const detections: FaceQuality[] = await detectFacesFromBase64(photo)
+    for (let i = 0; i < detections.length; i++) {
+      const d = detections[i]!
+      const [x1, y1, x2, y2] = d.bbox
+      out.push({
+        frameIndex: frameIdx,
+        faceIndexInFrame: i,
+        embedding: d.embedding,
+        detScore: d.det_score,
+        bboxArea: Math.max(0, (x2! - x1!) * (y2! - y1!)),
+      })
+    }
+  }
+  return out
+}
+
+/** Pick the frame with the highest sum of det_score that contains the user's face. */
+function pickBestFrame(
+  pool: MagicMeetCandidate[],
+  userCandidateIdx: number
+): number | null {
+  if (pool.length === 0) return null
+  const userFrame = pool[userCandidateIdx]?.frameIndex
+  const scoreByFrame = new Map<number, number>()
+  for (const c of pool) {
+    scoreByFrame.set(c.frameIndex, (scoreByFrame.get(c.frameIndex) ?? 0) + c.detScore)
+  }
+  if (userFrame !== undefined && scoreByFrame.has(userFrame)) return userFrame
+  let bestFrame = pool[0]!.frameIndex
+  let bestScore = -Infinity
+  for (const [f, s] of scoreByFrame) {
+    if (s > bestScore) {
+      bestScore = s
+      bestFrame = f
+    }
+  }
+  return bestFrame
+}
 
 // POST /api/streaks/:partnerNickname/remind — пинг партнёру продлить серию (можно спамить)
 router.post('/:partnerNickname/remind', async (req: AuthRequest, res: Response) => {

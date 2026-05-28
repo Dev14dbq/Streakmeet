@@ -38,6 +38,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
 
   const [showQR, setShowQR] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
+  const [cameraReady, setCameraReady] = useState(false)
   const [showAvatarSheet, setShowAvatarSheet] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoData | null>(null)
@@ -51,6 +52,10 @@ export default function ProfilePage({ user: initialUser }: Props) {
       navigate(location.pathname, { replace: true, state: {} })
     }
   }, [location.state, location.pathname, navigate])
+
+  useEffect(() => {
+    if (!showCamera) setCameraReady(false)
+  }, [showCamera])
 
   async function saveAvatar(base64: string) {
     setUploading(true)
@@ -321,8 +326,12 @@ export default function ProfilePage({ user: initialUser }: Props) {
               audio={false}
               screenshotFormat="image/jpeg"
               videoConstraints={{ facingMode: 'user', aspectRatio: 1 }}
-              className="w-full h-full object-cover max-w-md"
-              onUserMediaError={() => toastError(t('profile.cameraError'))}
+              className={`camera-video w-full h-full object-cover max-w-md ${cameraReady ? 'camera-video--ready' : ''}`}
+              onUserMedia={() => setCameraReady(true)}
+              onUserMediaError={() => {
+                setCameraReady(false)
+                toastError(t('profile.cameraError'))
+              }}
             />
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               <div className="w-64 h-64 rounded-full border-4 border-[var(--color-brand-primary)] shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]" />

@@ -8,49 +8,98 @@ import { captureVideoFrame } from '../../lib/captureVideoFrame'
 import { toastError } from '../../lib/toast'
 import i18n from '../../i18n'
 
-type Phase = 'loading' | 'intro' | 'center' | 'right' | 'left' | 'saving' | 'done'
+type StepId =
+  | 'center1'
+  | 'smile'
+  | 'lookUp'
+  | 'lookDown'
+  | 'turnRight'
+  | 'turnLeft'
+  | 'moveClose'
+  | 'moveFar'
 
-interface StepInfo {
-  label: string
-  hint: string
-  arrow: string | null
-  yawOk: (yaw: number) => boolean
-  next: Phase
+type Phase = 'loading' | 'intro' | StepId | 'saving' | 'done'
+
+interface StepDef {
+  id: StepId
+  labelKey: string
+  hintKey: string
+  arrow: '←' | '→' | null
+  check: (m: FaceMetrics) => boolean
 }
 
-function getStepInfo(phase: Phase): StepInfo | null {
-  switch (phase) {
-    case 'center':
-      return {
-        label: i18n.t('face.lookStraight'),
-        hint: i18n.t('face.lookStraightHint'),
-        arrow: null,
-        yawOk: (y) => Math.abs(y) < 0.13,
-        next: 'right',
-      }
-    case 'right':
-      return {
-        label: i18n.t('face.turnRight'),
-        hint: i18n.t('face.turnRightHint'),
-        arrow: '→',
-        yawOk: (y) => y < -0.28,
-        next: 'left',
-      }
-    case 'left':
-      return {
-        label: i18n.t('face.turnLeft'),
-        hint: i18n.t('face.turnLeftHint'),
-        arrow: '←',
-        yawOk: (y) => y > 0.28,
-        next: 'saving',
-      }
-    default:
-      return null
-  }
+interface FaceMetrics {
+  yaw: number
+  pitch: number
+  boxWidthRatio: number
+  detScore: number
 }
 
-const NEED_STABLE = 7
+const NEED_STABLE = 6
 const NO_FACE_DELAY = 8
+
+const STEPS: StepDef[] = [
+  {
+    id: 'center1',
+    labelKey: 'face.lookStraight',
+    hintKey: 'face.lookStraightHint',
+    arrow: null,
+    check: (m) => Math.abs(m.yaw) < 0.13 && Math.abs(m.pitch) < 0.12 && inFrameSize(m),
+  },
+  {
+    id: 'smile',
+    labelKey: 'face.smile',
+    hintKey: 'face.smileHint',
+    arrow: null,
+    check: (m) => Math.abs(m.yaw) < 0.15 && Math.abs(m.pitch) < 0.15 && inFrameSize(m),
+  },
+  {
+    id: 'lookUp',
+    labelKey: 'face.lookUp',
+    hintKey: 'face.lookUpHint',
+    arrow: null,
+    check: (m) => m.pitch < -0.08 && Math.abs(m.yaw) < 0.2 && inFrameSize(m),
+  },
+  {
+    id: 'lookDown',
+    labelKey: 'face.lookDown',
+    hintKey: 'face.lookDownHint',
+    arrow: null,
+    check: (m) => m.pitch > 0.1 && Math.abs(m.yaw) < 0.2 && inFrameSize(m),
+  },
+  {
+    id: 'turnRight',
+    labelKey: 'face.turnRight',
+    hintKey: 'face.turnRightHint',
+    arrow: '→',
+    check: (m) => m.yaw < -0.18 && m.yaw > -0.4 && inFrameSize(m),
+  },
+  {
+    id: 'turnLeft',
+    labelKey: 'face.turnLeft',
+    hintKey: 'face.turnLeftHint',
+    arrow: '←',
+    check: (m) => m.yaw > 0.18 && m.yaw < 0.4 && inFrameSize(m),
+  },
+  {
+    id: 'moveClose',
+    labelKey: 'face.moveClose',
+    hintKey: 'face.moveCloseHint',
+    arrow: null,
+    check: (m) => m.boxWidthRatio >= 0.38 && Math.abs(m.yaw) < 0.2,
+  },
+  {
+    id: 'moveFar',
+    labelKey: 'face.moveFar',
+    hintKey: 'face.moveFarHint',
+    arrow: null,
+    check: (m) => m.boxWidthRatio >= 0.14 && m.boxWidthRatio <= 0.24 && Math.abs(m.yaw) < 0.2,
+  },
+]
+
+function inFrameSize(m: FaceMetrics): boolean {
+  return m.boxWidthRatio >= 0.18 && m.boxWidthRatio <= 0.55
+}
 
 function estimateYaw(lm: faceapi.FaceLandmarks68): number {
   const pts = lm.positions
@@ -59,6 +108,17 @@ function estimateYaw(lm: faceapi.FaceLandmarks68): number {
   const w = rx - lx
   const nx = pts[30]!.x
   return w > 0 ? (nx - (lx + rx) / 2) / w : 0
+}
+
+function estimatePitch(lm: faceapi.FaceLandmarks68): number {
+  const pts = lm.positions
+  const eyeMidY = (pts.slice(36, 48).reduce((s, p) => s + p.y, 0) / 12)
+  const mouthMidY = pts.slice(48, 60).reduce((s, p) => s + p.y, 0) / 12
+  const noseY = pts[30]!.y
+  const span = mouthMidY - eyeMidY
+  if (span <= 1) return 0
+  // ratio ~0.5 at neutral. Negative = looking up, positive = looking down.
+  return (noseY - eyeMidY) / span - 0.5
 }
 
 function drawMesh(
@@ -143,23 +203,20 @@ function SuccessScreen({ onContinue }: { onContinue: () => void }) {
   )
 }
 
-const ORDERED: Phase[] = ['center', 'right', 'left']
-function StepDots({ phase, captured }: { phase: Phase; captured: Set<Phase> }) {
+function StepBar({ stepIndex, total }: { stepIndex: number; total: number }) {
   return (
-    <div className="flex items-center gap-3">
-      {ORDERED.map((p) => {
-        const done = captured.has(p)
-        const active = phase === p
+    <div className="flex items-center gap-1.5 w-full max-w-[290px]">
+      {Array.from({ length: total }).map((_, i) => {
+        const done = i < stepIndex
+        const active = i === stepIndex
         return (
           <div
-            key={p}
+            key={i}
             className={[
-              'rounded-full transition-all duration-300',
-              done ? 'w-8 h-2 bg-[var(--color-brand-primary)]' : '',
-              !done && active
-                ? 'w-6 h-2 bg-[var(--color-brand-primary)] opacity-60 animate-pulse'
-                : '',
-              !done && !active ? 'w-2 h-2 bg-white/20' : '',
+              'h-1.5 flex-1 rounded-full transition-all duration-300',
+              done ? 'bg-[var(--color-brand-primary)]' : '',
+              !done && active ? 'bg-[var(--color-brand-primary)] opacity-60 animate-pulse' : '',
+              !done && !active ? 'bg-white/15' : '',
             ].join(' ')}
           />
         )
@@ -181,32 +238,38 @@ export default function FaceEnrollmentPage({
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const [modelsLoaded, setModelsLoaded] = useState(false)
+  const [cameraReady, setCameraReady] = useState(false)
   const [phase, setPhase] = useState<Phase>('loading')
+  const [stepIndex, setStepIndex] = useState(0)
   const [statusMsg, setStatusMsg] = useState(() => i18n.t('face.loadingModels'))
   const [holdPct, setHoldPct] = useState(0)
-  const [captured, setCaptured] = useState<Set<Phase>>(new Set())
 
   const phaseRef = useRef<Phase>('loading')
-  const capturesRef = useRef<Float32Array[]>([])
+  const stepIndexRef = useRef(0)
   const photosRef = useRef<string[]>([])
-  const capturedRef = useRef<Set<Phase>>(new Set())
   const stableRef = useRef(0)
   const noFaceRef = useRef(0)
   const loopRunning = useRef(false)
   const yawHistory = useRef<number[]>([])
+  const pitchHistory = useRef<number[]>([])
 
   useEffect(() => {
     phaseRef.current = phase
   }, [phase])
 
+  useEffect(() => {
+    stepIndexRef.current = stepIndex
+  }, [stepIndex])
+
   function handleStart() {
-    capturesRef.current = []
     photosRef.current = []
-    setPhase('center')
-    setStatusMsg(getStepInfo('center')!.hint)
-    setHoldPct(0)
     stableRef.current = 0
     yawHistory.current = []
+    pitchHistory.current = []
+    setStepIndex(0)
+    setPhase(STEPS[0]!.id)
+    setStatusMsg(t(STEPS[0]!.hintKey))
+    setHoldPct(0)
   }
 
   useEffect(() => {
@@ -215,7 +278,6 @@ export default function FaceEnrollmentPage({
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
           faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-          faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
         ])
         setModelsLoaded(true)
         if (autoStart) {
@@ -230,7 +292,7 @@ export default function FaceEnrollmentPage({
     })()
   }, []) // eslint-disable-line
 
-  const isScanning = phase === 'center' || phase === 'right' || phase === 'left'
+  const isScanning = STEPS.some((s) => s.id === phase)
 
   useEffect(() => {
     if (!modelsLoaded || !isScanning) return
@@ -251,26 +313,25 @@ export default function FaceEnrollmentPage({
     })()
   }
 
-  function advancePhase(p: Phase, descriptor: Float32Array) {
-    capturesRef.current.push(descriptor)
+  function advance() {
+    const next = stepIndexRef.current + 1
     const video = webcamRef.current?.video
-    const shot = video ? captureVideoFrame(video, { minWidth: 640, quality: 0.92 }) : null
+    const shot = video ? captureVideoFrame(video, { minWidth: 720, quality: 0.92 }) : null
     if (shot) photosRef.current.push(shot)
-    capturedRef.current.add(p)
-    setCaptured(new Set(capturedRef.current))
     stableRef.current = 0
     yawHistory.current = []
+    pitchHistory.current = []
     setHoldPct(0)
 
-    const next = getStepInfo(p)!.next
-    if (next === 'saving') {
+    if (next >= STEPS.length) {
       loopRunning.current = false
       setPhase('saving')
       setStatusMsg(t('face.saving'))
       void doSave()
     } else {
-      setPhase(next)
-      setStatusMsg(getStepInfo(next)!.hint)
+      setStepIndex(next)
+      setPhase(STEPS[next]!.id)
+      setStatusMsg(t(STEPS[next]!.hintKey))
     }
   }
 
@@ -290,18 +351,12 @@ export default function FaceEnrollmentPage({
     canvas.height = ch
 
     const curPhase = phaseRef.current
-    if (
-      curPhase === 'saving' ||
-      curPhase === 'done' ||
-      curPhase === 'loading' ||
-      curPhase === 'intro'
-    )
+    if (curPhase === 'saving' || curPhase === 'done' || curPhase === 'loading' || curPhase === 'intro')
       return
 
     const detection = await faceapi
-      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.28 }))
+      .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 }))
       .withFaceLandmarks()
-      .withFaceDescriptor()
 
     const ctx = canvas.getContext('2d')!
     ctx.clearRect(0, 0, cw, ch)
@@ -317,7 +372,7 @@ export default function FaceEnrollmentPage({
     }
 
     noFaceRef.current = 0
-    const { landmarks, descriptor, detection: det } = detection
+    const { landmarks, detection: det } = detection
     const box = det.box
 
     const scale = Math.max(cw / vw, ch / vh)
@@ -326,20 +381,21 @@ export default function FaceEnrollmentPage({
     const mx = (x: number) => x * scale + ox
     const my = (y: number) => y * scale + oy
 
-    if (box.width / vw < 0.13) {
-      stableRef.current = 0
-      setHoldPct(0)
-      setStatusMsg(t('face.comeCloser'))
-      drawMesh(ctx, landmarks, mx, my, false)
-      return
+    const rawYaw = estimateYaw(landmarks)
+    const rawPitch = estimatePitch(landmarks)
+    yawHistory.current = [...yawHistory.current.slice(-3), rawYaw]
+    pitchHistory.current = [...pitchHistory.current.slice(-3), rawPitch]
+    const yaw = yawHistory.current.reduce((a, b) => a + b, 0) / yawHistory.current.length
+    const pitch = pitchHistory.current.reduce((a, b) => a + b, 0) / pitchHistory.current.length
+    const metrics: FaceMetrics = {
+      yaw,
+      pitch,
+      boxWidthRatio: box.width / vw,
+      detScore: det.score,
     }
 
-    const rawYaw = estimateYaw(landmarks)
-    yawHistory.current = [...yawHistory.current.slice(-3), rawYaw]
-    const yaw = yawHistory.current.reduce((a, b) => a + b, 0) / yawHistory.current.length
-
-    const step = getStepInfo(curPhase)!
-    const ok = step.yawOk(yaw)
+    const step = STEPS[stepIndexRef.current]!
+    const ok = step.check(metrics)
 
     if (ok) {
       stableRef.current = Math.min(NEED_STABLE, stableRef.current + 1)
@@ -354,11 +410,11 @@ export default function FaceEnrollmentPage({
     if (ok) {
       setStatusMsg(t('face.hold', { percent: Math.round(pct * 100) }))
     } else {
-      setStatusMsg(step.hint)
+      setStatusMsg(t(step.hintKey))
     }
 
     if (stableRef.current >= NEED_STABLE) {
-      advancePhase(curPhase, descriptor)
+      advance()
     }
   }
 
@@ -374,19 +430,23 @@ export default function FaceEnrollmentPage({
       onUserUpdate?.(user)
       setPhase('done')
     } catch (e: unknown) {
+      const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code
+      const fallback =
+        code === 'FACE_ENROLL_LOW_QUALITY' || code === 'FACE_ENROLL_TOO_FEW_FRAMES'
+          ? t('face.lowQuality')
+          : t('face.saveError')
       const msg =
         (e as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        (e instanceof Error ? e.message : t('face.saveError'))
+        (e instanceof Error ? e.message : fallback)
       toastError(msg)
-      capturesRef.current = []
       photosRef.current = []
-      capturedRef.current = new Set()
-      setCaptured(new Set())
       stableRef.current = 0
       yawHistory.current = []
+      pitchHistory.current = []
       setHoldPct(0)
-      setPhase('center')
-      setStatusMsg(getStepInfo('center')!.hint)
+      setStepIndex(0)
+      setPhase(STEPS[0]!.id)
+      setStatusMsg(t(STEPS[0]!.hintKey))
       startLoop()
     }
   }
@@ -395,9 +455,8 @@ export default function FaceEnrollmentPage({
     return <SuccessScreen onContinue={() => navigate('/', { replace: true })} />
   }
 
-  const stepInfo =
-    phase !== 'loading' && phase !== 'saving' && phase !== 'intro' ? getStepInfo(phase) : null
-  const scanning = phase === 'center' || phase === 'right' || phase === 'left'
+  const currentStep = isScanning ? STEPS[stepIndex]! : null
+  const scanning = !!currentStep
 
   return (
     <div className="flex min-h-screen flex-col bg-black px-6 pt-10 pb-safe">
@@ -406,12 +465,14 @@ export default function FaceEnrollmentPage({
           {t('face.faceRecognition')}
         </h2>
         <p className="text-xs text-[var(--color-on-surface-variant)] text-center mb-5 max-w-xs">
-          {t('face.lookStraightHint')}
+          {scanning
+            ? t('face.stepProgress', { current: stepIndex + 1, total: STEPS.length })
+            : t('face.lookStraightHint')}
         </p>
 
         <div className="flex items-center justify-center gap-4 w-full flex-1 min-h-[280px]">
           <div className="flex items-center justify-center w-10">
-            {stepInfo?.arrow === '←' && (
+            {currentStep?.arrow === '←' && (
               <span className="text-4xl font-black text-[var(--color-brand-primary)] animate-pulse select-none">
                 ←
               </span>
@@ -438,17 +499,19 @@ export default function FaceEnrollmentPage({
                   forceScreenshotSourceSize
                   videoConstraints={{
                     facingMode: 'user',
-                    width: { ideal: 640 },
-                    height: { ideal: 640 },
+                    width: { ideal: 720 },
+                    height: { ideal: 720 },
                   }}
-                  className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
-                  onUserMediaError={(err) =>
+                  className={`camera-video absolute inset-0 w-full h-full object-cover scale-x-[-1] ${cameraReady ? 'camera-video--ready' : ''}`}
+                  onUserMedia={() => setCameraReady(true)}
+                  onUserMediaError={(err) => {
+                    setCameraReady(false)
                     setStatusMsg(
                       t('face.cameraError', {
                         message: typeof err === 'string' ? err : err.message,
                       })
                     )
-                  }
+                  }}
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -471,7 +534,7 @@ export default function FaceEnrollmentPage({
           </div>
 
           <div className="flex items-center justify-center w-10">
-            {stepInfo?.arrow === '→' && (
+            {currentStep?.arrow === '→' && (
               <span className="text-4xl font-black text-[var(--color-brand-primary)] animate-pulse select-none">
                 →
               </span>
@@ -488,9 +551,9 @@ export default function FaceEnrollmentPage({
               />
             </div>
 
-            {stepInfo && (
+            {currentStep && (
               <p className="mt-3 text-lg font-extrabold text-[var(--color-brand-primary)] text-center tracking-tight">
-                {stepInfo.label}
+                {t(currentStep.labelKey)}
               </p>
             )}
 
@@ -498,8 +561,8 @@ export default function FaceEnrollmentPage({
               {statusMsg}
             </p>
 
-            <div className="mt-4">
-              <StepDots phase={phase} captured={captured} />
+            <div className="mt-4 w-full flex justify-center">
+              <StepBar stepIndex={stepIndex} total={STEPS.length} />
             </div>
           </>
         ) : (

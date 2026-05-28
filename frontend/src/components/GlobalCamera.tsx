@@ -136,9 +136,13 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
   }
 
   const handleConfirm = useCallback(
-    async (imageSrc: string) => {
+    async (imageSrc: string, burst?: string[]) => {
       setProcessing(true)
-      logCapture('confirm upload', { bytes: imageSrc.length, mode: captureMode })
+      logCapture('confirm upload', {
+        bytes: imageSrc.length,
+        mode: captureMode,
+        burst: burst?.length ?? 1,
+      })
 
       if (captureMode === 'remote') {
         if (!remoteTarget) {
@@ -202,10 +206,15 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
       }
 
       setProcessingLabel(t('camera.recognizing'))
-      logCapture('POST /api/streaks/magic-meet')
+      logCapture('POST /api/streaks/magic-meet', { frames: burst?.length ?? 1 })
 
       try {
-        const { data } = await magicMeet({ photoBase64: imageSrc, location })
+        const photosBase64 = burst && burst.length > 1 ? burst : undefined
+        const { data } = await magicMeet({
+          photoBase64: imageSrc,
+          photosBase64,
+          location,
+        })
         logCapture('success', data)
 
         const resultState: MagicMeetResultState = {
@@ -274,6 +283,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
             isRemoteReply && remoteTarget ? `@${remoteTarget.partnerNickname}` : undefined
           }
           shutterDisabled={captureMode === 'remote' && !remoteTarget}
+          burstFrames={captureMode === 'meet' ? 3 : 1}
           bottomOverlay={
             captureMode === 'remote' && showPartnerPicker ? (
               <CameraRemotePartnerPicker streaks={partnerOptions} onSelect={applyRemoteTarget} />
