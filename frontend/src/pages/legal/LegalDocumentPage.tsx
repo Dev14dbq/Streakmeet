@@ -29,12 +29,12 @@ export default function LegalDocumentPage({ slug, fallbackTitle }: Props) {
     : null
 
   return (
-    <div className="flex flex-col px-6 pt-12 pb-8 min-h-screen bg-black text-white">
+    <div className="flex flex-col px-6 pt-12 pb-8 min-h-screen bg-[var(--color-background)] text-on-surface">
       <div className="flex items-center gap-3 mb-8">
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-white transition active:scale-95 hover:bg-[var(--color-surface-container-highest)]"
+          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-on-surface transition active:scale-95 hover:bg-[var(--color-surface-container-highest)]"
         >
           <ArrowLeft size={22} />
         </button>

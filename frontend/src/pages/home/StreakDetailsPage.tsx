@@ -281,7 +281,7 @@ export default function StreakDetailsPage() {
         <button
           type="button"
           onClick={() => navigate('/')}
-          className="rounded-full bg-[var(--color-surface-container-high)] px-6 py-3 text-white font-semibold"
+          className="rounded-full bg-[var(--color-surface-container-high)] px-6 py-3 text-on-surface font-semibold"
         >
           {t('notFound.goHome')}
         </button>
@@ -329,14 +329,14 @@ export default function StreakDetailsPage() {
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-white border border-white/10 transition active:scale-95"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-on-surface border border-white/10 transition active:scale-95"
               aria-label={t('common.back')}
             >
               <ArrowLeft size={20} />
             </button>
             <Link
               to={`/${partner.nickname}`}
-              className="rounded-full bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 text-xs font-bold text-white/90 transition hover:text-[var(--color-brand-primary)] active:scale-95"
+              className="rounded-full bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 text-xs font-bold text-on-surface/90 transition hover:text-[var(--color-brand-primary)] active:scale-95"
             >
               @{partner.nickname}
             </Link>
@@ -352,7 +352,7 @@ export default function StreakDetailsPage() {
             />
             <div className="flex flex-col items-center min-w-[88px]">
               <div className="flex items-center gap-1 leading-none">
-                <span className="text-5xl font-black text-white tracking-tighter tabular-nums">
+                <span className="text-5xl font-black text-on-surface tracking-tighter tabular-nums">
                   {count}
                 </span>
                 <Flame
@@ -389,7 +389,7 @@ export default function StreakDetailsPage() {
             onClick={handleRemind}
             className={`relative w-full overflow-hidden rounded-full py-[18px] font-black text-lg tracking-wide transition active:scale-[0.96] select-none ${
               combo >= 10
-                ? 'bg-gradient-to-r from-[#ff0040] via-[#ff1a4f] to-[#ff6b00] text-white shadow-[0_0_40px_rgba(255,26,79,0.6)]'
+                ? 'bg-gradient-to-r from-[#ff0040] via-[#ff1a4f] to-[#ff6b00] text-on-surface shadow-[0_0_40px_rgba(255,26,79,0.6)]'
                 : combo >= 5
                   ? 'bg-[var(--color-brand-primary)] text-white shadow-[0_8px_30px_rgba(255,26,79,0.45)]'
                   : 'bg-[var(--color-brand-primary)]/20 text-[var(--color-brand-primary)] border border-[var(--color-brand-primary)]/40'
@@ -433,7 +433,7 @@ export default function StreakDetailsPage() {
           <button
             type="button"
             onClick={() => openRemoteSelfieReply(pendingRemoteSelfie.id)}
-            className="w-full rounded-full py-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold text-base shadow-[0_8px_30px_rgba(139,92,246,0.4)] transition active:scale-[0.96] flex items-center justify-center gap-2"
+            className="w-full rounded-full py-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-on-surface font-bold text-base shadow-[0_8px_30px_rgba(139,92,246,0.4)] transition active:scale-[0.96] flex items-center justify-center gap-2"
           >
             <Camera size={20} />
             {t('camera.sendReply')} @{pendingRemoteSelfie.sender.nickname}
@@ -447,7 +447,7 @@ export default function StreakDetailsPage() {
           <button
             type="button"
             onClick={openRemoteSelfieInit}
-            className="w-full rounded-full py-4 bg-[var(--color-surface-container-high)] text-white font-bold text-sm transition active:scale-[0.96] hover:bg-[var(--color-surface-container-highest)] flex items-center justify-center gap-2"
+            className="w-full rounded-full py-4 bg-[var(--color-surface-container-high)] text-on-surface font-bold text-sm transition active:scale-[0.96] hover:bg-[var(--color-surface-container-highest)] flex items-center justify-center gap-2"
           >
             <Smartphone size={18} />
             {t('camera.meetPhoto')}
@@ -460,7 +460,7 @@ export default function StreakDetailsPage() {
         {streakDays.length === 0 ? (
           <div className="glass-card rounded-3xl p-10 flex flex-col items-center text-center border border-white/5">
             <Camera size={36} className="text-[var(--color-on-surface-variant)] opacity-40 mb-4" />
-            <p className="text-white font-semibold">{t('home.noResults')}</p>
+            <p className="text-on-surface font-semibold">{t('home.noResults')}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-8">
@@ -472,7 +472,7 @@ export default function StreakDetailsPage() {
                 <div className="flex flex-col gap-6">
                   {days.map((day) => (
                     <div key={day.id}>
-                      <p className="text-sm font-semibold text-white/80 mb-3 capitalize">
+                      <p className="text-sm font-semibold text-on-surface/80 mb-3 capitalize">
                         {formatDate(day.date + 'T12:00:00', {
                           weekday: 'short',
                           day: 'numeric',
@@ -517,7 +517,7 @@ export default function StreakDetailsPage() {
               <button
                 type="button"
                 onClick={() => setSize(size + 1)}
-                className="w-full py-4 rounded-full bg-[var(--color-surface-container-high)] text-white font-bold hover:bg-[var(--color-surface-container-highest)] transition active:scale-[0.98] flex items-center justify-center gap-2"
+                className="w-full py-4 rounded-full bg-[var(--color-surface-container-high)] text-on-surface font-bold hover:bg-[var(--color-surface-container-highest)] transition active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 <ImageIcon size={18} />
                 {t('common.retry')}

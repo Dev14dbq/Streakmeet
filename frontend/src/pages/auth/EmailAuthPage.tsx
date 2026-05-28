@@ -85,16 +85,16 @@ export default function EmailAuthPage({ onAuth }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black">
+    <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
       {/* Header */}
       <div className="flex items-center gap-4 px-6 pt-14 pb-4">
         <button
           onClick={() => (step === 'password' ? setStep('email') : navigate('/login'))}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
         >
           ←
         </button>
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">
+        <h1 className="text-2xl font-extrabold text-on-surface tracking-tight">
           {step === 'email' ? t('auth.emailLogin') : t('auth.enterPassword')}
         </h1>
       </div>
@@ -128,7 +128,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
                 setEmail(e.target.value)
                 setEmailError('')
               }}
-              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-white placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)] text-base disabled:opacity-50"
+              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)] text-base disabled:opacity-50"
             />
             {emailError && (
               <p className="mt-2 text-sm text-[var(--color-error)] pl-4">{emailError}</p>
@@ -152,7 +152,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
                   setPassword(e.target.value)
                   setPasswordError('')
                 }}
-                className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-white placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)] text-base"
+                className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)] text-base"
               />
               {passwordError && (
                 <p className="mt-2 text-sm text-[var(--color-error)] pl-4">{passwordError}</p>

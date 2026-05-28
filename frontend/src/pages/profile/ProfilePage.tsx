@@ -162,16 +162,16 @@ export default function ProfilePage({ user: initialUser }: Props) {
         <button
           type="button"
           onClick={() => setShowQR(true)}
-          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] hover:text-white hover:bg-[var(--color-surface-container-highest)] transition active:scale-95"
+          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] hover:text-on-surface hover:bg-[var(--color-surface-container-highest)] transition active:scale-95"
           aria-label={t('profile.myQr')}
         >
           <QrCode size={22} />
         </button>
-        <h1 className="text-lg font-bold text-white tracking-tight">{t('nav.profile')}</h1>
+        <h1 className="text-lg font-bold text-on-surface tracking-tight">{t('nav.profile')}</h1>
         <button
           type="button"
           onClick={() => navigate('/settings')}
-          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] hover:text-white hover:bg-[var(--color-surface-container-highest)] transition active:scale-95"
+          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] hover:text-on-surface hover:bg-[var(--color-surface-container-highest)] transition active:scale-95"
           aria-label={t('profile.settings')}
         >
           <Settings size={22} />
@@ -198,7 +198,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
           ) : (
             <div className="absolute inset-0 rounded-full blur-xl opacity-30 scale-110 z-0 bg-[var(--color-surface-container-highest)]" />
           )}
-          <div className="relative z-10 w-28 h-28 rounded-full bg-[var(--color-surface-container-high)] border-2 border-white/10 overflow-hidden flex items-center justify-center">
+          <div className="relative z-10 w-28 h-28 rounded-full bg-[var(--color-surface-container-high)] border-2 border-subtle overflow-hidden flex items-center justify-center">
             {uploading && avatarPreview ? (
               <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
             ) : user.avatarUrl ? (
@@ -221,7 +221,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
           </div>
         </button>
 
-        <h2 className="text-2xl font-extrabold text-white tracking-tight">{user.nickname}</h2>
+        <h2 className="text-2xl font-extrabold text-on-surface tracking-tight">{user.nickname}</h2>
         <p className="mt-1 text-sm font-medium text-[var(--color-on-surface-variant)]">
           @{user.nickname}
         </p>
@@ -238,7 +238,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
             {t('common.loading')}
           </p>
         ) : photos.length === 0 ? (
-          <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-white/5">
+          <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-subtle">
             <ImageIcon
               size={32}
               className="text-[var(--color-on-surface-variant)] opacity-50 mb-3"
@@ -303,7 +303,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
               <button
                 type="button"
                 onClick={() => setSize(size + 1)}
-                className="w-full mt-6 py-4 rounded-full bg-[var(--color-surface-container-high)] text-white font-bold hover:bg-[var(--color-surface-container-highest)] transition"
+                className="w-full mt-6 py-4 rounded-full bg-[var(--color-surface-container-high)] text-on-surface font-bold hover:bg-[var(--color-surface-container-highest)] transition"
               >
                 {t('common.retry')}
               </button>
@@ -315,15 +315,16 @@ export default function ProfilePage({ user: initialUser }: Props) {
       {/* Avatar sheet */}
       {showAvatarSheet && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex flex-col justify-end backdrop-blur-sm"
+          style={{ background: 'var(--map-modal-scrim)' }}
           onClick={closeAvatarSheet}
         >
           <div
             className="bg-[var(--color-surface-container-high)] rounded-t-3xl px-6 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-5" />
-            <h3 className="text-lg font-bold text-white mb-4 text-center">
+            <div className="w-10 h-1 rounded-full bg-overlay-scrim mx-auto mb-5" />
+            <h3 className="text-lg font-bold text-on-surface mb-4 text-center">
               {t('settings.profilePhoto')}
             </h3>
 
@@ -338,7 +339,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
                     </div>
                   )}
                 </div>
-                <p className="text-sm font-semibold text-white">{t('profile.savingAvatar')}</p>
+                <p className="text-sm font-semibold text-on-surface">{t('profile.savingAvatar')}</p>
                 <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">
                   {t('common.savingPhoto')}
                 </p>
@@ -351,14 +352,14 @@ export default function ProfilePage({ user: initialUser }: Props) {
                     setShowAvatarSheet(false)
                     setShowCamera(true)
                   }}
-                  className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-white font-semibold active:scale-[0.99] transition"
+                  className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-on-surface font-semibold active:scale-[0.99] transition"
                 >
                   {t('profile.takePhoto')}
                 </button>
                 <button
                   type="button"
                   onClick={handlePickFromGallery}
-                  className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-white font-semibold active:scale-[0.99] transition"
+                  className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-on-surface font-semibold active:scale-[0.99] transition"
                 >
                   {t('profile.pickFromGallery')}
                 </button>

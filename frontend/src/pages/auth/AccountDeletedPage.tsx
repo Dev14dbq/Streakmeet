@@ -57,15 +57,15 @@ export default function AccountDeletedPage({ onAuth }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black px-6 pt-14 pb-safe">
+    <div className="flex min-h-screen flex-col bg-[var(--color-background)] px-6 pt-14 pb-safe">
       <div className="flex flex-1 flex-col items-center justify-center max-w-sm mx-auto w-full">
         <div className="mb-8 text-6xl select-none">🗑️</div>
-        <h1 className="text-2xl font-extrabold text-white tracking-tight text-center">
+        <h1 className="text-2xl font-extrabold text-on-surface tracking-tight text-center">
           {t('auth.accountDeleted')}
         </h1>
         <p className="mt-4 text-sm text-[var(--color-on-surface-variant)] text-center leading-relaxed">
           {t('auth.accountDeletedDesc')}{' '}
-          <span className="text-white font-semibold">
+          <span className="text-on-surface font-semibold">
             {daysRemaining} {t('common.days', { count: daysRemaining })}
           </span>{' '}
           {t('auth.accountDeletedDesc2')}
@@ -75,7 +75,9 @@ export default function AccountDeletedPage({ onAuth }: Props) {
             {state.email}
           </p>
         )}
-        <p className="mt-6 text-sm text-white/80 text-center">{t('auth.restorePrompt')}</p>
+        <p className="mt-6 text-sm text-[var(--color-on-surface-variant)] text-center">
+          {t('auth.restorePrompt')}
+        </p>
       </div>
 
       <div className="w-full max-w-sm mx-auto flex flex-col gap-3 pb-6">

@@ -38,9 +38,12 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
         : t('legal.updatedPrivacy')
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div
+      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center backdrop-blur-sm p-4"
+      style={{ background: 'var(--map-modal-scrim)' }}
+    >
       <div
-        className="w-full max-w-md rounded-3xl bg-[var(--color-surface-container-high)] border border-white/10 shadow-2xl p-6"
+        className="w-full max-w-md rounded-3xl bg-[var(--color-surface-container-high)] border border-subtle shadow-2xl p-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="legal-consent-title"

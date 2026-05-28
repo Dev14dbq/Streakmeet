@@ -48,20 +48,22 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
 
   if (showScanner) {
     return (
-      <div className={`fixed inset-0 z-[100] flex flex-col bg-black ${screenClass}`}>
+      <div
+        className={`fixed inset-0 z-[100] flex flex-col bg-[var(--color-background)] ${screenClass}`}
+      >
         <div className="flex items-center justify-between p-6 pb-2">
-          <h2 className="text-xl font-bold text-white">{t('common.qr')}</h2>
+          <h2 className="text-xl font-bold text-on-surface">{t('common.qr')}</h2>
           <button
             type="button"
             onClick={() => setShowScanner(false)}
-            className="rounded-full bg-zinc-900 p-2 text-white"
+            className="rounded-full bg-[var(--color-surface-container-high)] p-2 text-on-surface"
             aria-label={t('common.close')}
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="relative mx-4 mb-12 flex flex-1 items-center justify-center overflow-hidden rounded-3xl bg-zinc-900">
+        <div className="relative mx-4 mb-12 flex flex-1 items-center justify-center overflow-hidden rounded-3xl bg-[var(--color-surface-container-low)]">
           <Scanner
             onScan={async (result) => {
               if (!result?.length || scanningRef.current) return
@@ -99,14 +101,14 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex flex-col items-center bg-black/90 p-6 backdrop-blur-md ${screenClass}`}
+      className={`fixed inset-0 z-[100] flex flex-col items-center bg-[var(--color-background)]/95 p-6 backdrop-blur-md ${screenClass}`}
     >
       <div className={`mx-auto flex min-h-0 w-full max-w-[600px] flex-1 flex-col ${panelClass}`}>
         <div className="flex justify-start pt-6">
           <button
             type="button"
             onClick={handleCloseAll}
-            className="rounded-full bg-[var(--color-surface-container-high)] p-3 text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+            className="rounded-full bg-[var(--color-surface-container-high)] p-3 text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
             aria-label={t('common.back')}
           >
             <ArrowLeft size={24} />
@@ -114,12 +116,12 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
         </div>
 
         <div className="flex w-full flex-1 items-center justify-center py-6">
-          <div className="glass-card relative flex w-full max-w-sm flex-col items-center overflow-hidden rounded-[32px] p-10">
+          <div className="glass-card relative flex w-full max-w-sm flex-col items-center overflow-hidden rounded-[32px] border border-subtle p-10">
             <div className="pointer-events-none absolute top-1/2 left-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--color-brand-primary)] opacity-10 blur-3xl" />
-            <div className="relative z-10 mb-6 rounded-3xl bg-white p-5 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            <div className="relative z-10 mb-6 rounded-3xl bg-white p-5 shadow-[0_10px_30px_var(--map-control-shadow)]">
               <QRCode value={profileUrl(nickname)} size={200} />
             </div>
-            <h2 className="text-3xl font-extrabold tracking-tight text-white">@{nickname}</h2>
+            <h2 className="text-3xl font-extrabold tracking-tight text-on-surface">@{nickname}</h2>
           </div>
         </div>
 
@@ -137,7 +139,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
               onClose()
               setShowScanner(true)
             }}
-            className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 text-lg font-bold text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+            className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 text-lg font-bold text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
           >
             {t('common.qr')}
           </button>

@@ -9,7 +9,7 @@
     "version": "StreakMeet · v0.1.0"
   },
   "nav": {
-    "home": "Дом",
+    "home": "Главная",
     "map": "Карта",
     "memories": "Лента",
     "profile": "Профиль"
@@ -162,7 +162,7 @@
     "waiting": "Ждём",
     "pending": "Ожидают ответа",
     "whoMeet": "С кем встречаешься?",
-    "noFriendsYet": "You don't have any friends yet",
+    "noFriendsYet": "У тебя пока нет друзей",
     "emptyHint": "Найди человека по @нику или покажи QR — и начните серию встреч каждый день."
   },
   "streak": {

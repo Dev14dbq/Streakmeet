@@ -14,12 +14,12 @@ export default function NotFoundPage({ homeTo = '/', title, message }: Props) {
   const pageMessage = message ?? t('notFound.message')
 
   return (
-    <div className="flex min-h-screen flex-col bg-black px-6 pt-14 pb-safe">
+    <div className="flex min-h-screen flex-col bg-[var(--color-background)] px-6 pt-14 pb-safe">
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col items-center justify-center text-center">
         <div className="mb-6 select-none text-7xl font-extrabold tracking-tighter text-[var(--color-brand-primary)]">
           404
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight text-white">{pageTitle}</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight text-on-surface">{pageTitle}</h1>
         <p className="mt-4 text-sm leading-relaxed text-[var(--color-on-surface-variant)]">
           {pageMessage}
         </p>
@@ -36,7 +36,7 @@ export default function NotFoundPage({ homeTo = '/', title, message }: Props) {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="w-full py-4 text-sm font-semibold text-[var(--color-on-surface-variant)] transition hover:text-white"
+          className="w-full py-4 text-sm font-semibold text-[var(--color-on-surface-variant)] transition hover:text-on-surface"
         >
           {t('common.back')}
         </button>

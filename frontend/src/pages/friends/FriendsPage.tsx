@@ -74,7 +74,9 @@ export default function FriendsPage() {
 
   return (
     <div className="flex flex-col px-6 pt-12 pb-6">
-      <h1 className="text-3xl font-bold text-white tracking-tight mb-6">{t('friends.title')}</h1>
+      <h1 className="text-3xl font-bold text-on-surface tracking-tight mb-6">
+        {t('friends.title')}
+      </h1>
 
       <div className="relative mb-8">
         <Search
@@ -86,7 +88,7 @@ export default function FriendsPage() {
           placeholder={t('friends.searchPlaceholder')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full bg-[var(--color-surface-container-high)] text-white rounded-full py-4 pl-14 pr-6 outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] transition shadow-inner"
+          className="w-full bg-[var(--color-surface-container-high)] text-on-surface rounded-full py-4 pl-14 pr-6 outline-none focus:ring-2 focus:ring-[var(--color-brand-primary)] transition shadow-inner"
         />
       </div>
 
@@ -114,14 +116,14 @@ export default function FriendsPage() {
                     className="flex items-center gap-4 min-w-0 flex-1 active:opacity-80"
                   >
                     <Avatar path={u.avatarUrl} name={u.nickname} size="sm" />
-                    <span className="font-bold text-white tracking-tight truncate">
+                    <span className="font-bold text-on-surface tracking-tight truncate">
                       @{u.nickname}
                     </span>
                   </Link>
                   <button
                     type="button"
                     onClick={() => handleAdd(u.id)}
-                    className="p-3 bg-[var(--color-brand-primary)] text-white rounded-full hover:bg-[var(--color-primary-container)] transition active:scale-95 shadow-[0_4px_15px_rgba(255,26,79,0.3)] shrink-0 ml-2"
+                    className="p-3 bg-[var(--color-brand-primary)] text-on-surface rounded-full hover:bg-[var(--color-primary-container)] transition active:scale-95 shadow-[0_4px_15px_rgba(255,26,79,0.3)] shrink-0 ml-2"
                   >
                     <UserPlus size={20} />
                   </button>
@@ -145,11 +147,13 @@ export default function FriendsPage() {
               >
                 <div className="flex items-center gap-4">
                   <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
-                  <span className="font-bold text-white tracking-tight">@{f.friend.nickname}</span>
+                  <span className="font-bold text-on-surface tracking-tight">
+                    @{f.friend.nickname}
+                  </span>
                 </div>
                 <button
                   onClick={() => handleAccept(f.id)}
-                  className="px-5 py-2.5 bg-[var(--color-brand-primary)] text-white text-sm font-bold rounded-full hover:bg-[var(--color-primary-container)] transition active:scale-95 shadow-[0_4px_15px_rgba(255,26,79,0.3)]"
+                  className="px-5 py-2.5 bg-[var(--color-brand-primary)] text-on-surface text-sm font-bold rounded-full hover:bg-[var(--color-primary-container)] transition active:scale-95 shadow-[0_4px_15px_rgba(255,26,79,0.3)]"
                 >
                   {t('common.accept')}
                 </button>
@@ -176,7 +180,9 @@ export default function FriendsPage() {
               >
                 <div className="flex items-center gap-4">
                   <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
-                  <span className="font-bold text-white tracking-tight">@{f.friend.nickname}</span>
+                  <span className="font-bold text-on-surface tracking-tight">
+                    @{f.friend.nickname}
+                  </span>
                 </div>
                 <button
                   onClick={() => handleStartStreak(f.friend.id)}
@@ -193,7 +199,9 @@ export default function FriendsPage() {
               >
                 <div className="flex items-center gap-4">
                   <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
-                  <span className="font-bold text-white tracking-tight">@{f.friend.nickname}</span>
+                  <span className="font-bold text-on-surface tracking-tight">
+                    @{f.friend.nickname}
+                  </span>
                 </div>
                 <span className="text-xs text-[var(--color-on-surface-variant)] flex items-center gap-1.5 font-medium uppercase tracking-wider">
                   <Clock size={14} /> {t('friends.pending')}

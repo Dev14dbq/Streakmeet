@@ -18,7 +18,7 @@ export default function MagicMeetResultPage() {
 
   if (!state?.photo || !state.partners?.length) {
     return (
-      <div className="min-h-[100dvh] bg-black flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-[100dvh] bg-[var(--color-background)] flex flex-col items-center justify-center px-6 text-center">
         <p className="text-zinc-400 mb-6">{t('meet.resultNotFound')}</p>
         <button
           type="button"
@@ -34,7 +34,7 @@ export default function MagicMeetResultPage() {
   const { photo, message, partners } = state
 
   return (
-    <div className="min-h-[100dvh] bg-black flex flex-col px-6 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
+    <div className="min-h-[100dvh] bg-[var(--color-background)] flex flex-col px-6 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="enroll-success-circle mb-8">
           <div className="w-20 h-20 rounded-full bg-[var(--color-brand-primary)]/15 border-2 border-[var(--color-brand-primary)] flex items-center justify-center">
@@ -42,7 +42,7 @@ export default function MagicMeetResultPage() {
           </div>
         </div>
 
-        <h1 className="enroll-success-label text-3xl font-extrabold text-white tracking-tight text-center mb-2">
+        <h1 className="enroll-success-label text-3xl font-extrabold text-on-surface tracking-tight text-center mb-2">
           {t('meet.streakExtended')}
         </h1>
         <p className="enroll-success-label text-sm text-[var(--color-on-surface-variant)] text-center max-w-xs mb-8">
@@ -69,7 +69,7 @@ export default function MagicMeetResultPage() {
               >
                 <Avatar path={partner.avatarUrl} name={partner.nickname} size="sm" />
                 <div>
-                  <p className="font-bold text-white">@{partner.nickname}</p>
+                  <p className="font-bold text-on-surface">@{partner.nickname}</p>
                   <p className="text-xs text-[var(--color-brand-primary)] font-medium mt-0.5">
                     {t('meet.partnerStreakExtended')}
                   </p>

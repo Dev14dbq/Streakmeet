@@ -7,7 +7,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
 import CachedImage from '../../components/CachedImage'
-import { LocateFixed, MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-react'
+import { Locate, MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-react'
 import {
   getFriendLocations,
   getMyLocation,
@@ -85,7 +85,7 @@ function NativeAppGate() {
       <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-surface-container-high)]">
         <Smartphone size={36} className="text-[var(--color-brand-primary)]" />
       </div>
-      <h2 className="mb-2 text-xl font-bold text-white">{t('mobileGate.title')}</h2>
+      <h2 className="mb-2 text-xl font-bold text-on-surface">{t('mobileGate.title')}</h2>
       <p className="max-w-xs text-sm leading-relaxed text-[var(--color-on-surface-variant)]">
         {t('mobileGate.description')}
       </p>
@@ -492,7 +492,7 @@ export default function MapPage() {
             </h1>
             <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">{mapStatusText}</p>
           </div>
-          <div className="glass-card pointer-events-auto flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-[var(--color-on-surface)]">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-subtle bg-[var(--color-surface-container-high)] px-3 py-2 text-xs font-semibold text-on-surface shadow-[0_4px_16px_var(--map-control-shadow)]">
             <Users size={14} className="text-[var(--color-brand-primary)]" />
             {broadcastingCount}
           </div>
@@ -501,7 +501,7 @@ export default function MapPage() {
 
       {selected && (
         <div className="absolute inset-x-4 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-20">
-          <div className="glass-card rounded-[28px] border border-white/10 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.55)]">
+          <div className="glass-card rounded-[28px] border border-subtle p-4 shadow-[0_20px_50px_rgba(0,0,0,0.55)]">
             <div className="mb-3 flex items-start gap-3">
               <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-container-high)] ring-2 ring-[var(--color-brand-primary)]">
                 {selected.avatarUrl ? (
@@ -511,14 +511,16 @@ export default function MapPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xl font-bold text-white">
+                  <div className="flex h-full w-full items-center justify-center text-xl font-bold text-on-surface">
                     {selected.nickname.slice(0, 1).toUpperCase()}
                   </div>
                 )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="truncate text-lg font-black text-white">@{selected.nickname}</p>
+                  <p className="truncate text-lg font-black text-on-surface">
+                    @{selected.nickname}
+                  </p>
                   <button
                     type="button"
                     onClick={() => setSelected(null)}
@@ -534,23 +536,23 @@ export default function MapPage() {
               </div>
             </div>
 
-            <div className="mb-3 space-y-2 rounded-2xl bg-black/25 px-3 py-3">
+            <div className="mb-3 space-y-2 rounded-2xl bg-overlay-scrim px-3 py-3">
               <div className="flex items-start gap-2">
                 <MapPin size={15} className="mt-0.5 shrink-0 text-[var(--color-brand-primary)]" />
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)]">
                     {t('map.locationLabel')}
                   </p>
-                  <p className="text-sm leading-snug text-white">
+                  <p className="text-sm leading-snug text-on-surface">
                     {addressLoading ? t('map.resolving') : (selectedAddress ?? '—')}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-3 border-t border-white/5 pt-2 text-xs">
+              <div className="flex items-center justify-between gap-3 border-t border-subtle pt-2 text-xs">
                 <span className="text-[var(--color-on-surface-variant)]">
                   {formatCoords(selected.latitude, selected.longitude)}
                 </span>
-                <span className="font-semibold text-white">
+                <span className="font-semibold text-on-surface">
                   {selectedDistance
                     ? t('map.distanceFromYou', { distance: selectedDistance })
                     : t('map.distanceUnknown')}
@@ -569,7 +571,7 @@ export default function MapPage() {
               </button>
               <Link
                 to={`/${selected.nickname}`}
-                className="flex items-center justify-center rounded-full bg-white/10 px-5 py-3.5 text-sm font-semibold text-white"
+                className="flex items-center justify-center rounded-full bg-[var(--color-surface-container-highest)] px-5 py-3.5 text-sm font-semibold text-on-surface"
               >
                 {t('nav.profile')}
               </Link>
@@ -577,22 +579,6 @@ export default function MapPage() {
           </div>
         </div>
       )}
-
-      <div className="map-map-control map-map-control--locate pointer-events-auto">
-        <button
-          type="button"
-          disabled={locating}
-          onClick={() => void centerOnMe()}
-          aria-label={t('map.locateMe')}
-          title={t('map.locateMe')}
-          className="map-map-control__btn"
-        >
-          <LocateFixed
-            size={18}
-            className={locating ? 'animate-pulse text-[var(--color-brand-primary)]' : ''}
-          />
-        </button>
-      </div>
 
       {compactShareUi && (
         <div className="map-map-control map-map-control--share pointer-events-auto">
@@ -613,18 +599,36 @@ export default function MapPage() {
         </div>
       )}
 
+      <div
+        className={`map-map-control pointer-events-auto ${compactShareUi ? 'map-map-control--locate-below-share' : 'map-map-control--locate-solo'}`}
+      >
+        <button
+          type="button"
+          disabled={locating}
+          onClick={() => void centerOnMe()}
+          aria-label={t('map.locateMe')}
+          title={t('map.locateMe')}
+          className="map-map-control__btn"
+        >
+          <Locate
+            size={18}
+            className={locating ? 'animate-pulse text-[var(--color-brand-primary)]' : ''}
+          />
+        </button>
+      </div>
+
       {shareExplainOpen && (
         <div
           className="fixed inset-0 z-[200] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center"
           style={{ background: 'var(--map-modal-scrim)' }}
         >
           <div
-            className="w-full max-w-md rounded-3xl border border-white/10 bg-[var(--color-surface-container-high)] p-6 shadow-2xl"
+            className="w-full max-w-md rounded-3xl border border-subtle bg-[var(--color-surface-container-high)] p-6 shadow-2xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="map-share-explain-title"
           >
-            <h2 id="map-share-explain-title" className="text-lg font-bold text-white">
+            <h2 id="map-share-explain-title" className="text-lg font-bold text-on-surface">
               {t('map.shareExplainTitle')}
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-[var(--color-on-surface-variant)]">
@@ -657,7 +661,7 @@ export default function MapPage() {
 
       {!compactShareUi && (
         <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
-          <div className="glass-card w-full max-w-md rounded-[28px] border border-white/10 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
+          <div className="glass-card w-full max-w-md rounded-[28px] border border-subtle p-4 shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
             <div className="mb-3 flex items-center gap-2 text-xs text-[var(--color-on-surface-variant)]">
               <MapPin size={14} className="text-[var(--color-brand-primary)]" />
               {t('map.backgroundMessage')}
@@ -674,7 +678,7 @@ export default function MapPage() {
             <button
               type="button"
               onClick={dismissSharePrompt}
-              className="mt-2 w-full text-center text-xs font-medium text-[var(--color-on-surface-variant)] underline-offset-2 hover:text-white hover:underline"
+              className="mt-2 w-full text-center text-xs font-medium text-[var(--color-on-surface-variant)] underline-offset-2 hover:text-on-surface hover:underline"
             >
               {t('common.soon')}
             </button>

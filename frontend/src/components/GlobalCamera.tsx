@@ -297,7 +297,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
 
   const fabClass =
     variant === 'center'
-      ? 'w-[68px] h-[68px] bg-[var(--color-brand-primary)] rounded-full shadow-[0_12px_36px_rgba(255,26,79,0.55)] ring-4 ring-black flex items-center justify-center text-white transition hover:scale-105 active:scale-95 pointer-events-auto touch-manipulation'
+      ? 'w-[68px] h-[68px] bg-[var(--color-brand-primary)] rounded-full shadow-[0_12px_36px_rgba(255,26,79,0.55)] ring-4 ring-[var(--color-background)] flex items-center justify-center text-white transition hover:scale-105 active:scale-95 pointer-events-auto touch-manipulation'
       : 'w-[60px] h-[60px] shrink-0 bg-[var(--color-brand-primary)] rounded-full shadow-[0_8px_30px_rgba(255,26,79,0.4)] flex items-center justify-center text-white transition hover:bg-[var(--color-primary-container)] active:scale-90 pointer-events-auto touch-manipulation'
 
   return (

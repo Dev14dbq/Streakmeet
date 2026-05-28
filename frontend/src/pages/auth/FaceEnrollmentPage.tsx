@@ -541,9 +541,9 @@ export default function FaceEnrollmentPage({
   const scanning = !!currentStep
 
   return (
-    <div className="flex min-h-screen flex-col bg-black px-6 pt-10 pb-safe">
+    <div className="flex min-h-screen flex-col bg-[var(--color-background)] px-6 pt-10 pb-safe">
       <div className="w-full max-w-[600px] mx-auto flex flex-col flex-1 items-center">
-        <h2 className="text-2xl font-extrabold text-white tracking-tight text-center mb-1">
+        <h2 className="text-2xl font-extrabold text-on-surface tracking-tight text-center mb-1">
           {t('face.faceRecognition')}
         </h2>
         <p className="text-xs text-[var(--color-on-surface-variant)] text-center mb-5 max-w-xs">
@@ -689,7 +689,7 @@ export default function FaceEnrollmentPage({
                 loopRunning.current = false
                 navigate(-1)
               }}
-              className="w-full py-4 text-sm font-semibold text-[var(--color-on-surface-variant)] hover:text-white transition"
+              className="w-full py-4 text-sm font-semibold text-[var(--color-on-surface-variant)] hover:text-on-surface transition"
             >
               {phase === 'intro' ? t('face.skipLater') : t('common.cancel')}
             </button>

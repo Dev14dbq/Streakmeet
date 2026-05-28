@@ -62,7 +62,7 @@ export default function BottomNav() {
             <GlobalCamera variant="center" />
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 h-[60px] glass-nav rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.55)] flex items-stretch px-1">
+          <div className="absolute inset-x-0 bottom-0 h-[60px] glass-nav rounded-full shadow-[var(--nav-bar-shadow)] flex items-stretch px-1">
             <div className="flex flex-1 items-center min-w-0">
               {leftTabs.map((tab) => (
                 <NavTab key={tab.to} {...tab} />

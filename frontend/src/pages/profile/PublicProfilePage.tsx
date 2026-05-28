@@ -123,7 +123,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
       return (
         <Link
           to="/profile"
-          className="w-full max-w-sm rounded-full bg-[var(--color-surface-container-high)] py-4 text-base font-bold text-white text-center transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+          className="w-full max-w-sm rounded-full bg-[var(--color-surface-container-high)] py-4 text-base font-bold text-on-surface text-center transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
         >
           {t('streak.myProfile')}
         </Link>
@@ -185,14 +185,14 @@ export default function PublicProfilePage({ currentUser }: Props) {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-black pb-safe">
+    <div className="flex flex-col min-h-screen bg-[var(--color-background)] pb-safe">
       <div className="px-6 pt-12 pb-6 max-w-lg mx-auto w-full flex-1">
         <button
           type="button"
           onClick={() =>
             window.history.length > 1 ? navigate(-1) : navigate(currentUser ? '/' : '/login')
           }
-          className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+          className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
           aria-label={t('common.back')}
         >
           <ArrowLeft size={22} />
@@ -211,7 +211,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
             ) : (
               <div className="absolute inset-0 rounded-full blur-xl opacity-30 scale-110 z-0 bg-[var(--color-surface-container-highest)]" />
             )}
-            <div className="relative z-10 w-28 h-28 rounded-full bg-[var(--color-surface-container-high)] border-2 border-white/10 overflow-hidden flex items-center justify-center">
+            <div className="relative z-10 w-28 h-28 rounded-full bg-[var(--color-surface-container-high)] border-2 border-subtle overflow-hidden flex items-center justify-center">
               {user.avatarUrl ? (
                 <CachedImage path={user.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -222,7 +222,9 @@ export default function PublicProfilePage({ currentUser }: Props) {
             </div>
           </div>
 
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">@{user.nickname}</h1>
+          <h1 className="text-2xl font-extrabold text-on-surface tracking-tight">
+            @{user.nickname}
+          </h1>
         </div>
 
         <div className="flex justify-center mb-10">{renderFriendButton()}</div>
@@ -233,7 +235,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
           </h2>
 
           {!canViewPhotos ? (
-            <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-white/5">
+            <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-subtle">
               <Shield
                 size={32}
                 className="text-[var(--color-on-surface-variant)] opacity-50 mb-3"
@@ -247,8 +249,8 @@ export default function PublicProfilePage({ currentUser }: Props) {
               {t('common.loading')}
             </p>
           ) : photosError ? (
-            <div className="glass-card rounded-3xl p-8 text-center border border-white/5">
-              <p className="text-white font-semibold mb-2">{t('profile.loadFailed')}</p>
+            <div className="glass-card rounded-3xl p-8 text-center border border-subtle">
+              <p className="text-on-surface font-semibold mb-2">{t('profile.loadFailed')}</p>
               <button
                 type="button"
                 onClick={() => setSize(1)}
@@ -258,7 +260,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
               </button>
             </div>
           ) : photos.length === 0 ? (
-            <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-white/5">
+            <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-subtle">
               <ImageIcon
                 size={32}
                 className="text-[var(--color-on-surface-variant)] opacity-50 mb-3"
@@ -302,7 +304,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
                         <div className="absolute bottom-3 left-3 right-3 flex flex-col gap-1.5">
-                          <span className="text-xs text-white font-bold drop-shadow-md">
+                          <span className="text-xs text-on-surface font-bold drop-shadow-md">
                             @{partner.nickname}
                           </span>
                           {photo.latitude != null && photo.longitude != null && (
@@ -323,7 +325,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
                 <button
                   type="button"
                   onClick={() => setSize(size + 1)}
-                  className="w-full mt-6 py-4 rounded-full bg-[var(--color-surface-container-high)] text-white font-bold hover:bg-[var(--color-surface-container-highest)] transition"
+                  className="w-full mt-6 py-4 rounded-full bg-[var(--color-surface-container-high)] text-on-surface font-bold hover:bg-[var(--color-surface-container-highest)] transition"
                 >
                   {t('common.retry')}
                 </button>

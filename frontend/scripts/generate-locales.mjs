@@ -35,7 +35,7 @@ const overrides = {
       retry: 'Повторить',
       loadingMap: 'Загрузка карты…',
     },
-    nav: { home: 'Дом', map: 'Карта', memories: 'Лента', profile: 'Профиль' },
+    nav: { home: 'Главная', map: 'Карта', memories: 'Лента', profile: 'Профиль' },
     common: {
       loading: 'Загрузка…',
       loadingDocument: 'Загрузка документа…',
@@ -158,6 +158,7 @@ const overrides = {
       waiting: 'Ждём',
       pending: 'Ожидают ответа',
       whoMeet: 'С кем встречаешься?',
+      noFriendsYet: 'У тебя пока нет друзей',
       emptyHint: 'Найди человека по @нику или покажи QR — и начните серию встреч каждый день.',
     },
     streak: {

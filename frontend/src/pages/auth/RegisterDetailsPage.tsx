@@ -68,16 +68,16 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black">
+    <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
       <div className="flex items-center gap-4 px-6 pt-14 pb-4">
         <button
           onClick={() => navigate('/login')}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-white transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
         >
           ←
         </button>
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl font-extrabold text-on-surface tracking-tight">
             {t('auth.createAccount')}
           </h1>
           <p className="text-xs text-[var(--color-on-surface-variant)] mt-0.5">{emailFromState}</p>
@@ -123,7 +123,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
                   setErrors((prev) => ({ ...prev, username: '' }))
                 }}
                 maxLength={20}
-                className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 pl-10 pr-6 text-white placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+                className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 pl-10 pr-6 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
               />
             </div>
             {errors.username && (
@@ -146,7 +146,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
                 setPassword(e.target.value)
                 setErrors((prev) => ({ ...prev, password: '' }))
               }}
-              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-white placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
             />
             {errors.password && (
               <p className="mt-2 text-xs text-[var(--color-error)] pl-4">{errors.password}</p>
@@ -168,7 +168,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
                 setConfirmPassword(e.target.value)
                 setErrors((prev) => ({ ...prev, confirmPassword: '' }))
               }}
-              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-white placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
             />
             {errors.confirmPassword && (
               <p className="mt-2 text-xs text-[var(--color-error)] pl-4">

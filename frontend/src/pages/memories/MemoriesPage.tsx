@@ -8,7 +8,9 @@ export default function MemoriesPage() {
       <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-surface-container-high)]">
         <span className="text-4xl">🎞️</span>
       </div>
-      <h2 className="mb-2 text-xl font-bold text-white tracking-tight">{t('memories.title')}</h2>
+      <h2 className="mb-2 text-xl font-bold text-on-surface tracking-tight">
+        {t('memories.title')}
+      </h2>
       <p className="max-w-[280px] text-sm leading-relaxed text-[var(--color-on-surface-variant)]">
         {t('memories.description')}
       </p>

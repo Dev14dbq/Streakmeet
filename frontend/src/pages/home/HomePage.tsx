@@ -133,7 +133,7 @@ export default function HomePage({ user }: Props) {
           <div className="flex items-center gap-3 min-w-0">
             <Avatar path={s.partner.avatarUrl} name={s.partner.nickname} />
             <div className="min-w-0">
-              <h3 className="font-bold text-white text-base tracking-tight truncate">
+              <h3 className="font-bold text-on-surface text-base tracking-tight truncate">
                 @{s.partner.nickname}
               </h3>
             </div>
@@ -166,7 +166,7 @@ export default function HomePage({ user }: Props) {
   return (
     <div className="flex flex-col px-6 pt-12 pb-6 min-h-full">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-white tracking-tight">{t('home.title')}</h1>
+        <h1 className="text-3xl font-bold text-on-surface tracking-tight">{t('home.title')}</h1>
         <div className="flex items-center gap-2 bg-[var(--color-surface-container-high)] px-4 py-2 rounded-full">
           <span className="text-[var(--color-brand-primary)] font-extrabold text-sm">
             {user.gemsBalance ?? 0}
@@ -188,7 +188,7 @@ export default function HomePage({ user }: Props) {
               tabIndex={showSearch ? -1 : 0}
               className={[
                 'home-add-bar__find flex w-full items-center justify-center gap-2 rounded-full',
-                'bg-[var(--color-surface-container-high)] py-3.5 text-sm font-semibold text-white',
+                'bg-[var(--color-surface-container-high)] py-3.5 text-sm font-semibold text-on-surface',
                 'transition hover:bg-[var(--color-surface-container-highest)] active:scale-[0.98]',
                 showSearch ? 'home-add-bar__find--hidden' : '',
               ].join(' ')}
@@ -215,7 +215,7 @@ export default function HomePage({ user }: Props) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 tabIndex={showSearch ? 0 : -1}
-                className="w-full rounded-full bg-[var(--color-surface-container-high)] py-3.5 pl-14 pr-12 text-white outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+                className="w-full rounded-full bg-[var(--color-surface-container-high)] py-3.5 pl-14 pr-12 text-on-surface outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
               />
               <button
                 type="button"
@@ -269,7 +269,7 @@ export default function HomePage({ user }: Props) {
                     className="flex items-center gap-3 min-w-0 flex-1 active:opacity-80"
                   >
                     <Avatar path={u.avatarUrl} name={u.nickname} size="sm" />
-                    <span className="font-bold text-white truncate">@{u.nickname}</span>
+                    <span className="font-bold text-on-surface truncate">@{u.nickname}</span>
                   </Link>
                   <button
                     type="button"
@@ -288,8 +288,8 @@ export default function HomePage({ user }: Props) {
       {loading ? (
         <p className="text-zinc-500 text-center py-10">{t('common.loading')}</p>
       ) : streaksError ? (
-        <div className="glass-card rounded-3xl p-8 text-center border border-white/5">
-          <p className="text-white font-semibold mb-2">{t('home.loadFailed')}</p>
+        <div className="glass-card rounded-3xl p-8 text-center border border-subtle">
+          <p className="text-on-surface font-semibold mb-2">{t('home.loadFailed')}</p>
           <button
             type="button"
             onClick={() => mutateStreaks()}
@@ -313,7 +313,9 @@ export default function HomePage({ user }: Props) {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
-                      <span className="font-bold text-white truncate">@{f.friend.nickname}</span>
+                      <span className="font-bold text-on-surface truncate">
+                        @{f.friend.nickname}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -369,7 +371,9 @@ export default function HomePage({ user }: Props) {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
-                      <span className="font-bold text-white truncate">@{f.friend.nickname}</span>
+                      <span className="font-bold text-on-surface truncate">
+                        @{f.friend.nickname}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -394,11 +398,11 @@ export default function HomePage({ user }: Props) {
                 {pendingOut.map((f: any) => (
                   <div
                     key={f.id}
-                    className="flex items-center justify-between border border-white/5 p-4 rounded-2xl opacity-60"
+                    className="flex items-center justify-between border border-subtle p-4 rounded-2xl opacity-60"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
-                      <span className="font-bold text-white">@{f.friend.nickname}</span>
+                      <span className="font-bold text-on-surface">@{f.friend.nickname}</span>
                     </div>
                     <span className="text-xs text-[var(--color-on-surface-variant)] flex items-center gap-1">
                       <Clock size={14} /> {t('home.waiting')}
@@ -414,7 +418,7 @@ export default function HomePage({ user }: Props) {
               <div className="w-24 h-24 bg-[var(--color-surface-container-high)] rounded-full flex items-center justify-center mb-6">
                 <Flame size={40} className="text-[var(--color-on-surface-variant)] opacity-50" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">{t('home.noFriendsYet')}</h2>
+              <h2 className="text-xl font-bold text-on-surface mb-2">{t('home.noFriendsYet')}</h2>
               <p className="mb-6 max-w-xs text-sm text-[var(--color-on-surface-variant)]">
                 {t('home.emptyHint')}
               </p>

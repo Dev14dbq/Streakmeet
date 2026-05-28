@@ -73,6 +73,7 @@
   --map-marker-avatar-bg: #292a2e;
   --map-marker-avatar-fg: #ffffff;
   --map-modal-scrim: rgba(0, 0, 0, 0.7);
+  --nav-bar-shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
 }
 
 [data-theme='light'] {
@@ -135,9 +136,30 @@
   --map-marker-avatar-bg: #e5e5ea;
   --map-marker-avatar-fg: #1a1b1f;
   --map-modal-scrim: rgba(0, 0, 0, 0.35);
+  --nav-bar-shadow: 0 10px 32px rgba(0, 0, 0, 0.12);
 }
 
 @layer utilities {
+  .text-on-surface {
+    color: var(--color-on-surface);
+  }
+
+  .text-on-surface-muted {
+    color: var(--color-on-surface-variant);
+  }
+
+  .border-subtle {
+    border-color: color-mix(in srgb, var(--color-on-surface) 10%, transparent);
+  }
+
+  .divide-subtle > :not([hidden]) ~ :not([hidden]) {
+    border-color: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+  }
+
+  .bg-overlay-scrim {
+    background: color-mix(in srgb, var(--color-on-surface) 12%, transparent);
+  }
+
   .glass-card {
     background: var(--glass-card-bg);
     backdrop-filter: blur(20px);
@@ -408,12 +430,16 @@ body {
   z-index: 15;
 }
 
-.map-map-control--locate {
-  top: calc(50% - 44px);
-}
-
 .map-map-control--share {
   top: calc(50% + 44px);
+}
+
+.map-map-control--locate-solo {
+  top: calc(50% + 44px);
+}
+
+.map-map-control--locate-below-share {
+  top: calc(50% + 88px);
 }
 
 .map-map-control__btn {
@@ -580,7 +606,7 @@ body {
 }
 
 .legal-document h2 {
-  color: #fff;
+  color: var(--color-on-surface);
   font-size: 1.125rem;
   font-weight: 700;
   margin-top: 1.5rem;

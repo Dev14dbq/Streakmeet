@@ -136,7 +136,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h3 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-2 px-1">
         {title}
       </h3>
-      <div className="glass-card rounded-3xl overflow-hidden divide-y divide-white/5">
+      <div className="glass-card rounded-3xl overflow-hidden divide-y divide-subtle">
         {children}
       </div>
     </div>
@@ -226,7 +226,7 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
       <div className="flex items-center gap-3 mb-8">
         <button
           onClick={() => navigate('/profile')}
-          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-white transition active:scale-95 hover:bg-[var(--color-surface-container-highest)]"
+          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-on-surface transition active:scale-95 hover:bg-[var(--color-surface-container-highest)]"
         >
           <ArrowLeft size={22} />
         </button>
@@ -311,7 +311,7 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
         <button
           type="button"
           onClick={handleDeleteAccount}
-          className="w-full flex items-center gap-3 py-4 px-4 text-[var(--color-on-surface-variant)] hover:bg-white/5 transition border-t border-white/5 active:scale-[0.99]"
+          className="w-full flex items-center gap-3 py-4 px-4 text-[var(--color-on-surface-variant)] hover:bg-white/5 transition border-t border-subtle active:scale-[0.99]"
         >
           <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
             <Trash2 size={18} />

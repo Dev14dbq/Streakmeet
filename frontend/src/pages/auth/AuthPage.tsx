@@ -124,13 +124,13 @@ export default function AuthPage({ onAuth }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black">
+    <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
       {/* Центральная часть */}
       <div className="flex flex-1 flex-col items-center justify-center px-6">
         <div className="mb-3 text-7xl select-none drop-shadow-[0_0_20px_rgba(255,26,79,0.5)]">
           🔥
         </div>
-        <h1 className="text-4xl font-extrabold tracking-tight text-white">StreakMeet</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">StreakMeet</h1>
         <p className="mt-3 text-center text-sm text-[var(--color-on-surface-variant)] leading-relaxed">
           {t('app.tagline')}
           <br />
@@ -144,7 +144,7 @@ export default function AuthPage({ onAuth }: Props) {
           icon={<AppleIcon />}
           label={t('auth.signInApple')}
           onClick={handleApple}
-          className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)]"
+          className="bg-[var(--color-surface-container-high)] text-on-surface hover:bg-[var(--color-surface-container-highest)]"
         />
         {useWebCredentialButton ? (
           <WebGoogleSignInButton
@@ -159,7 +159,7 @@ export default function AuthPage({ onAuth }: Props) {
             label={googleLoading ? t('common.connecting') : t('auth.signInGoogle')}
             onClick={handleGoogleNative}
             disabled={googleLoading}
-            className="bg-[var(--color-surface-container-high)] text-white hover:bg-[var(--color-surface-container-highest)] disabled:opacity-60"
+            className="bg-[var(--color-surface-container-high)] text-on-surface hover:bg-[var(--color-surface-container-highest)] disabled:opacity-60"
           />
         )}
         <AuthButton
