@@ -118,6 +118,8 @@ export default function FullscreenCamera({
   const streamRef = useRef<MediaStream | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const burstRef = useRef<string[]>([])
+  const lastViewportTapAt = useRef(0)
+  const viewportTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [phase, setPhase] = useState<Phase>('live')
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
@@ -315,11 +317,44 @@ export default function FullscreenCamera({
     }, 1000)
   }, [phase, countdown, cameraReady, timer, takePhoto, shutterDisabled])
 
-  const handleFlip = () => {
+  const handleFlip = useCallback(() => {
     if (torchOn) void setTorch(false)
     setFacingMode((f) => (f === 'user' ? 'environment' : 'user'))
     setCameraReady(false)
-  }
+  }, [torchOn, setTorch])
+
+  useEffect(() => {
+    return () => {
+      if (viewportTapTimerRef.current) clearTimeout(viewportTapTimerRef.current)
+    }
+  }, [])
+
+  const handleViewportTap = useCallback(() => {
+    if (phase !== 'live' || processing || countdown !== null) return
+
+    const now = Date.now()
+    const sinceLast = now - lastViewportTapAt.current
+
+    if (sinceLast > 0 && sinceLast < 320) {
+      if (viewportTapTimerRef.current) {
+        clearTimeout(viewportTapTimerRef.current)
+        viewportTapTimerRef.current = null
+      }
+      lastViewportTapAt.current = 0
+      handleFlip()
+      return
+    }
+
+    lastViewportTapAt.current = now
+
+    if (captureMode === 'remote' && onCancelRemote && !bottomOverlay) {
+      viewportTapTimerRef.current = setTimeout(() => {
+        viewportTapTimerRef.current = null
+        lastViewportTapAt.current = 0
+        onCancelRemote()
+      }, 320)
+    }
+  }, [phase, processing, countdown, captureMode, onCancelRemote, bottomOverlay, handleFlip])
 
   const handleToggleTorch = () => {
     if (!torchAvailable) return
@@ -342,8 +377,12 @@ export default function FullscreenCamera({
   return (
     <div className={`fullscreen-camera ${screenClass}`} style={{ height: '100dvh' }}>
       <div
-        className={`fullscreen-camera__viewport${canCancelRemote ? ' fullscreen-camera__viewport--dismiss-remote' : ''}`}
-        onClick={canCancelRemote ? onCancelRemote : undefined}
+        className={[
+          'fullscreen-camera__viewport',
+          canCancelRemote ? 'fullscreen-camera__viewport--dismiss-remote' : '',
+          showLive && !processing ? 'fullscreen-camera__viewport--dbltap-flip' : '',
+        ].join(' ')}
+        onClick={showLive && !processing ? handleViewportTap : undefined}
       >
         {showPreview && capturedPhoto ? (
           <img src={capturedPhoto} alt="" className="fullscreen-camera__media" />

@@ -510,6 +510,10 @@ body {
   cursor: pointer;
 }
 
+.fullscreen-camera__viewport--dbltap-flip {
+  touch-action: manipulation;
+}
+
 .fullscreen-camera__media {
   width: 100%;
   height: 100%;
