@@ -108,9 +108,7 @@ router.patch('/email', async (req: AuthRequest, res: Response) => {
     where: { id: req.userId },
     data: {
       email: normalizedEmail,
-      ...(current?.passwordHash
-        ? { emailVerifiedAt: null, emailVerifyToken: null }
-        : {}),
+      ...(current?.passwordHash ? { emailVerifiedAt: null, emailVerifyToken: null } : {}),
     },
     select: userProfileSelect,
   })

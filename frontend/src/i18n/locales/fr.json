@@ -6,12 +6,12 @@
     "legalCheckFailed": "Impossible de vérifier les documents légaux.",
     "retry": "Réessayer",
     "loadingMap": "Chargement de la carte…",
-    "version": "StreakMeet · v0.1.0"
+    "version": "StreakMeet· v0.1.0"
   },
   "nav": {
     "home": "Accueil",
     "map": "Carte",
-    "memories": "Feed",
+    "memories": "Fil",
     "profile": "Profil"
   },
   "common": {
@@ -43,9 +43,9 @@
     "hoursAgo": "il y a {{count}} h"
   },
   "distance": {
-    "meters": "{{count}} m",
-    "km": "{{count}} km",
-    "kmDecimal": "{{value}} km"
+    "meters": "{{count}}m",
+    "km": "{{count}}km",
+    "kmDecimal": "{{value}}km"
   },
   "language": {
     "title": "Langue",
@@ -91,7 +91,9 @@
     "restoreAccount": "Restaurer le compte",
     "keepDeleted": "Non, garder supprimé",
     "restoreInsufficient": "Données insuffisantes pour restaurer — reconnectez-vous",
-    "restoreFailed": "Impossible de restaurer le compte"
+    "restoreFailed": "Impossible de restaurer le compte",
+    "forgotPassword": "Mot de passe oublié ?",
+    "emailPlaceholder": "E-mail"
   },
   "face": {
     "lookStraight": "Regardez droit devant",
@@ -113,7 +115,23 @@
     "skipLater": "Passer (plus tard)",
     "registered": "Enregistré",
     "notConfigured": "Non configuré — requis pour les rencontres",
-    "faceRecognition": "Reconnaissance faciale"
+    "faceRecognition": "Reconnaissance faciale",
+    "smile": "Sourire",
+    "smileHint": "Souriez un peu, continuez à regarder vers l'avenir",
+    "lookUp": "Regarde en haut",
+    "lookUpHint": "Inclinez un peu le menton vers le haut",
+    "lookDown": "Regarde en bas. ",
+    "lookDownHint": "Inclinez un peu votre menton vers le bas",
+    "moveClose": "Approchez-vous !",
+    "moveCloseHint": "Laissez votre visage remplir le cercle",
+    "moveFar": "Déplacer le téléphone vers l'arrière",
+    "moveFarHint": "À bout de bras — plus loin que l'étape précédente. Pas besoin de poser le téléphone sur une surface",
+    "lowQuality": "Les cadres sont sortis flous — refaisons-le sous un bon éclairage",
+    "cameraWaiting": "Connecter l'appareil photo",
+    "cameraDenied": "Autoriser l'accès à la caméra dans les paramètres système",
+    "cameraNotReady": "La caméra n'est pas encore prête — attendez un instant",
+    "cameraRetry": "Autoriser à nouveau la caméra",
+    "stepProgress": "{{current}}sur{{total}}"
   },
   "home": {
     "title": "Accueil",
@@ -139,7 +157,8 @@
     "waiting": "En attente",
     "pending": "En attente de réponse",
     "whoMeet": "Avec qui vous voyez-vous ?",
-    "emptyHint": "Trouvez quelqu'un par @pseudo ou montrez votre QR — et lancez une série de rencontres quotidiennes."
+    "emptyHint": "Trouvez quelqu'un par @pseudo ou montrez votre QR — et lancez une série de rencontres quotidiennes.",
+    "noFriendsYet": "Vous n'avez pas encore d'ami !"
   },
   "streak": {
     "days_one": "jour",
@@ -180,7 +199,14 @@
     "sharingOn": "Partage activé",
     "sharingOff": "Partage désactivé",
     "shareLocation": "Partager la localisation",
-    "backgroundMessage": "Partage de localisation pour les amis"
+    "backgroundMessage": "Partage de localisation pour les amis",
+    "onlyYouSharing": "À part vous, personne ne partage d'emplacement",
+    "shareExplainTitle": "Emplacement pour la carte des amis",
+    "shareExplainBody": "Pour vous montrer sur la carte pour les amis,StreakMeeta besoin d'un accès à l'emplacement en arrière-plan. Nous ne l'utilisons que pour la carte — pas pour les publicités et nous ne la partageons pas avec des tiers.",
+    "shareExplainAlways": "À l'étape suivante, choisissez « Autoriser tout le temps », sinon le partage ne fonctionnera pas lorsque l'application est en arrière-plan.",
+    "shareExplainContinue": "Continuer",
+    "locateMe": "Ma localisation",
+    "locateFailed": "Impossible d'obtenir votre position"
   },
   "profile": {
     "avatarUploadFailed": "Échec du téléversement de l'avatar",
@@ -204,12 +230,14 @@
     "invalidQr": "Code QR invalide",
     "userNotFound": "Utilisateur introuvable",
     "friendRequestSent": "Demande d'ami envoyée !",
-    "qrRequestFailed": "Impossible d'envoyer la demande"
+    "qrRequestFailed": "Impossible d'envoyer la demande",
+    "pickFromGallery": "Choisir dans la galerie",
+    "savingAvatar": "Enregistrement de la photo…"
   },
   "settings": {
     "title": "Paramètres",
     "account": "Compte",
-    "email": "Email",
+    "email": "E-mail",
     "profilePhoto": "Photo de profil",
     "changeAvatar": "Changer l'avatar",
     "notifications": "Notifications",
@@ -230,7 +258,7 @@
     "about": "À propos",
     "terms": "Conditions d'utilisation",
     "privacyPolicy": "Politique de confidentialité",
-    "support": "Support",
+    "support": "Assistance",
     "logoutConfirm": "Se déconnecter du compte ?",
     "deleteConfirm": "Supprimer le compte ?\n\nLes données seront conservées 30 jours de plus. Vous pourrez restaurer en vous reconnectant.",
     "deleteFailed": "Impossible de supprimer le compte",
@@ -240,7 +268,10 @@
     "emailChanged": "Email modifié avec succès",
     "emailChangeFailed": "Impossible de modifier l'email",
     "signOut": "Se déconnecter",
-    "deleteAccount": "Supprimer le compte"
+    "deleteAccount": "Supprimer le compte",
+    "selfies": "Selfies",
+    "noSelfies": "Vous n'avez pas encore de selfies",
+    "prefsUpdateFailed": "Impossible d&apos;enregistrer la configuration."
   },
   "legal": {
     "terms": "Conditions d'utilisation",
@@ -293,7 +324,8 @@
     "choosePartner": "Choisir un ami",
     "replyTo": "Répondre à",
     "sendTo": "Envoyer à",
-    "noStreaksForRemote": "Pas encore de séries — lancez-en une depuis l'accueil"
+    "noStreaksForRemote": "Pas encore de séries — lancez-en une depuis l'accueil",
+    "backToMeet": "Retour au selfie habituel"
   },
   "photo": {
     "savedDocuments": "Photo enregistrée dans Documents",
@@ -427,6 +459,54 @@
     "FACE_SERVICE_ERROR": "Erreur du service de reconnaissance faciale",
     "AVATAR_SAVE_FAILED": "Échec de l'enregistrement de l'avatar",
     "IMAGE_COMBINE_FAILED": "Échec de la combinaison des photos",
-    "IMAGE_SAVE_FAILED": "Échec de l'enregistrement de la photo"
+    "IMAGE_SAVE_FAILED": "Échec de l'enregistrement de la photo",
+    "EMAIL_NOT_VERIFIED": "Confirmez votre adresse e-mail pour continuer",
+    "EMAIL_VERIFY_TOKEN_INVALID": "Lien de confirmation invalide ou expiré",
+    "PASSWORD_RESET_TOKEN_INVALID": "Lien de réinitialisation invalide ou expiré",
+    "RESEND_COOLDOWN": "Attendez une minute avant de renvoyer",
+    "EMAIL_SEND_FAILED": "Impossible d'envoyer le courriel",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "Ce compte utilise la connexion Google ou Apple — la réinitialisation du mot de passe n'est pas disponible",
+    "FACE_ENROLL_LOW_QUALITY": "Les images sont trop sombres ou floues. Réessayez sous bonne lumière avec une caméra fixe",
+    "FACE_ENROLL_TOO_FEW_FRAMES": "Besoin d'angles plus clairs. Effectuez à nouveau l'enregistrement du visage"
+  },
+  "theme": {
+    "title": "Aspect",
+    "description": "Système clair, sombre ou d'allumettes",
+    "light": "Clair",
+    "dark": "Foncé",
+    "system": "Système"
+  },
+  "verifyEmail": {
+    "confirming": "Confirmation de votre e-mail…",
+    "invalidTitle": "Lien expiré",
+    "confirmFailed": "Impossible de confirmer l'e-mail",
+    "confirmFailedHint": "Demandez un nouveau lien après vous être connecté.",
+    "title": "Confirme ton adresse email.",
+    "description": "Nous avons envoyé un lien de confirmation à",
+    "resend": "Renvoyer le courriel",
+    "sent": "E-mail envoyé",
+    "sendFailed": "Impossible d'envoyer le courriel",
+    "checkInbox": "Vérifiez votre boîte de réception et votre dossier de spam",
+    "invalidLink": "Le lien est invalide ou expiré",
+    "verifiedTitle": "Email confirmé",
+    "verifiedDescription": "Tout est prêt. Continuer versStreakMeet.",
+    "continueApp": "Ouvrir l’application",
+    "continueEnrollment": "Configurer la reconnaissance faciale"
+  },
+  "forgotPassword": {
+    "title": "Réinitialiser le mot de passe",
+    "description": "Saisissez votre adresse e-mail et nous vous enverrons un lien de réinitialisation.",
+    "submit": "Envoyer le lien",
+    "sent": "Si cet e-mail est enregistré, nous avons envoyé un lien",
+    "checkInbox": "Vérifiez votre boîte de réception. Le lien est valide pendant 1 heure.",
+    "error": "Impossible d’envoyer un e-mail"
+  },
+  "resetPassword": {
+    "title": "Nouveau mot de passe",
+    "description": "Choisissez un nouveau mot de passe pour votre compte",
+    "submit": "Enregistrer le mot de passe",
+    "success": "Mot de passe mis à jour — connexion",
+    "error": "Impossible de réinitialiser le mot de passe. ",
+    "invalidToken": "Lien de réinitialisation invalide ou expiré"
   }
 }

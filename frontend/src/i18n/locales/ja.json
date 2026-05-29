@@ -6,7 +6,7 @@
     "legalCheckFailed": "法的文書を確認できませんでした。",
     "retry": "再試行",
     "loadingMap": "地図を読み込み中…",
-    "version": "StreakMeet · v0.1.0"
+    "version": "StreakMeet・v0.1.0"
   },
   "nav": {
     "home": "ホーム",
@@ -31,7 +31,7 @@
     "soon": "近日公開",
     "accept": "承認",
     "gems": "ジェム",
-    "qr": "QR",
+    "qr": "QR)",
     "today": "今日",
     "days_one": "{{count}} 日",
     "days_other": "{{count}} 日"
@@ -43,9 +43,9 @@
     "hoursAgo": "{{count}} 時間前"
   },
   "distance": {
-    "meters": "{{count}} m",
-    "km": "{{count}} km",
-    "kmDecimal": "{{value}} km"
+    "meters": "{{count}}m",
+    "km": "{{count}}km",
+    "kmDecimal": "{{value}}km"
   },
   "language": {
     "title": "言語",
@@ -91,7 +91,9 @@
     "restoreAccount": "アカウントを復元",
     "keepDeleted": "いいえ、削除のまま",
     "restoreInsufficient": "復元に必要なデータが不足しています — 再度サインインしてください",
-    "restoreFailed": "アカウントを復元できませんでした"
+    "restoreFailed": "アカウントを復元できませんでした",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "emailPlaceholder": "メール"
   },
   "face": {
     "lookStraight": "正面を見てください",
@@ -113,7 +115,23 @@
     "skipLater": "スキップ（後で）",
     "registered": "登録済み",
     "notConfigured": "未設定 — ミートに必要です",
-    "faceRecognition": "顔認識"
+    "faceRecognition": "顔認識",
+    "smile": "スマイル",
+    "smileHint": "少し微笑んで、前を見続けてください",
+    "lookUp": "見上げる",
+    "lookUpHint": "顎を少し上に傾けます",
+    "lookDown": "見下ろす",
+    "lookDownHint": "あごを少し下に傾けます",
+    "moveClose": "（シャッター音）",
+    "moveCloseHint": "あなたの顔を円に塗りつぶしましょう",
+    "moveFar": "スマートフォンを元に戻す",
+    "moveFarHint": "腕の長さ—前のステップよりも遠い。スマートフォンを表面に置く必要はありません",
+    "lowQuality": "フレームがぼやけていました。明るい場所でやり直しましょう",
+    "cameraWaiting": "カメラに接続中",
+    "cameraDenied": "システム設定でカメラへのアクセスを許可する",
+    "cameraNotReady": "カメラはまだ準備ができていません。しばらくお待ちください",
+    "cameraRetry": "カメラを再度許可する",
+    "stepProgress": "{{current}}の{{total}}"
   },
   "home": {
     "title": "ホーム",
@@ -139,7 +157,8 @@
     "waiting": "待機中",
     "pending": "返答待ち",
     "whoMeet": "誰と会いますか？",
-    "emptyHint": "@ニックネームで探すかQRを見せて — 毎日のミートストリークを始めましょう。"
+    "emptyHint": "@ニックネームで探すかQRを見せて — 毎日のミートストリークを始めましょう。",
+    "noFriendsYet": "まだ友達がいません。"
   },
   "streak": {
     "days_one": "日",
@@ -147,8 +166,8 @@
     "days_many": "日",
     "remind": "リマインド",
     "remindMore": "もう一度！",
-    "pingPing": "PING-PING!",
-    "spam": "SPAM!!!",
+    "pingPing": "ピングピング",
+    "spam": "スパム",
     "notFound": "ストリークが見つかりません",
     "loadFailed": "ストリークを読み込めませんでした",
     "myProfile": "マイプロフィール",
@@ -180,7 +199,14 @@
     "sharingOn": "共有オン",
     "sharingOff": "共有オフ",
     "shareLocation": "位置を共有",
-    "backgroundMessage": "友達のために位置を共有中"
+    "backgroundMessage": "友達のために位置を共有中",
+    "onlyYouSharing": "あなた以外に位置情報を共有している人はいません",
+    "shareExplainTitle": "友達マップの場所",
+    "shareExplainBody": "友達用のマップに表示するには、StreakMeetバックグラウンドで位置情報にアクセスする必要があります。地図にのみ使用され、広告には使用されません。また、第三者と共有することはありません。",
+    "shareExplainAlways": "次のステップでは、「常に許可する」を選択します。そうしないと、アプリがバックグラウンドにあるときに共有は機能しません。",
+    "shareExplainContinue": "続行",
+    "locateMe": "現在地",
+    "locateFailed": "現在地を取得できませんでした"
   },
   "profile": {
     "avatarUploadFailed": "アバターのアップロードに失敗しました",
@@ -204,7 +230,9 @@
     "invalidQr": "無効なQRコード",
     "userNotFound": "ユーザーが見つかりません",
     "friendRequestSent": "友達リクエストを送信しました！",
-    "qrRequestFailed": "リクエストを送信できませんでした"
+    "qrRequestFailed": "リクエストを送信できませんでした",
+    "pickFromGallery": "ギャラリーから選択",
+    "savingAvatar": "写真を保存しています…"
   },
   "settings": {
     "title": "設定",
@@ -240,7 +268,10 @@
     "emailChanged": "メールアドレスを変更しました",
     "emailChangeFailed": "メールアドレスを変更できませんでした",
     "signOut": "サインアウト",
-    "deleteAccount": "アカウントを削除"
+    "deleteAccount": "アカウントを削除",
+    "selfies": "自撮り写真",
+    "noSelfies": "自撮り写真はまだありません",
+    "prefsUpdateFailed": "設定を保存できませんでした。"
   },
   "legal": {
     "terms": "利用規約",
@@ -293,7 +324,8 @@
     "choosePartner": "友達を選択",
     "replyTo": "返信先",
     "sendTo": "送信先",
-    "noStreaksForRemote": "まだストリークがありません — ホームから開始"
+    "noStreaksForRemote": "まだストリークがありません — ホームから開始",
+    "backToMeet": "通常の自撮りに戻る"
   },
   "photo": {
     "savedDocuments": "写真をドキュメントに保存しました",
@@ -427,6 +459,54 @@
     "FACE_SERVICE_ERROR": "顔認識サービスエラー",
     "AVATAR_SAVE_FAILED": "アバターの保存に失敗しました",
     "IMAGE_COMBINE_FAILED": "写真の合成に失敗しました",
-    "IMAGE_SAVE_FAILED": "写真の保存に失敗しました"
+    "IMAGE_SAVE_FAILED": "写真の保存に失敗しました",
+    "EMAIL_NOT_VERIFIED": "続行するにはメールアドレスを確認してください",
+    "EMAIL_VERIFY_TOKEN_INVALID": "無効または期限切れの確認リンク",
+    "PASSWORD_RESET_TOKEN_INVALID": "無効または期限切れのリセット用リンク",
+    "RESEND_COOLDOWN": "再送信する前にしばらくお待ちください",
+    "EMAIL_SEND_FAILED": "Eメールを送信できませんでした",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "このアカウントはGoogleまたはAppleサインインを使用しています—パスワードのリセットは利用できません",
+    "FACE_ENROLL_LOW_QUALITY": "フレームが暗すぎるかぼやけています。安定したカメラで明るい場所でもう一度お試しください",
+    "FACE_ENROLL_TOO_FEW_FRAMES": "もっと鮮明な角度が必要です。顔登録を再度完了する"
+  },
+  "theme": {
+    "title": "外観",
+    "description": "ライト、ダーク、またはマッチ星系",
+    "light": "ライト",
+    "dark": "ダーク",
+    "system": "システム"
+  },
+  "verifyEmail": {
+    "confirming": "メールアドレスを確認しています…",
+    "invalidTitle": "リンクは期限切れです",
+    "confirmFailed": "メールアドレスを確認できませんでした",
+    "confirmFailedHint": "サインイン後に新しいリンクをリクエストしてください。",
+    "title": "メールアドレスを確認してください：",
+    "description": "確認リンクを次の宛先に送信しました：",
+    "resend": "メールを再送信",
+    "sent": "メールを送信しました",
+    "sendFailed": "Eメールを送信できませんでした",
+    "checkInbox": "受信トレイと迷惑メールフォルダを確認してください",
+    "invalidLink": "リンクが無効または期限切れです",
+    "verifiedTitle": "メールアドレスが確認されました",
+    "verifiedDescription": "これでお手続き完了です。に進んでくださいStreakMeet.",
+    "continueApp": "アプリを開く",
+    "continueEnrollment": "顔認識を設定する"
+  },
+  "forgotPassword": {
+    "title": "パスワードをリセット",
+    "description": "メールアドレスを入力すると、リセット用リンクが送信されます。",
+    "submit": "リンクを送る",
+    "sent": "このメールアドレスが登録されている場合は、リンクを送信しました",
+    "checkInbox": "受信トレイをご確認ください。リンクは1時間有効です。",
+    "error": "リセットメールを送信できませんでした"
+  },
+  "resetPassword": {
+    "title": "新しいパスワード",
+    "description": "アカウントの新しいパスワードを選択してください。",
+    "submit": "パスワードの保存",
+    "success": "パスワードが更新されました—サインイン",
+    "error": "パスワードをリセットできませんでした。",
+    "invalidToken": "無効または期限切れのリセット用リンク"
   }
 }

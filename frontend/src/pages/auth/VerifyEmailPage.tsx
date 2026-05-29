@@ -49,7 +49,9 @@ export default function VerifyEmailPage({ user, onLogout, onUserUpdate }: Props)
         <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-container)]">
           <Mail size={36} className="text-[var(--color-brand-primary)]" />
         </div>
-        <h1 className="mb-2 text-2xl font-extrabold text-on-surface">{t('verifyEmail.verifiedTitle')}</h1>
+        <h1 className="mb-2 text-2xl font-extrabold text-on-surface">
+          {t('verifyEmail.verifiedTitle')}
+        </h1>
         <p className="mb-8 max-w-sm text-sm text-[var(--color-on-surface-variant)]">
           {t('verifyEmail.verifiedDescription')}
         </p>
@@ -79,7 +81,9 @@ export default function VerifyEmailPage({ user, onLogout, onUserUpdate }: Props)
           <p className="mb-4 text-sm text-[var(--color-error)]">{t('verifyEmail.invalidLink')}</p>
         )}
         {sent && (
-          <p className="mb-4 text-sm text-[var(--color-brand-primary)]">{t('verifyEmail.checkInbox')}</p>
+          <p className="mb-4 text-sm text-[var(--color-brand-primary)]">
+            {t('verifyEmail.checkInbox')}
+          </p>
         )}
         <button
           type="button"

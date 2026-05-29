@@ -6,7 +6,7 @@
     "legalCheckFailed": "Rechtsdokumente konnten nicht überprüft werden.",
     "retry": "Erneut versuchen",
     "loadingMap": "Karte wird geladen…",
-    "version": "StreakMeet · v0.1.0"
+    "version": "StreakMeet· v0.1.0"
   },
   "nav": {
     "home": "Start",
@@ -43,9 +43,9 @@
     "hoursAgo": "vor {{count}} Std."
   },
   "distance": {
-    "meters": "{{count}} m",
-    "km": "{{count}} km",
-    "kmDecimal": "{{value}} km"
+    "meters": "{{count}}m",
+    "km": "{{count}}Kilometer",
+    "kmDecimal": "{{value}}Kilometer"
   },
   "language": {
     "title": "Sprache",
@@ -91,7 +91,9 @@
     "restoreAccount": "Konto wiederherstellen",
     "keepDeleted": "Nein, gelöscht lassen",
     "restoreInsufficient": "Nicht genug Daten zur Wiederherstellung — melde dich erneut an",
-    "restoreFailed": "Konto konnte nicht wiederhergestellt werden"
+    "restoreFailed": "Konto konnte nicht wiederhergestellt werden",
+    "forgotPassword": "Passwort vergessen?",
+    "emailPlaceholder": "Mail"
   },
   "face": {
     "lookStraight": "Geradeaus schauen",
@@ -113,7 +115,23 @@
     "skipLater": "Überspringen (später)",
     "registered": "Registriert",
     "notConfigured": "Nicht eingerichtet — erforderlich für Treffen",
-    "faceRecognition": "Gesichtserkennung"
+    "faceRecognition": "Gesichtserkennung",
+    "smile": "Smile",
+    "smileHint": "Lächle ein wenig, schaue weiter nach vorne",
+    "lookUp": "Nachschlagen",
+    "lookUpHint": "Neige dein Kinn ein wenig nach oben",
+    "lookDown": "Richte deinen Blick zum Boden. ",
+    "lookDownHint": "Neige dein Kinn ein wenig nach unten",
+    "moveClose": "GEHEN SIE NÄHER HERAN",
+    "moveCloseHint": "Lass dein Gesicht den Kreis füllen",
+    "moveFar": "Bewegen Sie das Telefon zurück",
+    "moveFarHint": "Auf Armeslänge — weiter als der vorherige Schritt. Keine Notwendigkeit, das Telefon auf einer Oberfläche zu stützen",
+    "lowQuality": "Die Rahmen sind verschwommen herausgekommen — lassen Sie es uns bei gutem Licht wiederholen",
+    "cameraWaiting": "Verbindungsherstellung mit der Kamera",
+    "cameraDenied": "Kamerazugriff in den Einstellungen ändern",
+    "cameraNotReady": "Die Kamera ist noch nicht bereit — warten Sie einen Moment",
+    "cameraRetry": "Kamera wieder zulassen",
+    "stepProgress": "{{current}}der{{total}}"
   },
   "home": {
     "title": "Start",
@@ -139,7 +157,8 @@
     "waiting": "Warten",
     "pending": "Warte auf Antwort",
     "whoMeet": "Mit wem triffst du dich?",
-    "emptyHint": "Finde jemanden per @Spitzname oder zeige deinen QR — und starte eine tägliche Treffserie."
+    "emptyHint": "Finde jemanden per @Spitzname oder zeige deinen QR — und starte eine tägliche Treffserie.",
+    "noFriendsYet": "Du haste noch keine Freunde."
   },
   "streak": {
     "days_one": "Tag",
@@ -147,8 +166,8 @@
     "days_many": "Tage",
     "remind": "Erinnern",
     "remindMore": "Nochmal!",
-    "pingPing": "PING-PING!",
-    "spam": "SPAM!!!",
+    "pingPing": "Ping-Ping!",
+    "spam": "SPAM  ",
     "notFound": "Serie nicht gefunden",
     "loadFailed": "Serie konnte nicht geladen werden",
     "myProfile": "Mein Profil",
@@ -163,7 +182,7 @@
   "map": {
     "friendsMapTitle": "Freundeskarte",
     "locationLabel": "Standort",
-    "route": "Route",
+    "route": "Weiterleiten",
     "loadFailed": "Karte konnte nicht geladen werden",
     "allowAlways": "Wähle «Immer erlauben», nicht «Bei Nutzung»",
     "locationRequired": "Standortzugriff erforderlich",
@@ -180,7 +199,14 @@
     "sharingOn": "Freigabe aktiviert",
     "sharingOff": "Freigabe deaktiviert",
     "shareLocation": "Standort teilen",
-    "backgroundMessage": "Standort für Freunde teilen"
+    "backgroundMessage": "Standort für Freunde teilen",
+    "onlyYouSharing": "Außer Ihnen teilt niemand den Standort",
+    "shareExplainTitle": "Standort für die Freundeskarte",
+    "shareExplainBody": "Um Sie auf der Karte für Freunde anzuzeigen,StreakMeetbenötigt Zugriff auf den Hintergrundstandort. Wir verwenden sie nur für die Karte — nicht für Anzeigen und wir geben sie nicht an Dritte weiter.",
+    "shareExplainAlways": "Wähle im nächsten Schritt „Immer zulassen“ aus — andernfalls funktioniert die Freigabe nicht, wenn sich die App im Hintergrund befindet.",
+    "shareExplainContinue": "Weiter",
+    "locateMe": "Mein Standort",
+    "locateFailed": "Dein Standort konnte nicht abgerufen werden"
   },
   "profile": {
     "avatarUploadFailed": "Avatar-Upload fehlgeschlagen",
@@ -204,12 +230,14 @@
     "invalidQr": "Ungültiger QR-Code",
     "userNotFound": "Benutzer nicht gefunden",
     "friendRequestSent": "Freundschaftsanfrage gesendet!",
-    "qrRequestFailed": "Anfrage konnte nicht gesendet werden"
+    "qrRequestFailed": "Anfrage konnte nicht gesendet werden",
+    "pickFromGallery": "Aus der Galerie auswählen",
+    "savingAvatar": "Foto wird gespeichert…"
   },
   "settings": {
     "title": "Einstellungen",
     "account": "Konto",
-    "email": "Email",
+    "email": "Mail",
     "profilePhoto": "Profilfoto",
     "changeAvatar": "Avatar ändern",
     "notifications": "Benachrichtigungen",
@@ -230,7 +258,7 @@
     "about": "Über",
     "terms": "Nutzungsbedingungen",
     "privacyPolicy": "Datenschutzrichtlinie",
-    "support": "Support",
+    "support": "Hilfe",
     "logoutConfirm": "Vom Konto abmelden?",
     "deleteConfirm": "Konto löschen?\n\nDaten werden 30 weitere Tage aufbewahrt. Du kannst es durch erneute Anmeldung wiederherstellen.",
     "deleteFailed": "Konto konnte nicht gelöscht werden",
@@ -240,7 +268,10 @@
     "emailChanged": "Email erfolgreich geändert",
     "emailChangeFailed": "Email konnte nicht geändert werden",
     "signOut": "Abmelden",
-    "deleteAccount": "Konto löschen"
+    "deleteAccount": "Konto löschen",
+    "selfies": "Selfies",
+    "noSelfies": "Du hast noch keine Selfies",
+    "prefsUpdateFailed": "iDEAL Einstellungen konnten nicht gespeichert werden"
   },
   "legal": {
     "terms": "Nutzungsbedingungen",
@@ -289,11 +320,12 @@
     "timer3": "3-Sekunden-Timer",
     "timer10": "10-Sekunden-Timer",
     "modeMeet": "Selfie",
-    "modeRemote": "Remote",
+    "modeRemote": "Fernbedienung",
     "choosePartner": "Freund wählen",
     "replyTo": "Antworten an",
     "sendTo": "Senden an",
-    "noStreaksForRemote": "Noch keine Serien — starte eine auf der Startseite"
+    "noStreaksForRemote": "Noch keine Serien — starte eine auf der Startseite",
+    "backToMeet": "Zurück zum normalen Selfie"
   },
   "photo": {
     "savedDocuments": "Foto in Dokumente gespeichert",
@@ -427,6 +459,54 @@
     "FACE_SERVICE_ERROR": "Fehler beim Gesichtserkennungsdienst",
     "AVATAR_SAVE_FAILED": "Avatar konnte nicht gespeichert werden",
     "IMAGE_COMBINE_FAILED": "Fotos konnten nicht kombiniert werden",
-    "IMAGE_SAVE_FAILED": "Foto konnte nicht gespeichert werden"
+    "IMAGE_SAVE_FAILED": "Foto konnte nicht gespeichert werden",
+    "EMAIL_NOT_VERIFIED": "Bestätigen Sie Ihre E-Mail-Adresse, um fortzufahren",
+    "EMAIL_VERIFY_TOKEN_INVALID": "Ungültiger oder abgelaufener Bestätigungslink.",
+    "PASSWORD_RESET_TOKEN_INVALID": "Ungültiger oder abgelaufener Link zum Zurücksetzen",
+    "RESEND_COOLDOWN": "Warten Sie eine Minute, bevor Sie erneut senden",
+    "EMAIL_SEND_FAILED": "Konnte E-Mail nicht senden.",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "Dieses Konto verwendet die Google- oder Apple-Anmeldung — das Zurücksetzen des Passworts ist nicht möglich",
+    "FACE_ENROLL_LOW_QUALITY": "Die Rahmen sind zu dunkel oder verschwommen. Versuchen Sie es erneut bei gutem Licht mit einer stabilen Kamera",
+    "FACE_ENROLL_TOO_FEW_FRAMES": "Benötigen Sie mehr klare Winkel. Gesichtsregistrierung erneut abschließen"
+  },
+  "theme": {
+    "title": "Aussehen",
+    "description": "Helles, dunkles oder passendes System",
+    "light": "Leicht",
+    "dark": "Dunkel",
+    "system": "System"
+  },
+  "verifyEmail": {
+    "confirming": "Bestätige deine neue E-Mail-Adresse…",
+    "invalidTitle": "Link abgelaufen.",
+    "confirmFailed": "E-Mail konnte nicht bestätigt werden",
+    "confirmFailedHint": "Fordern Sie nach der Anmeldung einen neuen Link an.",
+    "title": "E-Mail-Adresse bestätigen",
+    "description": "Wir haben einen Bestätigungslink gesendet an",
+    "resend": "E-Mail erneut versenden",
+    "sent": "E-Mail wurde gesendet ",
+    "sendFailed": "Konnte E-Mail nicht senden.",
+    "checkInbox": "Bitte überprüfen Sie Ihren Posteingang sowie den Spam-Ordner.",
+    "invalidLink": "Der Link ist ungültig oder abgelaufen. ",
+    "verifiedTitle": "E-Mail bestätigt",
+    "verifiedDescription": "Sie sind fertig. Weiter mitStreakMeet.",
+    "continueApp": "App öffnen",
+    "continueEnrollment": "Gesichtserkennung einrichten"
+  },
+  "forgotPassword": {
+    "title": "Passwort zurücksetzen",
+    "description": "Gib deine E-Mail-Adresse ein und wir senden dir einen Link zum Zurücksetzen.",
+    "submit": "Link senden",
+    "sent": "Wenn diese E-Mail registriert ist, haben wir einen Link gesendet",
+    "checkInbox": "Überprüfe deinen Posteingang. Der Link ist 1 Stunde lang gültig.",
+    "error": "Konnte E-Mail nicht senden"
+  },
+  "resetPassword": {
+    "title": "Neues Passwort",
+    "description": "Wähle ein neues Passwort für Deinen Account.",
+    "submit": "Passwort speichern",
+    "success": "Passwort aktualisiert — Anmelden",
+    "error": "Passwort konnte nicht zurückgesetzt werden:",
+    "invalidToken": "Ungültiger oder abgelaufener Link zum Zurücksetzen"
   }
 }

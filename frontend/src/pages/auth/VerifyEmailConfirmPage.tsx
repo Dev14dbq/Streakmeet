@@ -72,7 +72,9 @@ export default function VerifyEmailConfirmPage() {
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-surface-container-high)]">
             <Mail size={36} className="animate-pulse text-[var(--color-brand-primary)]" />
           </div>
-          <h1 className="mb-2 text-2xl font-extrabold text-on-surface">{t('verifyEmail.confirming')}</h1>
+          <h1 className="mb-2 text-2xl font-extrabold text-on-surface">
+            {t('verifyEmail.confirming')}
+          </h1>
           <p className="text-sm text-[var(--color-on-surface-variant)]">{t('common.loading')}</p>
         </>
       )}
@@ -82,7 +84,9 @@ export default function VerifyEmailConfirmPage() {
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-primary-container)]">
             <CheckCircle size={40} className="text-[var(--color-brand-primary)]" />
           </div>
-          <h1 className="mb-2 text-2xl font-extrabold text-on-surface">{t('verifyEmail.verifiedTitle')}</h1>
+          <h1 className="mb-2 text-2xl font-extrabold text-on-surface">
+            {t('verifyEmail.verifiedTitle')}
+          </h1>
           <p className="mb-8 max-w-sm text-sm text-[var(--color-on-surface-variant)]">
             {t('verifyEmail.verifiedDescription')}
           </p>
@@ -101,7 +105,9 @@ export default function VerifyEmailConfirmPage() {
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-error-container)]">
             <XCircle size={40} className="text-[var(--color-error)]" />
           </div>
-          <h1 className="mb-2 text-2xl font-extrabold text-on-surface">{t('verifyEmail.invalidTitle')}</h1>
+          <h1 className="mb-2 text-2xl font-extrabold text-on-surface">
+            {t('verifyEmail.invalidTitle')}
+          </h1>
           <p className="mb-8 max-w-sm text-sm text-[var(--color-on-surface-variant)]">
             {t('verifyEmail.invalidLink')}
           </p>
@@ -120,7 +126,9 @@ export default function VerifyEmailConfirmPage() {
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-error-container)]">
             <XCircle size={40} className="text-[var(--color-error)]" />
           </div>
-          <h1 className="mb-2 text-2xl font-extrabold text-on-surface">{t('verifyEmail.confirmFailed')}</h1>
+          <h1 className="mb-2 text-2xl font-extrabold text-on-surface">
+            {t('verifyEmail.confirmFailed')}
+          </h1>
           <p className="mb-8 max-w-sm text-sm text-[var(--color-on-surface-variant)]">
             {t('verifyEmail.confirmFailedHint')}
           </p>

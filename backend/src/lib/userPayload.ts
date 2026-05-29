@@ -32,7 +32,10 @@ export type UserProfileRow = {
   geoOnPhotos: boolean
 }
 
-export function isEmailVerified(user: { emailVerifiedAt: Date | null; passwordHash: string }): boolean {
+export function isEmailVerified(user: {
+  emailVerifiedAt: Date | null
+  passwordHash: string
+}): boolean {
   if (!user.passwordHash) return true
   return user.emailVerifiedAt != null
 }

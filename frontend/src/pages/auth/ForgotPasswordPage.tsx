@@ -40,9 +40,13 @@ export default function ForgotPasswordPage() {
         ← {t('common.back')}
       </button>
       <h1 className="mb-2 text-2xl font-extrabold text-on-surface">{t('forgotPassword.title')}</h1>
-      <p className="mb-6 text-sm text-[var(--color-on-surface-variant)]">{t('forgotPassword.description')}</p>
+      <p className="mb-6 text-sm text-[var(--color-on-surface-variant)]">
+        {t('forgotPassword.description')}
+      </p>
       {sent ? (
-        <p className="text-sm text-[var(--color-brand-primary)]">{t('forgotPassword.checkInbox')}</p>
+        <p className="text-sm text-[var(--color-brand-primary)]">
+          {t('forgotPassword.checkInbox')}
+        </p>
       ) : (
         <>
           <input

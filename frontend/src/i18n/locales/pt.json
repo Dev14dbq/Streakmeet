@@ -6,7 +6,7 @@
     "legalCheckFailed": "Não foi possível verificar os documentos legais.",
     "retry": "Tentar novamente",
     "loadingMap": "Carregando mapa…",
-    "version": "StreakMeet · v0.1.0"
+    "version": "StreakMeet· v0.1.0"
   },
   "nav": {
     "home": "Início",
@@ -43,9 +43,9 @@
     "hoursAgo": "há {{count}} h"
   },
   "distance": {
-    "meters": "{{count}} m",
-    "km": "{{count}} km",
-    "kmDecimal": "{{value}} km"
+    "meters": "{{count}}m",
+    "km": "{{count}}km",
+    "kmDecimal": "{{value}}km"
   },
   "language": {
     "title": "Idioma",
@@ -91,7 +91,9 @@
     "restoreAccount": "Restaurar conta",
     "keepDeleted": "Não, manter excluída",
     "restoreInsufficient": "Dados insuficientes para restaurar — entre novamente",
-    "restoreFailed": "Não foi possível restaurar a conta"
+    "restoreFailed": "Não foi possível restaurar a conta",
+    "forgotPassword": "Esqueceu-se da palavra-passe?",
+    "emailPlaceholder": "E-mail"
   },
   "face": {
     "lookStraight": "Olhe para frente",
@@ -113,7 +115,23 @@
     "skipLater": "Pular (fazer depois)",
     "registered": "Registrado",
     "notConfigured": "Não configurado — necessário para encontros",
-    "faceRecognition": "Reconhecimento facial"
+    "faceRecognition": "Reconhecimento facial",
+    "smile": "Smile",
+    "smileHint": "Sorria um pouco, continue a olhar para a frente",
+    "lookUp": "Olho para cima",
+    "lookUpHint": "Incline o queixo um pouco para cima",
+    "lookDown": "Olha para baixo.",
+    "lookDownHint": "Incline o queixo um pouco para baixo",
+    "moveClose": "Aproxime-se",
+    "moveCloseHint": "Deixe o seu rosto preencher o círculo",
+    "moveFar": "Mover o telefone para trás",
+    "moveFarHint": "No comprimento do braço — mais longe do que a etapa anterior. Não há necessidade de apoiar o telefone numa superfície",
+    "lowQuality": "Os quadros ficaram desfocados — vamos refazê-lo com boa luz",
+    "cameraWaiting": "A ligar Ã  mÃ¡quina fotogrÃ¡fica...",
+    "cameraDenied": "Permitir o acesso à câmara nas definições do sistema",
+    "cameraNotReady": "A câmara ainda não está pronta — aguarde um momento",
+    "cameraRetry": "Permitir câmara novamente",
+    "stepProgress": "{{current}}de{{total}}"
   },
   "home": {
     "title": "Início",
@@ -139,7 +157,8 @@
     "waiting": "Aguardando",
     "pending": "Aguardando resposta",
     "whoMeet": "Com quem você se encontra?",
-    "emptyHint": "Encontre alguém por @apelido ou mostre seu QR — e comece uma sequência de encontros diários."
+    "emptyHint": "Encontre alguém por @apelido ou mostre seu QR — e comece uma sequência de encontros diários.",
+    "noFriendsYet": "Ainda não tem amigos"
   },
   "streak": {
     "days_one": "dia",
@@ -148,7 +167,7 @@
     "remind": "Lembrar",
     "remindMore": "De novo!",
     "pingPing": "PING-PING!",
-    "spam": "SPAM!!!",
+    "spam": "Spam",
     "notFound": "Sequência não encontrada",
     "loadFailed": "Não foi possível carregar a sequência",
     "myProfile": "Meu perfil",
@@ -180,7 +199,14 @@
     "sharingOn": "Compartilhamento ativado",
     "sharingOff": "Compartilhamento desativado",
     "shareLocation": "Compartilhar localização",
-    "backgroundMessage": "Compartilhando localização para amigos"
+    "backgroundMessage": "Compartilhando localização para amigos",
+    "onlyYouSharing": "Além de si, ninguém está a partilhar a localização",
+    "shareExplainTitle": "Localização para o mapa de amigos",
+    "shareExplainBody": "Para mostrar no mapa para os amigos,StreakMeetprecisa de acesso à localização em segundo plano. Nós só o usamos para o mapa — não para anúncios e não o compartilhamos com terceiros.",
+    "shareExplainAlways": "Na próxima etapa, escolha «Permitir o tempo todo» — caso contrário, o compartilhamento não funcionará quando o aplicativo estiver em segundo plano.",
+    "shareExplainContinue": "Continuar",
+    "locateMe": "A minha localização",
+    "locateFailed": "Não foi possível obter a sua localização"
   },
   "profile": {
     "avatarUploadFailed": "Falha no upload do avatar",
@@ -204,12 +230,14 @@
     "invalidQr": "Código QR inválido",
     "userNotFound": "Usuário não encontrado",
     "friendRequestSent": "Solicitação de amizade enviada!",
-    "qrRequestFailed": "Não foi possível enviar a solicitação"
+    "qrRequestFailed": "Não foi possível enviar a solicitação",
+    "pickFromGallery": "Escolher da Galeria",
+    "savingAvatar": "A guardar foto..."
   },
   "settings": {
     "title": "Configurações",
     "account": "Conta",
-    "email": "Email",
+    "email": "E-mail",
     "profilePhoto": "Foto do perfil",
     "changeAvatar": "Alterar avatar",
     "notifications": "Notificações",
@@ -240,7 +268,10 @@
     "emailChanged": "Email alterado com sucesso",
     "emailChangeFailed": "Não foi possível alterar o email",
     "signOut": "Sair",
-    "deleteAccount": "Excluir conta"
+    "deleteAccount": "Excluir conta",
+    "selfies": "Selfie",
+    "noSelfies": "Ainda não tem selfies",
+    "prefsUpdateFailed": "Não foi possível gravar a configuração."
   },
   "legal": {
     "terms": "Termos de Serviço",
@@ -293,7 +324,8 @@
     "choosePartner": "Escolher amigo",
     "replyTo": "Responder a",
     "sendTo": "Enviar para",
-    "noStreaksForRemote": "Ainda não há sequências — inicie uma na página inicial"
+    "noStreaksForRemote": "Ainda não há sequências — inicie uma na página inicial",
+    "backToMeet": "Voltar à selfie normal"
   },
   "photo": {
     "savedDocuments": "Foto salva em Documentos",
@@ -427,6 +459,54 @@
     "FACE_SERVICE_ERROR": "Erro no serviço de reconhecimento facial",
     "AVATAR_SAVE_FAILED": "Falha ao salvar avatar",
     "IMAGE_COMBINE_FAILED": "Falha ao combinar fotos",
-    "IMAGE_SAVE_FAILED": "Falha ao salvar foto"
+    "IMAGE_SAVE_FAILED": "Falha ao salvar foto",
+    "EMAIL_NOT_VERIFIED": "Confirme o seu e-mail para continuar",
+    "EMAIL_VERIFY_TOKEN_INVALID": "Link de confirmação inválido ou expirado",
+    "PASSWORD_RESET_TOKEN_INVALID": "Link de redefinição inválido ou expirado",
+    "RESEND_COOLDOWN": "Aguarde um minuto antes de reenviar",
+    "EMAIL_SEND_FAILED": "Não foi possível enviar e-mail",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "Esta conta usa o login do Google ou da Apple — a redefinição de senha não está disponível",
+    "FACE_ENROLL_LOW_QUALITY": "As armações estão muito escuras ou desfocadas. Tente novamente com boa luz com uma câmara estável",
+    "FACE_ENROLL_TOO_FEW_FRAMES": "Precisa de ângulos mais claros. Concluir o registo facial novamente"
+  },
+  "theme": {
+    "title": "Aparência,",
+    "description": "Sistema claro, escuro ou de fósforos",
+    "light": "Luz",
+    "dark": "Escuro",
+    "system": "Sistema"
+  },
+  "verifyEmail": {
+    "confirming": "Confirma o teu e-mail",
+    "invalidTitle": "Ligação expirada",
+    "confirmFailed": "Não foi possível confirmar o e-mail",
+    "confirmFailedHint": "Solicite um novo link depois de entrar.",
+    "title": "Confirma o teu e-mail",
+    "description": "Enviamos um link de confirmação para",
+    "resend": "Reenviar e-mail",
+    "sent": "E-mail enviado",
+    "sendFailed": "Não foi possível enviar e-mail",
+    "checkInbox": "Verifique a sua caixa de entrada e a pasta de spam.",
+    "invalidLink": "O link é inválido ou expirou. ",
+    "verifiedTitle": "Email confirmado",
+    "verifiedDescription": "Está tudo pronto. Continue paraStreakMeet.",
+    "continueApp": "Abra o aplicativo",
+    "continueEnrollment": "Configurar reconhecimento facial"
+  },
+  "forgotPassword": {
+    "title": "Redefinir a senha",
+    "description": "Introduza o seu e-mail aqui e enviaremos um código de redefinição",
+    "submit": "Enviar link",
+    "sent": "Se este e-mail estiver registado, enviámos um link",
+    "checkInbox": "Verifique a sua caixa de entrada. O link é válido por 1 hora.",
+    "error": "Não foi possível enviar e-mail"
+  },
+  "resetPassword": {
+    "title": "Nova palavra-passe",
+    "description": "Define uma nova palavra-passe segura para a tua conta",
+    "submit": "Guardar palavra-passe",
+    "success": "Palavra-passe atualizada — iniciar sessão",
+    "error": "Não foi possível redefinir a senha",
+    "invalidToken": "Link de redefinição inválido ou expirado"
   }
 }

@@ -91,7 +91,9 @@
     "restoreAccount": "Pulihkan akun",
     "keepDeleted": "Tidak, tetap dihapus",
     "restoreInsufficient": "Data tidak cukup untuk pemulihan — masuk lagi",
-    "restoreFailed": "Tidak dapat memulihkan akun"
+    "restoreFailed": "Tidak dapat memulihkan akun",
+    "forgotPassword": "Lupa kata sandi?",
+    "emailPlaceholder": "Email"
   },
   "face": {
     "lookStraight": "Lihat lurus",
@@ -113,7 +115,23 @@
     "skipLater": "Lewati (nanti)",
     "registered": "Terdaftar",
     "notConfigured": "Belum diatur — diperlukan untuk meet",
-    "faceRecognition": "Pengenalan wajah"
+    "faceRecognition": "Pengenalan wajah",
+    "smile": "Tersenyumlah 😊",
+    "smileHint": "Senyum sedikit, tetap lihat ke depan",
+    "lookUp": "Lihat ke atas",
+    "lookUpHint": "Angkat dagu sedikit",
+    "lookDown": "Lihat ke bawah",
+    "lookDownHint": "Turunkan dagu sedikit",
+    "moveClose": "Dekatkan wajah",
+    "moveCloseHint": "Biarkan wajah memenuhi lingkaran",
+    "moveFar": "Jauhkan ponsel",
+    "moveFarHint": "Sejauh lengan — lebih jauh dari langkah sebelumnya. Tidak perlu menopang ponsel",
+    "lowQuality": "Bingkai buram — ulangi dengan pencahayaan baik",
+    "cameraWaiting": "Menghubungkan kamera…",
+    "cameraDenied": "Izinkan akses kamera di pengaturan sistem",
+    "cameraNotReady": "Kamera belum siap — tunggu sebentar",
+    "cameraRetry": "Izinkan kamera lagi",
+    "stepProgress": "{{current}} dari {{total}}"
   },
   "home": {
     "title": "Beranda",
@@ -139,7 +157,8 @@
     "waiting": "Menunggu",
     "pending": "Menunggu respons",
     "whoMeet": "Dengan siapa kamu bertemu?",
-    "emptyHint": "Cari seseorang dengan @nickname atau tunjukkan QR — dan mulai streak meet harian."
+    "emptyHint": "Cari seseorang dengan @nickname atau tunjukkan QR — dan mulai streak meet harian.",
+    "noFriendsYet": "Anda belum punya teman"
   },
   "streak": {
     "days_one": "hari",
@@ -180,7 +199,14 @@
     "sharingOn": "Berbagi aktif",
     "sharingOff": "Berbagi nonaktif",
     "shareLocation": "Bagikan lokasi",
-    "backgroundMessage": "Berbagi lokasi untuk teman"
+    "backgroundMessage": "Berbagi lokasi untuk teman",
+    "onlyYouSharing": "Selain Anda, tidak ada yang membagikan lokasi",
+    "shareExplainTitle": "Lokasi untuk peta teman",
+    "shareExplainBody": "Untuk menampilkan Anda di peta teman, StreakMeet membutuhkan lokasi latar belakang. Hanya untuk peta — bukan iklan dan tidak dibagikan ke pihak ketiga.",
+    "shareExplainAlways": "Pada langkah berikutnya pilih «Izinkan sepanjang waktu» — jika tidak, berbagi di latar belakang tidak berfungsi.",
+    "shareExplainContinue": "Lanjutkan",
+    "locateMe": "Lokasi saya",
+    "locateFailed": "Tidak dapat mendapatkan lokasi Anda"
   },
   "profile": {
     "avatarUploadFailed": "Unggah avatar gagal",
@@ -204,7 +230,9 @@
     "invalidQr": "Kode QR tidak valid",
     "userNotFound": "Pengguna tidak ditemukan",
     "friendRequestSent": "Permintaan teman terkirim!",
-    "qrRequestFailed": "Tidak dapat mengirim permintaan"
+    "qrRequestFailed": "Tidak dapat mengirim permintaan",
+    "pickFromGallery": "Pilih dari galeri",
+    "savingAvatar": "Menyimpan foto…"
   },
   "settings": {
     "title": "Pengaturan",
@@ -240,7 +268,10 @@
     "emailChanged": "Email berhasil diubah",
     "emailChangeFailed": "Tidak dapat mengubah email",
     "signOut": "Keluar",
-    "deleteAccount": "Hapus akun"
+    "deleteAccount": "Hapus akun",
+    "selfies": "Selfie",
+    "noSelfies": "Anda belum punya selfie",
+    "prefsUpdateFailed": "Tidak dapat menyimpan pengaturan"
   },
   "legal": {
     "terms": "Ketentuan Layanan",
@@ -289,11 +320,12 @@
     "timer3": "Timer 3 detik",
     "timer10": "Timer 10 detik",
     "modeMeet": "Selfie",
-    "modeRemote": "Remote",
+    "modeRemote": "Jarak jauh",
     "choosePartner": "Pilih teman",
     "replyTo": "Balas ke",
     "sendTo": "Kirim ke",
-    "noStreaksForRemote": "Belum ada streak — mulai dari Beranda"
+    "noStreaksForRemote": "Belum ada streak — mulai dari Beranda",
+    "backToMeet": "Kembali ke selfie biasa"
   },
   "photo": {
     "savedDocuments": "Foto disimpan ke Dokumen",
@@ -427,6 +459,54 @@
     "FACE_SERVICE_ERROR": "Kesalahan layanan pengenalan wajah",
     "AVATAR_SAVE_FAILED": "Gagal menyimpan avatar",
     "IMAGE_COMBINE_FAILED": "Gagal menggabungkan foto",
-    "IMAGE_SAVE_FAILED": "Gagal menyimpan foto"
+    "IMAGE_SAVE_FAILED": "Gagal menyimpan foto",
+    "EMAIL_NOT_VERIFIED": "Konfirmasi email untuk melanjutkan",
+    "EMAIL_VERIFY_TOKEN_INVALID": "Tautan konfirmasi tidak valid atau kedaluwarsa",
+    "PASSWORD_RESET_TOKEN_INVALID": "Tautan reset tidak valid atau kedaluwarsa",
+    "RESEND_COOLDOWN": "Tunggu satu menit sebelum mengirim ulang",
+    "EMAIL_SEND_FAILED": "Tidak dapat mengirim email",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "Akun ini masuk dengan Google atau Apple — reset kata sandi tidak tersedia",
+    "FACE_ENROLL_LOW_QUALITY": "Bingkai terlalu gelap atau buram. Coba lagi dengan pencahayaan baik dan kamera stabil",
+    "FACE_ENROLL_TOO_FEW_FRAMES": "Perlu sudut yang lebih jelas. Selesaikan pendaftaran wajah lagi"
+  },
+  "theme": {
+    "title": "Tampilan",
+    "description": "Terang, gelap, atau ikuti sistem",
+    "light": "Terang",
+    "dark": "Gelap",
+    "system": "Sistem"
+  },
+  "verifyEmail": {
+    "confirming": "Mengonfirmasi email…",
+    "invalidTitle": "Tautan kedaluwarsa",
+    "confirmFailed": "Tidak dapat mengonfirmasi email",
+    "confirmFailedHint": "Minta tautan baru setelah masuk.",
+    "title": "Konfirmasi email Anda",
+    "description": "Kami mengirim tautan konfirmasi ke",
+    "resend": "Kirim ulang email",
+    "sent": "Email terkirim",
+    "sendFailed": "Tidak dapat mengirim email",
+    "checkInbox": "Periksa kotak masuk dan spam",
+    "invalidLink": "Tautan tidak valid atau kedaluwarsa",
+    "verifiedTitle": "Email dikonfirmasi",
+    "verifiedDescription": "Siap. Lanjutkan ke StreakMeet.",
+    "continueApp": "Buka aplikasi",
+    "continueEnrollment": "Atur pengenalan wajah"
+  },
+  "forgotPassword": {
+    "title": "Atur ulang kata sandi",
+    "description": "Masukkan email — kami akan kirim tautan reset.",
+    "submit": "Kirim tautan",
+    "sent": "Jika email terdaftar, kami mengirim tautan",
+    "checkInbox": "Periksa kotak masuk. Tautan berlaku 1 jam.",
+    "error": "Tidak dapat mengirim email reset"
+  },
+  "resetPassword": {
+    "title": "Kata sandi baru",
+    "description": "Pilih kata sandi baru untuk akun Anda.",
+    "submit": "Simpan kata sandi",
+    "success": "Kata sandi diperbarui — masuk lagi",
+    "error": "Tidak dapat mengatur ulang kata sandi",
+    "invalidToken": "Tautan reset tidak valid atau kedaluwarsa"
   }
 }

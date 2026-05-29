@@ -22,11 +22,7 @@ import { isValidTimezone, normalizeTimezone } from '../lib/timezone.js'
 import { acceptCurrentLegalForUser } from '../lib/legalDocuments.js'
 import { getJwtSecret } from '../lib/jwtSecret.js'
 import type { AuthResponse } from '../types/api.js'
-import {
-  authUserPayload,
-  userProfileSelect,
-  type UserProfileRow,
-} from '../lib/userPayload.js'
+import { authUserPayload, userProfileSelect, type UserProfileRow } from '../lib/userPayload.js'
 import { issueEmailVerification, markEmailVerified, generateToken } from '../lib/emailVerify.js'
 import { sendPasswordResetEmail } from '../lib/email.js'
 import { authRateLimit, sensitiveAuthRateLimit } from '../middleware/rateLimit.js'
@@ -119,100 +115,105 @@ const MIN_INPUT_FRAMES = 3
 const MAX_INPUT_FRAMES = 16
 const MIN_ACCEPTED_EMBEDDINGS = 4
 
-router.post('/enroll-face', requireAuth, requireEmailVerified, async (req: AuthRequest, res: Response) => {
-  const { photos } = req.body as { photos?: string[] }
-  if (!photos || !Array.isArray(photos) || photos.length === 0) {
-    sendError(res, 400, ErrorCodes.PHOTOS_REQUIRED)
-    return
-  }
-  if (photos.length < MIN_INPUT_FRAMES || photos.length > MAX_INPUT_FRAMES) {
-    sendError(res, 400, ErrorCodes.FACE_ENROLL_TOO_FEW_FRAMES)
-    return
-  }
-  for (const photo of photos) {
-    if (typeof photo !== 'string' || !photo.startsWith('data:image/')) {
-      sendError(res, 400, ErrorCodes.INVALID_PHOTO)
+router.post(
+  '/enroll-face',
+  requireAuth,
+  requireEmailVerified,
+  async (req: AuthRequest, res: Response) => {
+    const { photos } = req.body as { photos?: string[] }
+    if (!photos || !Array.isArray(photos) || photos.length === 0) {
+      sendError(res, 400, ErrorCodes.PHOTOS_REQUIRED)
       return
     }
-  }
-
-  try {
-    await ensureFaceService()
-    const results = await embedBurstFromBase64(photos)
-
-    const accepted: {
-      vector: number[]
-      detScore: number
-      yaw: number
-      pitch: number
-      blurVar: number
-    }[] = []
-    const reasons: Record<string, number> = {}
-
-    for (const r of results) {
-      if (!r.face) {
-        const k = r.error ?? 'no_face'
-        reasons[k] = (reasons[k] ?? 0) + 1
-        continue
-      }
-      const q = passesEnrollQuality(r.face)
-      if (!q.ok) {
-        reasons[q.reason ?? 'low_quality'] = (reasons[q.reason ?? 'low_quality'] ?? 0) + 1
-        continue
-      }
-      accepted.push({
-        vector: r.face.embedding,
-        detScore: r.face.det_score,
-        yaw: r.face.yaw,
-        pitch: r.face.pitch,
-        blurVar: r.face.blur_var,
-      })
-    }
-
-    console.log(
-      `[enroll-face] user=${req.userId} frames=${photos.length} accepted=${accepted.length} reasons=${JSON.stringify(reasons)}`
-    )
-
-    if (accepted.length < MIN_ACCEPTED_EMBEDDINGS) {
-      sendError(res, 400, ErrorCodes.FACE_ENROLL_LOW_QUALITY, undefined, {
-        accepted: accepted.length,
-        needed: MIN_ACCEPTED_EMBEDDINGS,
-        reasons,
-      })
+    if (photos.length < MIN_INPUT_FRAMES || photos.length > MAX_INPUT_FRAMES) {
+      sendError(res, 400, ErrorCodes.FACE_ENROLL_TOO_FEW_FRAMES)
       return
     }
+    for (const photo of photos) {
+      if (typeof photo !== 'string' || !photo.startsWith('data:image/')) {
+        sendError(res, 400, ErrorCodes.INVALID_PHOTO)
+        return
+      }
+    }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.faceEmbedding.deleteMany({ where: { userId: req.userId! } })
-      await tx.faceEmbedding.createMany({
-        data: accepted.map((a) => ({
-          userId: req.userId!,
-          vector: a.vector,
-          detScore: a.detScore,
-          yaw: a.yaw,
-          pitch: a.pitch,
-          blurVar: a.blurVar,
-          faceModel: CURRENT_FACE_MODEL,
-          source: 'enrollment',
-        })),
-      })
-      await tx.user.update({
-        where: { id: req.userId! },
-        data: {
-          faceEnrolled: true,
-          faceModel: CURRENT_FACE_MODEL,
-          faceEnrolledAt: new Date(),
-        },
-      })
-    })
+    try {
+      await ensureFaceService()
+      const results = await embedBurstFromBase64(photos)
 
-    res.json({ success: true, accepted: accepted.length, total: photos.length })
-  } catch (e) {
-    console.error('[enroll-face]', e)
-    const { code, message } = faceErrorFromException(e)
-    sendError(res, 500, code, message)
+      const accepted: {
+        vector: number[]
+        detScore: number
+        yaw: number
+        pitch: number
+        blurVar: number
+      }[] = []
+      const reasons: Record<string, number> = {}
+
+      for (const r of results) {
+        if (!r.face) {
+          const k = r.error ?? 'no_face'
+          reasons[k] = (reasons[k] ?? 0) + 1
+          continue
+        }
+        const q = passesEnrollQuality(r.face)
+        if (!q.ok) {
+          reasons[q.reason ?? 'low_quality'] = (reasons[q.reason ?? 'low_quality'] ?? 0) + 1
+          continue
+        }
+        accepted.push({
+          vector: r.face.embedding,
+          detScore: r.face.det_score,
+          yaw: r.face.yaw,
+          pitch: r.face.pitch,
+          blurVar: r.face.blur_var,
+        })
+      }
+
+      console.log(
+        `[enroll-face] user=${req.userId} frames=${photos.length} accepted=${accepted.length} reasons=${JSON.stringify(reasons)}`
+      )
+
+      if (accepted.length < MIN_ACCEPTED_EMBEDDINGS) {
+        sendError(res, 400, ErrorCodes.FACE_ENROLL_LOW_QUALITY, undefined, {
+          accepted: accepted.length,
+          needed: MIN_ACCEPTED_EMBEDDINGS,
+          reasons,
+        })
+        return
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.faceEmbedding.deleteMany({ where: { userId: req.userId! } })
+        await tx.faceEmbedding.createMany({
+          data: accepted.map((a) => ({
+            userId: req.userId!,
+            vector: a.vector,
+            detScore: a.detScore,
+            yaw: a.yaw,
+            pitch: a.pitch,
+            blurVar: a.blurVar,
+            faceModel: CURRENT_FACE_MODEL,
+            source: 'enrollment',
+          })),
+        })
+        await tx.user.update({
+          where: { id: req.userId! },
+          data: {
+            faceEnrolled: true,
+            faceModel: CURRENT_FACE_MODEL,
+            faceEnrolledAt: new Date(),
+          },
+        })
+      })
+
+      res.json({ success: true, accepted: accepted.length, total: photos.length })
+    } catch (e) {
+      console.error('[enroll-face]', e)
+      const { code, message } = faceErrorFromException(e)
+      sendError(res, 500, code, message)
+    }
   }
-})
+)
 
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '7d'
 
@@ -303,9 +304,7 @@ async function restoreDeletedUser(userId: string) {
   })
 }
 
-function toAuthPayload(
-  user: UserProfileRow & { passwordHash: string }
-): AuthResponse['user'] {
+function toAuthPayload(user: UserProfileRow & { passwordHash: string }): AuthResponse['user'] {
   return authUserPayload(user)
 }
 

@@ -6,7 +6,7 @@
     "legalCheckFailed": "无法验证法律文件。",
     "retry": "重试",
     "loadingMap": "正在加载地图…",
-    "version": "StreakMeet · v0.1.0"
+    "version": "StreakMeet· v0.1.0"
   },
   "nav": {
     "home": "首页",
@@ -91,7 +91,9 @@
     "restoreAccount": "恢复账户",
     "keepDeleted": "不，保持删除",
     "restoreInsufficient": "数据不足，无法恢复 — 请重新登录",
-    "restoreFailed": "无法恢复账户"
+    "restoreFailed": "无法恢复账户",
+    "forgotPassword": "忘记了密码？",
+    "emailPlaceholder": "电子邮箱"
   },
   "face": {
     "lookStraight": "请正视前方",
@@ -113,7 +115,23 @@
     "skipLater": "跳过（稍后完成）",
     "registered": "已注册",
     "notConfigured": "未设置 — 见面时需要",
-    "faceRecognition": "人脸识别"
+    "faceRecognition": "人脸识别",
+    "smile": "微笑",
+    "smileHint": "微笑一点，继续向前看",
+    "lookUp": "㚧",
+    "lookUpHint": "下巴稍微向上倾斜",
+    "lookDown": "看扁",
+    "lookDownHint": "下巴稍微向下倾斜",
+    "moveClose": "靠近一点",
+    "moveCloseHint": "让你的脸填满圆圈",
+    "moveFar": "将手机向后移动",
+    "moveFarHint": "与手臂相距—比上一步更远。无需将手机支撑在表面上",
+    "lowQuality": "边框模糊不清—让我们在良好的光线下重做",
+    "cameraWaiting": "连接相机",
+    "cameraDenied": "在系统设置中允许相机访问",
+    "cameraNotReady": "摄像头尚未准备就绪—请稍候",
+    "cameraRetry": "再次允许摄像头",
+    "stepProgress": "{{current}}关{{total}}"
   },
   "home": {
     "title": "首页",
@@ -139,7 +157,8 @@
     "waiting": "等待中",
     "pending": "等待回复",
     "whoMeet": "你要见谁？",
-    "emptyHint": "通过 @昵称 查找好友或展示你的 QR 码 — 开始每日见面连续记录。"
+    "emptyHint": "通过 @昵称 查找好友或展示你的 QR 码 — 开始每日见面连续记录。",
+    "noFriendsYet": "对不起，你还没有朋友。"
   },
   "streak": {
     "days_one": "天",
@@ -147,8 +166,8 @@
     "days_many": "天",
     "remind": "提醒",
     "remindMore": "再提醒！",
-    "pingPing": "PING-PING!",
-    "spam": "SPAM!!!",
+    "pingPing": "平平",
+    "spam": "垃圾貼文",
     "notFound": "未找到连续记录",
     "loadFailed": "无法加载连续记录",
     "myProfile": "我的资料",
@@ -180,7 +199,14 @@
     "sharingOn": "已开启共享",
     "sharingOff": "已关闭共享",
     "shareLocation": "共享位置",
-    "backgroundMessage": "正在为好友共享位置"
+    "backgroundMessage": "正在为好友共享位置",
+    "onlyYouSharing": "除了你，没有人分享位置信息",
+    "shareExplainTitle": "好友地图的位置",
+    "shareExplainBody": "要在地图上显示好友，StreakMeet需要后台位置访问权限。我们只会将其用于地图，而不会用于广告，也不会与第三方共享。",
+    "shareExplainAlways": "在下一步骤中，选择“始终允许” ，否则当应用程序在后台时，共享将不起作用。",
+    "shareExplainContinue": "继续",
+    "locateMe": "我的位置",
+    "locateFailed": "无法获取您的位置"
   },
   "profile": {
     "avatarUploadFailed": "头像上传失败",
@@ -204,7 +230,9 @@
     "invalidQr": "无效的 QR 码",
     "userNotFound": "未找到用户",
     "friendRequestSent": "好友请求已发送！",
-    "qrRequestFailed": "无法发送请求"
+    "qrRequestFailed": "无法发送请求",
+    "pickFromGallery": "从相簿选择",
+    "savingAvatar": "正在保存照片…"
   },
   "settings": {
     "title": "设置",
@@ -240,7 +268,10 @@
     "emailChanged": "邮箱修改成功",
     "emailChangeFailed": "无法修改邮箱",
     "signOut": "退出登录",
-    "deleteAccount": "删除账户"
+    "deleteAccount": "删除账户",
+    "selfies": "自拍",
+    "noSelfies": "您还没有任何自拍照",
+    "prefsUpdateFailed": "无法保存设置 。"
   },
   "legal": {
     "terms": "服务条款",
@@ -293,7 +324,8 @@
     "choosePartner": "选择好友",
     "replyTo": "回复",
     "sendTo": "发送给",
-    "noStreaksForRemote": "还没有连续记录 — 从首页开始"
+    "noStreaksForRemote": "还没有连续记录 — 从首页开始",
+    "backToMeet": "返回常规自拍"
   },
   "photo": {
     "savedDocuments": "照片已保存到文档",
@@ -427,6 +459,54 @@
     "FACE_SERVICE_ERROR": "人脸识别服务错误",
     "AVATAR_SAVE_FAILED": "头像保存失败",
     "IMAGE_COMBINE_FAILED": "照片合并失败",
-    "IMAGE_SAVE_FAILED": "照片保存失败"
+    "IMAGE_SAVE_FAILED": "照片保存失败",
+    "EMAIL_NOT_VERIFIED": "请确认您的电子邮箱以继续",
+    "EMAIL_VERIFY_TOKEN_INVALID": "無效或過期的確認鏈接。",
+    "PASSWORD_RESET_TOKEN_INVALID": "无效或过期的重置链接",
+    "RESEND_COOLDOWN": "请稍等片刻，然后重新发送",
+    "EMAIL_SEND_FAILED": "无法发送电子邮件",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "此帐户使用Google或Apple登录—密码重置不可用",
+    "FACE_ENROLL_LOW_QUALITY": "边框太暗或太模糊。请使用稳定的摄像头，在光线充足的情况下重试",
+    "FACE_ENROLL_TOO_FEW_FRAMES": "需要更清晰的角度。重新完成面部注册"
+  },
+  "theme": {
+    "title": "设备外观",
+    "description": "浅色、深色或匹配系统",
+    "light": "光照",
+    "dark": "深色",
+    "system": "系统设置"
+  },
+  "verifyEmail": {
+    "confirming": "正在确认您的电子邮件…",
+    "invalidTitle": "链接过期了",
+    "confirmFailed": "无法确认电子邮件",
+    "confirmFailedHint": "登录后申请新链接。",
+    "title": "确认您的电子邮件",
+    "description": "我们已将确认链接发送至",
+    "resend": "重新发送电子邮件",
+    "sent": "电子邮件已发出了",
+    "sendFailed": "无法发送电子邮件",
+    "checkInbox": "请检查您的收件箱和垃圾邮件文件夹",
+    "invalidLink": "抱歉，請求的網頁失效或過期",
+    "verifiedTitle": "已确认电子邮件",
+    "verifiedDescription": "大功告成。继续StreakMeet.",
+    "continueApp": "打开应用",
+    "continueEnrollment": "设置人脸识别"
+  },
+  "forgotPassword": {
+    "title": "重置密码",
+    "description": "输入您的电子邮箱，我们将发送重置链接。",
+    "submit": "郵寄目前網址",
+    "sent": "如果此电子邮件已注册，我们已发送链接",
+    "checkInbox": "请查看您的收件箱。链接有效期为1小时。",
+    "error": "无法发送电子邮件"
+  },
+  "resetPassword": {
+    "title": "新密码",
+    "description": "为您的账户选择一个新的密码。",
+    "submit": "保存密码",
+    "success": "密码已更新—登录",
+    "error": "无法重置密码",
+    "invalidToken": "无效或过期的重置链接"
   }
 }

@@ -58,7 +58,9 @@ export default function ResetPasswordPage() {
   return (
     <div className="flex min-h-screen flex-col bg-[var(--color-background)] px-6 py-12">
       <h1 className="mb-2 text-2xl font-extrabold text-on-surface">{t('resetPassword.title')}</h1>
-      <p className="mb-6 text-sm text-[var(--color-on-surface-variant)]">{t('resetPassword.description')}</p>
+      <p className="mb-6 text-sm text-[var(--color-on-surface-variant)]">
+        {t('resetPassword.description')}
+      </p>
       <input
         type="password"
         value={password}

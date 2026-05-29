@@ -6,12 +6,12 @@
     "legalCheckFailed": "No se pudieron verificar los documentos legales.",
     "retry": "Reintentar",
     "loadingMap": "Cargando mapa…",
-    "version": "StreakMeet · v0.1.0"
+    "version": "StreakMeet· v0.1.0"
   },
   "nav": {
     "home": "Inicio",
     "map": "Mapa",
-    "memories": "Feed",
+    "memories": "Alimentación",
     "profile": "Perfil"
   },
   "common": {
@@ -43,9 +43,9 @@
     "hoursAgo": "hace {{count}} h"
   },
   "distance": {
-    "meters": "{{count}} m",
-    "km": "{{count}} km",
-    "kmDecimal": "{{value}} km"
+    "meters": "{{count}}m",
+    "km": "{{count}}km",
+    "kmDecimal": "{{value}}km"
   },
   "language": {
     "title": "Idioma",
@@ -91,7 +91,9 @@
     "restoreAccount": "Restaurar cuenta",
     "keepDeleted": "No, mantener eliminada",
     "restoreInsufficient": "Datos insuficientes para restaurar — inicia sesión de nuevo",
-    "restoreFailed": "No se pudo restaurar la cuenta"
+    "restoreFailed": "No se pudo restaurar la cuenta",
+    "forgotPassword": "¿Olvidaste la contraseña?",
+    "emailPlaceholder": "Correo Electrónico"
   },
   "face": {
     "lookStraight": "Mira al frente",
@@ -113,7 +115,23 @@
     "skipLater": "Omitir (hacer después)",
     "registered": "Registrado",
     "notConfigured": "No configurado — necesario para encuentros",
-    "faceRecognition": "Reconocimiento facial"
+    "faceRecognition": "Reconocimiento facial",
+    "smile": "Sonríe 😊",
+    "smileHint": "Sonríe un poco, sigue mirando hacia adelante",
+    "lookUp": "Buscar",
+    "lookUpHint": "Inclina un poco la barbilla",
+    "lookDown": "Mira hacia abajo",
+    "lookDownHint": "Inclina un poco la barbilla",
+    "moveClose": "Haz zoom",
+    "moveCloseHint": "Deja que tu cara llene el círculo",
+    "moveFar": "Mover el teléfono hacia atrás",
+    "moveFarHint": "Con el brazo extendido, más lejos que el paso anterior. No es necesario apoyar el teléfono en una superficie",
+    "lowQuality": "Los marcos salieron borrosos — vamos a rehacerlo con buena luz",
+    "cameraWaiting": "Conectando cámara...",
+    "cameraDenied": "Permitir acceso a la cámara en la configuración del sistema",
+    "cameraNotReady": "La cámara aún no está lista. Espera un momento.",
+    "cameraRetry": "Permitir cámara de nuevo",
+    "stepProgress": "{{current}}de{{total}}"
   },
   "home": {
     "title": "Inicio",
@@ -139,7 +157,8 @@
     "waiting": "Esperando",
     "pending": "Esperando respuesta",
     "whoMeet": "¿Con quién te ves?",
-    "emptyHint": "Busca a alguien por @apodo o muestra tu QR — y empieza una racha de encuentros diarios."
+    "emptyHint": "Busca a alguien por @apodo o muestra tu QR — y empieza una racha de encuentros diarios.",
+    "noFriendsYet": "No tienes amigos."
   },
   "streak": {
     "days_one": "día",
@@ -180,7 +199,14 @@
     "sharingOn": "Compartir activado",
     "sharingOff": "Compartir desactivado",
     "shareLocation": "Compartir ubicación",
-    "backgroundMessage": "Compartiendo ubicación para amigos"
+    "backgroundMessage": "Compartiendo ubicación para amigos",
+    "onlyYouSharing": "Además de ti, nadie comparte la ubicación",
+    "shareExplainTitle": "Ubicación del mapa de amigos",
+    "shareExplainBody": "Para mostrarte en el mapa para tus amigos,StreakMeetnecesita acceso a la ubicación en segundo plano. Solo lo usamos para el mapa, no para anuncios y no lo compartimos con terceros.",
+    "shareExplainAlways": "En el siguiente paso, elige «Permitir todo el tiempo»; de lo contrario, compartir no funcionará cuando la aplicación esté en segundo plano.",
+    "shareExplainContinue": "Continuar",
+    "locateMe": "Mi localización",
+    "locateFailed": "No se ha podido obtener tu ubicación"
   },
   "profile": {
     "avatarUploadFailed": "Error al subir el avatar",
@@ -204,12 +230,14 @@
     "invalidQr": "Código QR no válido",
     "userNotFound": "Usuario no encontrado",
     "friendRequestSent": "¡Solicitud de amistad enviada!",
-    "qrRequestFailed": "No se pudo enviar la solicitud"
+    "qrRequestFailed": "No se pudo enviar la solicitud",
+    "pickFromGallery": "Seleccionar de la galería",
+    "savingAvatar": "\"'Guardando foto...'\""
   },
   "settings": {
     "title": "Ajustes",
     "account": "Cuenta",
-    "email": "Email",
+    "email": "Correo Electrónico",
     "profilePhoto": "Foto de perfil",
     "changeAvatar": "Cambiar avatar",
     "notifications": "Notificaciones",
@@ -240,7 +268,10 @@
     "emailChanged": "Email cambiado correctamente",
     "emailChangeFailed": "No se pudo cambiar el email",
     "signOut": "Cerrar sesión",
-    "deleteAccount": "Eliminar cuenta"
+    "deleteAccount": "Eliminar cuenta",
+    "selfies": "Autofotos",
+    "noSelfies": "Aún no tienes selfies",
+    "prefsUpdateFailed": "No se han podido guardar los ajustes"
   },
   "legal": {
     "terms": "Términos de servicio",
@@ -293,7 +324,8 @@
     "choosePartner": "Elige amigo",
     "replyTo": "Responder a",
     "sendTo": "Enviar a",
-    "noStreaksForRemote": "Aún no hay rachas — inicia una desde Inicio"
+    "noStreaksForRemote": "Aún no hay rachas — inicia una desde Inicio",
+    "backToMeet": "Volver a la selfie normal"
   },
   "photo": {
     "savedDocuments": "Foto guardada en Documentos",
@@ -427,6 +459,54 @@
     "FACE_SERVICE_ERROR": "Error del servicio de reconocimiento facial",
     "AVATAR_SAVE_FAILED": "Error al guardar el avatar",
     "IMAGE_COMBINE_FAILED": "Error al combinar fotos",
-    "IMAGE_SAVE_FAILED": "Error al guardar la foto"
+    "IMAGE_SAVE_FAILED": "Error al guardar la foto",
+    "EMAIL_NOT_VERIFIED": "Confirma tu correo electrónico para continuar",
+    "EMAIL_VERIFY_TOKEN_INVALID": "El enlace no es válido o ha caducado",
+    "PASSWORD_RESET_TOKEN_INVALID": "El enlace no es válido o ha caducado",
+    "RESEND_COOLDOWN": "Espera un minuto antes de volver a enviar",
+    "EMAIL_SEND_FAILED": "No se pudo enviar el correo electrónico",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "Esta cuenta utiliza el inicio de sesión de Google o Apple: el restablecimiento de la contraseña no está disponible",
+    "FACE_ENROLL_LOW_QUALITY": "Los marcos son demasiado oscuros o borrosos. Inténtalo de nuevo con buena luz con una cámara fija",
+    "FACE_ENROLL_TOO_FEW_FRAMES": "Necesita ángulos más claros. Completa el registro facial de nuevo"
+  },
+  "theme": {
+    "title": "Apariencia",
+    "description": "Sistema claro, oscuro o de fósforos",
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  },
+  "verifyEmail": {
+    "confirming": "Confirmando tu correo electrónico...",
+    "invalidTitle": "Enlace expirado",
+    "confirmFailed": "No se ha podido confirmar el correo electrónico",
+    "confirmFailedHint": "Solicita un nuevo enlace después de iniciar sesión.",
+    "title": "Confirma tu correo electrónico",
+    "description": "Enviamos un enlace de confirmación a",
+    "resend": "Volver a enviar el correo electrónico",
+    "sent": "Email enviado",
+    "sendFailed": "No se pudo enviar el correo electrónico",
+    "checkInbox": "Comprueba la bandeja de entrada y la carpeta de spam.",
+    "invalidLink": "El enlace no es válido o ha expirado",
+    "verifiedTitle": "Correo electórnico confirmado",
+    "verifiedDescription": "Ya está todo listo. Continúa conStreakMeet.",
+    "continueApp": "Abrir aplicación",
+    "continueEnrollment": "Configurar el reconocimiento facial"
+  },
+  "forgotPassword": {
+    "title": "Restablecer contraseña",
+    "description": "Introduce tu correo electrónico y te enviaremos un enlace de restablecimiento.",
+    "submit": "Enviar enlace",
+    "sent": "Si este correo electrónico está registrado, hemos enviado un enlace",
+    "checkInbox": "Revisa tu bandeja de entrada. El enlace es válido durante 1 hora.",
+    "error": "No se pudo enviar el correo electrónico"
+  },
+  "resetPassword": {
+    "title": "Nueva contraseña",
+    "description": "Elige una contraseña nueva para tu cuenta.",
+    "submit": "Guardar contraseña",
+    "success": "Contraseña actualizada — iniciar sesión",
+    "error": "No se pudo restablecer tu contraseña.",
+    "invalidToken": "El enlace no es válido o ha caducado"
   }
 }

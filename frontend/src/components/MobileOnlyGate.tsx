@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { Smartphone } from 'lucide-react'
 import { requiresMobileGate } from '../lib/device'
 
@@ -9,16 +10,17 @@ interface Props {
 
 export default function MobileOnlyGate({ children }: Props) {
   const { t } = useTranslation()
+  const { pathname } = useLocation()
   const [blocked, setBlocked] = useState<boolean | null>(null)
 
   useEffect(() => {
     function update() {
-      setBlocked(requiresMobileGate())
+      setBlocked(requiresMobileGate(pathname))
     }
     update()
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
-  }, [])
+  }, [pathname])
 
   if (blocked === null) return null
   if (!blocked) return <>{children}</>

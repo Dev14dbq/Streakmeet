@@ -183,18 +183,16 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
       let location: { lat: number; lng: number } | undefined
       const geoEnabled = (() => {
         try {
-          return (
-            (() => {
-              try {
-                const u = JSON.parse(localStorage.getItem('user') || '{}')
-                if (u.geoOnPhotos === false) return false
-                const s = JSON.parse(localStorage.getItem('streakmeet_settings') || '{}')
-                return s.geoOnPhotos !== false
-              } catch {
-                return true
-              }
-            })()
-          )
+          return (() => {
+            try {
+              const u = JSON.parse(localStorage.getItem('user') || '{}')
+              if (u.geoOnPhotos === false) return false
+              const s = JSON.parse(localStorage.getItem('streakmeet_settings') || '{}')
+              return s.geoOnPhotos !== false
+            } catch {
+              return true
+            }
+          })()
         } catch {
           return true
         }

@@ -265,7 +265,10 @@ export default function SettingsPage({ user: initialUser, onUserUpdate }: Props)
           <Toggle on={local.notifyStreak} onChange={(v) => void updateLocal({ notifyStreak: v })} />
         </SettingsRow>
         <SettingsRow icon={Bell} label={t('settings.friends')}>
-          <Toggle on={local.notifyFriends} onChange={(v) => void updateLocal({ notifyFriends: v })} />
+          <Toggle
+            on={local.notifyFriends}
+            onChange={(v) => void updateLocal({ notifyFriends: v })}
+          />
         </SettingsRow>
         <SettingsRow icon={Bell} label={t('settings.meets')}>
           <Toggle on={local.notifyMeet} onChange={(v) => void updateLocal({ notifyMeet: v })} />

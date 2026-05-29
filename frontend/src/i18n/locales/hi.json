@@ -43,9 +43,9 @@
     "hoursAgo": "{{count}} घंटे पहले"
   },
   "distance": {
-    "meters": "{{count}} m",
-    "km": "{{count}} km",
-    "kmDecimal": "{{value}} km"
+    "meters": "{{count}} मी",
+    "km": "{{count}} किमी",
+    "kmDecimal": "{{value}} किमी"
   },
   "language": {
     "title": "भाषा",
@@ -91,7 +91,9 @@
     "restoreAccount": "खाता पुनर्स्थापित करें",
     "keepDeleted": "नहीं, हटा हुआ रखें",
     "restoreInsufficient": "पुनर्स्थापना के लिए पर्याप्त डेटा नहीं — फिर साइन इन करें",
-    "restoreFailed": "खाता पुनर्स्थापित नहीं हो सका"
+    "restoreFailed": "खाता पुनर्स्थापित नहीं हो सका",
+    "forgotPassword": "पासवर्ड भूल गए?",
+    "emailPlaceholder": "ईमेल"
   },
   "face": {
     "lookStraight": "सीधे देखें",
@@ -113,7 +115,23 @@
     "skipLater": "छोड़ें (बाद में)",
     "registered": "पंजीकृत",
     "notConfigured": "सेट नहीं — मिलने के लिए आवश्यक",
-    "faceRecognition": "चेहरा पहचान"
+    "faceRecognition": "चेहरा पहचान",
+    "smile": "मुस्कुराएं 😊",
+    "smileHint": "थोड़ा मुस्कुराएं, सामने देखते रहें",
+    "lookUp": "ऊपर देखें",
+    "lookUpHint": "ठोड़ी थोड़ी ऊपर उठाएं",
+    "lookDown": "नीचे देखें",
+    "lookDownHint": "ठोड़ी थोड़ी नीचे झुकाएं",
+    "moveClose": "पास आएं",
+    "moveCloseHint": "चेहरा गोले में भर जाए",
+    "moveFar": "फ़ोन पीछे करें",
+    "moveFarHint": "हाथ की दूरी पर — पिछले चरण से और दूर। फ़ोन रखने की ज़रूरत नहीं",
+    "lowQuality": "फ़्रेम धुंधले — अच्छी रोशनी में फिर करें",
+    "cameraWaiting": "कैमरा कनेक्ट हो रहा है…",
+    "cameraDenied": "सिस्टम सेटिंग में कैमरा अनुमति दें",
+    "cameraNotReady": "कैमरा अभी तैयार नहीं — थोड़ा रुकें",
+    "cameraRetry": "कैमरा फिर अनुमति दें",
+    "stepProgress": "{{current}} / {{total}}"
   },
   "home": {
     "title": "होम",
@@ -139,7 +157,8 @@
     "waiting": "प्रतीक्षा",
     "pending": "जवाब की प्रतीक्षा",
     "whoMeet": "आप किससे मिलते हैं?",
-    "emptyHint": "@उपनाम से खोजें या अपना QR दिखाएं — और दैनिक मिलने की स्ट्रीक शुरू करें।"
+    "emptyHint": "@उपनाम से खोजें या अपना QR दिखाएं — और दैनिक मिलने की स्ट्रीक शुरू करें।",
+    "noFriendsYet": "अभी कोई दोस्त नहीं है"
   },
   "streak": {
     "days_one": "दिन",
@@ -180,7 +199,14 @@
     "sharingOn": "साझाकरण चालू",
     "sharingOff": "साझाकरण बंद",
     "shareLocation": "स्थान साझा करें",
-    "backgroundMessage": "दोस्तों के लिए स्थान साझा"
+    "backgroundMessage": "दोस्तों के लिए स्थान साझा",
+    "onlyYouSharing": "आपके अलावा कोई स्थान साझा नहीं कर रहा",
+    "shareExplainTitle": "दोस्त मानचित्र के लिए स्थान",
+    "shareExplainBody": "दोस्तों के लिए मानचित्र पर दिखाने के लिए StreakMeet को पृष्ठभूमि स्थान चाहिए। केवल मानचित्र के लिए — विज्ञापन नहीं, तीसरे पक्ष को नहीं देते।",
+    "shareExplainAlways": "अगले चरण में «हमेशा अनुमति» चुनें — वरना पृष्ठभूमि में साझा नहीं होगा।",
+    "shareExplainContinue": "जारी रखें",
+    "locateMe": "मेरा स्थान",
+    "locateFailed": "आपका स्थान नहीं मिला"
   },
   "profile": {
     "avatarUploadFailed": "अवतार अपलोड विफल",
@@ -204,7 +230,9 @@
     "invalidQr": "अमान्य QR कोड",
     "userNotFound": "उपयोगकर्ता नहीं मिला",
     "friendRequestSent": "दोस्ती अनुरोध भेजा!",
-    "qrRequestFailed": "अनुरोध भेजा नहीं जा सका"
+    "qrRequestFailed": "अनुरोध भेजा नहीं जा सका",
+    "pickFromGallery": "गैलरी से चुनें",
+    "savingAvatar": "फ़ोटो सहेजी जा रही है…"
   },
   "settings": {
     "title": "सेटिंग",
@@ -240,7 +268,10 @@
     "emailChanged": "ईमेल सफलतापूर्वक बदला",
     "emailChangeFailed": "ईमेल बदला नहीं जा सका",
     "signOut": "साइन आउट",
-    "deleteAccount": "खाता हटाएं"
+    "deleteAccount": "खाता हटाएं",
+    "selfies": "सेल्फ़ी",
+    "noSelfies": "अभी कोई सेल्फ़ी नहीं",
+    "prefsUpdateFailed": "सेटिंग्स सहेजी नहीं जा सकीं"
   },
   "legal": {
     "terms": "सेवा की शर्तें",
@@ -293,7 +324,8 @@
     "choosePartner": "दोस्त चुनें",
     "replyTo": "जवाब दें",
     "sendTo": "भेजें",
-    "noStreaksForRemote": "अभी कोई स्ट्रीक नहीं — होम से शुरू करें"
+    "noStreaksForRemote": "अभी कोई स्ट्रीक नहीं — होम से शुरू करें",
+    "backToMeet": "सामान्य सेल्फ़ी पर वापस"
   },
   "photo": {
     "savedDocuments": "फ़ोटो दस्तावेज़ में सहेजी",
@@ -427,6 +459,54 @@
     "FACE_SERVICE_ERROR": "चेहरा पहचान सेवा त्रुटि",
     "AVATAR_SAVE_FAILED": "अवतार सहेजना विफल",
     "IMAGE_COMBINE_FAILED": "फ़ोटो मर्ज विफल",
-    "IMAGE_SAVE_FAILED": "फ़ोटो सहेजना विफल"
+    "IMAGE_SAVE_FAILED": "फ़ोटो सहेजना विफल",
+    "EMAIL_NOT_VERIFIED": "जारी रखने के लिए ईमेल पुष्टि करें",
+    "EMAIL_VERIFY_TOKEN_INVALID": "पुष्टि लिंक अमान्य या समाप्त",
+    "PASSWORD_RESET_TOKEN_INVALID": "रीसेट लिंक अमान्य या समाप्त",
+    "RESEND_COOLDOWN": "फिर भेजने से पहले 1 मिनट रुकें",
+    "EMAIL_SEND_FAILED": "ईमेल नहीं भेजा जा सका",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "यह खाता Google या Apple से साइन इन करता है — पासवर्ड रीसेट उपलब्ध नहीं",
+    "FACE_ENROLL_LOW_QUALITY": "फ़्रेम बहुत अंधेरे या धुंधले। अच्छी रोशनी और स्थिर कैमरे से फिर कोशिश करें",
+    "FACE_ENROLL_TOO_FEW_FRAMES": "और स्पष्ट कोण चाहिए। चेहरा पंजीकरण फिर पूरा करें"
+  },
+  "theme": {
+    "title": "दिखावट",
+    "description": "हल्का, गहरा या सिस्टम के अनुसार",
+    "light": "हल्का",
+    "dark": "गहरा",
+    "system": "सिस्टम"
+  },
+  "verifyEmail": {
+    "confirming": "ईमेल की पुष्टि हो रही है…",
+    "invalidTitle": "लिंक समाप्त",
+    "confirmFailed": "ईमेल की पुष्टि नहीं हो सकी",
+    "confirmFailedHint": "साइन इन के बाद नया लिंक मांगें।",
+    "title": "अपना ईमेल पुष्टि करें",
+    "description": "हमने पुष्टि लिंक भेजा है:",
+    "resend": "ईमेल फिर भेजें",
+    "sent": "ईमेल भेज दिया गया",
+    "sendFailed": "ईमेल नहीं भेजा जा सका",
+    "checkInbox": "इनबॉक्स और स्पैम जांचें",
+    "invalidLink": "लिंक अमान्य या समाप्त",
+    "verifiedTitle": "ईमेल पुष्टि हो गया",
+    "verifiedDescription": "सब तैयार है। StreakMeet जारी रखें।",
+    "continueApp": "ऐप खोलें",
+    "continueEnrollment": "चेहरा पहचान सेट करें"
+  },
+  "forgotPassword": {
+    "title": "पासवर्ड रीसेट",
+    "description": "ईमेल दर्ज करें, हम रीसेट लिंक भेजेंगे।",
+    "submit": "लिंक भेजें",
+    "sent": "यदि ईमेल पंजीकृत है, हमने लिंक भेजा",
+    "checkInbox": "इनबॉक्स देखें। लिंक 1 घंटे तक मान्य।",
+    "error": "रीसेट ईमेल नहीं भेजा जा सका"
+  },
+  "resetPassword": {
+    "title": "नया पासवर्ड",
+    "description": "अपने खाते के लिए नया पासवर्ड चुनें।",
+    "submit": "पासवर्ड सहेजें",
+    "success": "पासवर्ड अपडेट — फिर साइन इन करें",
+    "error": "पासवर्ड रीसेट नहीं हो सका",
+    "invalidToken": "रीसेट लिंक अमान्य या समाप्त"
   }
 }

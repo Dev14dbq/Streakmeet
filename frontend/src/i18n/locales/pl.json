@@ -91,7 +91,9 @@
     "restoreAccount": "Przywróć konto",
     "keepDeleted": "Nie, zostaw usunięte",
     "restoreInsufficient": "Za mało danych do przywrócenia — zaloguj się ponownie",
-    "restoreFailed": "Nie udało się przywrócić konta"
+    "restoreFailed": "Nie udało się przywrócić konta",
+    "forgotPassword": "Zapomniałeś hasła?",
+    "emailPlaceholder": "E-mail"
   },
   "face": {
     "lookStraight": "Patrz prosto",
@@ -113,7 +115,23 @@
     "skipLater": "Pomiń (zrobię później)",
     "registered": "Zarejestrowano",
     "notConfigured": "Nie skonfigurowano — wymagane do spotkań",
-    "faceRecognition": "Rozpoznawanie twarzy"
+    "faceRecognition": "Rozpoznawanie twarzy",
+    "smile": "Uśmiechnij się 😊",
+    "smileHint": "Uśmiechnij się lekko, patrz przed siebie",
+    "lookUp": "Spójrz w górę",
+    "lookUpHint": "Unieś brodę lekko do góry",
+    "lookDown": "Spójrz w dół",
+    "lookDownHint": "Opuść brodę lekko w dół",
+    "moveClose": "Podejdź bliżej",
+    "moveCloseHint": "Niech twarz wypełni okrąg",
+    "moveFar": "Odsuń telefon",
+    "moveFarHint": "Na wyciągnięcie ręki — dalej niż poprzedni krok. Nie musisz opierać telefonu",
+    "lowQuality": "Klatki wyszły rozmyte — powtórzmy przy dobrym świetle",
+    "cameraWaiting": "Łączenie z kamerą…",
+    "cameraDenied": "Zezwól na kamerę w ustawieniach systemu",
+    "cameraNotReady": "Kamera jeszcze nie gotowa — poczekaj chwilę",
+    "cameraRetry": "Zezwól na kamerę ponownie",
+    "stepProgress": "{{current}} z {{total}}"
   },
   "home": {
     "title": "Główna",
@@ -139,7 +157,8 @@
     "waiting": "Oczekiwanie",
     "pending": "Oczekuje na odpowiedź",
     "whoMeet": "Z kim się spotykasz?",
-    "emptyHint": "Znajdź kogoś po @nicku lub pokaż swój QR — i zacznij codzienną serię spotkań."
+    "emptyHint": "Znajdź kogoś po @nicku lub pokaż swój QR — i zacznij codzienną serię spotkań.",
+    "noFriendsYet": "Nie masz jeszcze znajomych"
   },
   "streak": {
     "days_one": "dzień",
@@ -180,7 +199,14 @@
     "sharingOn": "Udostępnianie włączone",
     "sharingOff": "Udostępnianie wyłączone",
     "shareLocation": "Udostępnij lokalizację",
-    "backgroundMessage": "Udostępnianie lokalizacji dla znajomych"
+    "backgroundMessage": "Udostępnianie lokalizacji dla znajomych",
+    "onlyYouSharing": "Poza tobą nikt nie udostępnia lokalizacji",
+    "shareExplainTitle": "Lokalizacja dla mapy znajomych",
+    "shareExplainBody": "Aby pokazać cię na mapie znajomych, StreakMeet potrzebuje lokalizacji w tle. Używamy jej tylko do mapy — nie do reklam i nie udostępniamy osobom trzecim.",
+    "shareExplainAlways": "W następnym kroku wybierz «Zezwalaj cały czas» — inaczej udostępnianie w tle nie zadziała.",
+    "shareExplainContinue": "Kontynuuj",
+    "locateMe": "Moja lokalizacja",
+    "locateFailed": "Nie udało się uzyskać lokalizacji"
   },
   "profile": {
     "avatarUploadFailed": "Nie udało się przesłać awatara",
@@ -204,7 +230,9 @@
     "invalidQr": "Nieprawidłowy kod QR",
     "userNotFound": "Nie znaleziono użytkownika",
     "friendRequestSent": "Prośba o znajomość wysłana!",
-    "qrRequestFailed": "Nie udało się wysłać prośby"
+    "qrRequestFailed": "Nie udało się wysłać prośby",
+    "pickFromGallery": "Wybierz z galerii",
+    "savingAvatar": "Zapisywanie zdjęcia…"
   },
   "settings": {
     "title": "Ustawienia",
@@ -240,7 +268,10 @@
     "emailChanged": "E-mail zmieniony pomyślnie",
     "emailChangeFailed": "Nie udało się zmienić e-maila",
     "signOut": "Wyloguj się",
-    "deleteAccount": "Usuń konto"
+    "deleteAccount": "Usuń konto",
+    "selfies": "Selfie",
+    "noSelfies": "Nie masz jeszcze selfie",
+    "prefsUpdateFailed": "Nie udało się zapisać ustawień"
   },
   "legal": {
     "terms": "Regulamin",
@@ -293,7 +324,8 @@
     "choosePartner": "Wybierz znajomego",
     "replyTo": "Odpowiedz",
     "sendTo": "Wyślij do",
-    "noStreaksForRemote": "Brak serii — zacznij z głównej"
+    "noStreaksForRemote": "Brak serii — zacznij z głównej",
+    "backToMeet": "Wróć do zwykłego selfie"
   },
   "photo": {
     "savedDocuments": "Zdjęcie zapisane w Dokumentach",
@@ -427,6 +459,54 @@
     "FACE_SERVICE_ERROR": "Błąd usługi rozpoznawania twarzy",
     "AVATAR_SAVE_FAILED": "Nie udało się zapisać awatara",
     "IMAGE_COMBINE_FAILED": "Nie udało się połączyć zdjęć",
-    "IMAGE_SAVE_FAILED": "Nie udało się zapisać zdjęcia"
+    "IMAGE_SAVE_FAILED": "Nie udało się zapisać zdjęcia",
+    "EMAIL_NOT_VERIFIED": "Potwierdź e-mail, aby kontynuować",
+    "EMAIL_VERIFY_TOKEN_INVALID": "Link potwierdzający nieprawidłowy lub wygasł",
+    "PASSWORD_RESET_TOKEN_INVALID": "Link resetujący nieprawidłowy lub wygasł",
+    "RESEND_COOLDOWN": "Poczekaj minutę przed ponownym wysłaniem",
+    "EMAIL_SEND_FAILED": "Nie udało się wysłać e-maila",
+    "OAUTH_ACCOUNT_NO_PASSWORD": "To konto loguje się przez Google lub Apple — reset hasła niedostępny",
+    "FACE_ENROLL_LOW_QUALITY": "Klatki za ciemne lub rozmyte. Spróbuj ponownie przy dobrym świetle i stabilnej kamerze",
+    "FACE_ENROLL_TOO_FEW_FRAMES": "Potrzeba wyraźniejszych kątów. Ukończ rejestrację twarzy ponownie"
+  },
+  "theme": {
+    "title": "Wygląd",
+    "description": "Jasny, ciemny lub jak w systemie",
+    "light": "Jasny",
+    "dark": "Ciemny",
+    "system": "Jak w systemie"
+  },
+  "verifyEmail": {
+    "confirming": "Potwierdzanie e-maila…",
+    "invalidTitle": "Link wygasł",
+    "confirmFailed": "Nie udało się potwierdzić e-maila",
+    "confirmFailedHint": "Poproś o nowy link po zalogowaniu.",
+    "title": "Potwierdź swój e-mail",
+    "description": "Wysłaliśmy link potwierdzający na",
+    "resend": "Wyślij ponownie",
+    "sent": "E-mail wysłany",
+    "sendFailed": "Nie udało się wysłać e-maila",
+    "checkInbox": "Sprawdź skrzynkę i spam",
+    "invalidLink": "Link nieprawidłowy lub wygasł",
+    "verifiedTitle": "E-mail potwierdzony",
+    "verifiedDescription": "Gotowe. Kontynuuj w StreakMeet.",
+    "continueApp": "Otwórz aplikację",
+    "continueEnrollment": "Skonfiguruj rozpoznawanie twarzy"
+  },
+  "forgotPassword": {
+    "title": "Reset hasła",
+    "description": "Podaj e-mail — wyślemy link resetujący.",
+    "submit": "Wyślij link",
+    "sent": "Jeśli e-mail jest zarejestrowany, wysłaliśmy link",
+    "checkInbox": "Sprawdź skrzynkę. Link ważny 1 godzinę.",
+    "error": "Nie udało się wysłać e-maila resetującego"
+  },
+  "resetPassword": {
+    "title": "Nowe hasło",
+    "description": "Wybierz nowe hasło do konta.",
+    "submit": "Zapisz hasło",
+    "success": "Hasło zaktualizowane — zaloguj się ponownie",
+    "error": "Nie udało się zresetować hasła",
+    "invalidToken": "Link resetujący nieprawidłowy lub wygasł"
   }
 }

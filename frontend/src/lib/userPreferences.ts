@@ -53,8 +53,5 @@ export function getNotificationPrefs(): NotificationPrefs {
 
 export function saveLocalStreakPref(notifyStreak: boolean): void {
   const current = fromLocalSettings()
-  localStorage.setItem(
-    SETTINGS_KEY,
-    JSON.stringify({ ...defaults, ...current, notifyStreak })
-  )
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...defaults, ...current, notifyStreak }))
 }
