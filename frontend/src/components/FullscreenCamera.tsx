@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, SwitchCamera, Timer, X, Zap } from 'lucide-react'
+import { Capacitor } from '@capacitor/core'
+import { App as CapApp } from '@capacitor/app'
 import Webcam from 'react-webcam'
 import { captureVideoFrame } from '../lib/captureVideoFrame'
 import { triggerCameraShutterFeedback } from '../lib/cameraShutter'
@@ -23,6 +25,7 @@ export interface CameraModeOption {
 }
 
 type Phase = 'live' | 'preview' | 'processing'
+type CameraAccess = 'idle' | 'pending' | 'granted' | 'denied'
 
 interface Props {
   open: boolean
@@ -126,6 +129,7 @@ export default function FullscreenCamera({
   const [phase, setPhase] = useState<Phase>('live')
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
+  const [cameraAccess, setCameraAccess] = useState<CameraAccess>('idle')
   const [webcamMountKey, setWebcamMountKey] = useState(0)
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user')
   const [timer, setTimer] = useState<CameraTimer>('off')
@@ -151,6 +155,18 @@ export default function FullscreenCamera({
     }
   }, [])
 
+  const startCameraAccess = useCallback(async () => {
+    setCameraAccess('pending')
+    setCameraReady(false)
+    const ok = await ensureCameraAccess()
+    if (ok) {
+      setCameraAccess('granted')
+      setWebcamMountKey((k) => k + 1) // remount react-webcam to restart stream
+    } else {
+      setCameraAccess('denied')
+    }
+  }, [])
+
   const setTorch = useCallback(async (enabled: boolean) => {
     const track = streamRef.current?.getVideoTracks()[0] as TorchTrack | undefined
     if (!track) return
@@ -166,6 +182,7 @@ export default function FullscreenCamera({
     if (!open) {
       resetLive()
       setCameraReady(false)
+      setCameraAccess('idle')
       setFacingMode('user')
       setTimer('off')
       setTorchAvailable(false)
@@ -177,16 +194,27 @@ export default function FullscreenCamera({
     let cancelled = false
     setCameraReady(false)
     void (async () => {
-      const ok = await ensureCameraAccess()
+      await startCameraAccess()
       if (cancelled) return
-      if (ok) setWebcamMountKey((k) => k + 1)
-      else toastError(t('face.cameraDenied'))
     })()
 
     return () => {
       cancelled = true
     }
-  }, [open, resetLive, setTorch, t])
+  }, [open, resetLive, setTorch, startCameraAccess])
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || !open) return
+    let remove: (() => void) | undefined
+    void CapApp.addListener('appStateChange', ({ isActive }) => {
+      // If user granted permission in Settings, retry and remount the webcam.
+      if (!isActive) return
+      if (cameraAccess !== 'granted') void startCameraAccess()
+    }).then((h) => {
+      remove = () => h.remove()
+    })
+    return () => remove?.()
+  }, [open, cameraAccess, startCameraAccess])
 
   useEffect(() => {
     if (!open) return
@@ -237,7 +265,21 @@ export default function FullscreenCamera({
 
   const onStreamError = useCallback(
     (err: string | DOMException) => {
+      const name = typeof err === 'string' ? '' : err.name
       const msg = typeof err === 'string' ? err : err.message
+
+      // User-friendly: permission denied → show permission screen instead of raw error.
+      const denied =
+        name === 'NotAllowedError' ||
+        name === 'PermissionDeniedError' ||
+        name === 'SecurityError' ||
+        /denied|permission|allowed/i.test(msg)
+      if (denied) {
+        setCameraAccess('denied')
+        setCameraReady(false)
+        return
+      }
+
       toastError(t('face.cameraError', { message: msg }))
     },
     [t]
@@ -391,6 +433,7 @@ export default function FullscreenCamera({
   const showPreview = phase === 'preview' || phase === 'processing'
   const canCancelRemote =
     captureMode === 'remote' && !!onCancelRemote && showLive && !processing && !bottomOverlay
+  const showCameraGate = showLive && cameraAccess !== 'granted'
 
   return (
     <div className={`fullscreen-camera ${screenClass}`} style={{ height: '100dvh' }}>
@@ -398,7 +441,21 @@ export default function FullscreenCamera({
         className={`fullscreen-camera__viewport${canCancelRemote ? ' fullscreen-camera__viewport--dismiss-remote' : ''}${showLive ? ' fullscreen-camera__viewport--flip-tap' : ''}`}
         onClick={showLive ? handleViewportTap : undefined}
       >
-        {showPreview && capturedPhoto ? (
+        {showCameraGate ? (
+          <div className="fullscreen-camera__processing">
+            <span className="fullscreen-camera__spinner" />
+            <p>{cameraAccess === 'pending' ? t('face.cameraWaiting') : t('face.cameraDenied')}</p>
+            {cameraAccess === 'denied' && (
+              <button
+                type="button"
+                className="mt-4 rounded-full bg-[var(--color-brand-primary)] px-6 py-3 text-sm font-bold text-white active:scale-95"
+                onClick={() => void startCameraAccess()}
+              >
+                {t('face.cameraRetry')}
+              </button>
+            )}
+          </div>
+        ) : showPreview && capturedPhoto ? (
           <img src={capturedPhoto} alt="" className="fullscreen-camera__media" />
         ) : useSplit ? (
           <div className="fullscreen-camera__split">
