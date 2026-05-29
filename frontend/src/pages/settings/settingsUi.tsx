@@ -47,9 +47,7 @@ export function SettingsSection({ title, children }: { title: string; children: 
       <h3 className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-[var(--color-on-surface-variant)]">
         {title}
       </h3>
-      <div className="glass-card divide-subtle overflow-hidden rounded-3xl divide-y">
-        {children}
-      </div>
+      <div className="glass-card divide-subtle overflow-hidden rounded-3xl">{children}</div>
     </div>
   )
 }

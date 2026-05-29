@@ -14,7 +14,7 @@ export default function LanguageSettingsPage() {
       subtitle={t('settings.languageIntro')}
       backLabel={t('common.back')}
     >
-      <div className="glass-card divide-subtle overflow-hidden rounded-3xl divide-y">
+      <div className="glass-card divide-subtle overflow-hidden rounded-3xl">
         {SUPPORTED_LANGUAGES.map((language) => {
           const selected = language.code === current
           return (

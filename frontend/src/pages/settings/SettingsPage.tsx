@@ -149,7 +149,7 @@ export default function SettingsPage({ user: initialUser }: Props) {
         <button
           type="button"
           onClick={handleDeleteAccount}
-          className="flex w-full items-center gap-3 border-t border-subtle px-4 py-4 text-[var(--color-on-surface-variant)] transition hover:bg-white/5 active:scale-[0.99]"
+          className="flex w-full items-center gap-3 px-4 py-4 text-[var(--color-on-surface-variant)] transition hover:bg-white/5 active:scale-[0.99]"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5">
             <Trash2 size={18} />

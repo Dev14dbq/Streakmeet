@@ -278,7 +278,9 @@
   }
 
   .divide-subtle > :not([hidden]) ~ :not([hidden]) {
-    border-color: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-top-color: color-mix(in srgb, var(--color-on-surface) 8%, transparent);
   }
 
   .bg-overlay-scrim {
