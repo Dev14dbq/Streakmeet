@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
@@ -14,7 +14,7 @@ import VerifyEmailRoute from './pages/auth/VerifyEmailRoute'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from './pages/auth/ResetPasswordPage'
 import HomePage from './pages/home/HomePage'
-const MapPage = lazy(() => import('./pages/map/MapPage'))
+import MapPage from './pages/map/MapPage'
 import MemoriesPage from './pages/memories/MemoriesPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import SettingsPage from './pages/settings/SettingsPage'
@@ -56,7 +56,6 @@ export default function App() {
     needsEmailVerification,
     needsFaceEnrollment,
     bootstrapPhase,
-    setBootstrapPhase,
     showApp,
     handleAuth,
     handleLogout,
@@ -96,9 +95,6 @@ export default function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <MobileOnlyGate>
-        {bootstrapPhase === 'leaving' && (
-          <AppBootstrapScreen leaving onLeaveComplete={() => setBootstrapPhase('hidden')} />
-        )}
         <AppToaster />
         {legalFetchFailed && (
           <div className="fixed top-0 inset-x-0 z-[199] bg-[var(--color-error-container)] px-4 py-3 text-center text-sm text-[var(--color-on-error-container)]">
@@ -151,20 +147,7 @@ export default function App() {
           <Route element={<ProtectedLayout />}>
             <Route path="/" element={<HomePage user={user!} />} />
             <Route path="/streaks/:nickname" element={<StreakDetailsPage />} />
-            <Route
-              path="/map"
-              element={
-                <Suspense
-                  fallback={
-                    <div className="flex min-h-[60vh] items-center justify-center text-sm text-[var(--color-on-surface-variant)]">
-                      {t('app.loadingMap')}
-                    </div>
-                  }
-                >
-                  <MapPage />
-                </Suspense>
-              }
-            />
+            <Route path="/map" element={<MapPage />} />
             <Route path="/memories" element={<MemoriesPage />} />
             <Route path="/profile" element={<ProfilePage user={user!} />} />
             <Route path="/settings" element={<SettingsPage user={user!} onUserUpdate={setUser} />} />

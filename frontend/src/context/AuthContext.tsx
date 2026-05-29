@@ -23,7 +23,8 @@ interface PendingNavigation {
 }
 
 function initialBootstrapPhase(): BootstrapPhase {
-  return localStorage.getItem('accessToken') ? 'loading' : 'hidden'
+  if (!localStorage.getItem('accessToken')) return 'hidden'
+  return getStoredUser() ? 'hidden' : 'loading'
 }
 
 export function getStoredUser(): AuthUser | null {
@@ -127,7 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    setBootstrapPhase('loading')
+    const needsSplash = pendingNavRef.current !== null || !getStoredUser()
+    if (needsSplash) {
+      setBootstrapPhase('loading')
+    }
 
     void bootstrapSession().then((result) => {
       if (cancelled) return
@@ -143,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(result.user)
-      setBootstrapPhase(result.usedCachedSession ? 'hidden' : 'leaving')
+      setBootstrapPhase('hidden')
 
       const pending = pendingNavRef.current
       if (pending && result.user) {
@@ -173,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const needsEmailVerification = isLoggedIn && user!.emailVerified === false
   const needsFaceEnrollment =
     isLoggedIn && user!.emailVerified !== false && !user!.faceEnrolled
-  const showApp = bootstrapPhase === 'hidden' || bootstrapPhase === 'leaving'
+  const showApp = bootstrapPhase !== 'loading'
 
   const value = useMemo<AuthContextValue>(
     () => ({

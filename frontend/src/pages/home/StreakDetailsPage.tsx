@@ -256,19 +256,8 @@ export default function StreakDetailsPage() {
 
   if (!me) return null
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Flame
-            size={32}
-            className="text-[var(--color-brand-primary)] animate-pulse"
-            fill="currentColor"
-          />
-          <p className="text-sm text-[var(--color-on-surface-variant)]">{t('common.loading')}</p>
-        </div>
-      </div>
-    )
+  if (loading && !streakMeta) {
+    return null
   }
 
   if (error || !streakMeta) {

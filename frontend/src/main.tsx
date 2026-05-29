@@ -18,7 +18,7 @@ createRoot(document.getElementById('root')!).render(
         <SWRConfig
           value={{
             fetcher,
-            revalidateOnFocus: true,
+            revalidateOnFocus: false,
             revalidateOnMount: false,
             dedupingInterval: 5_000,
             keepPreviousData: true,

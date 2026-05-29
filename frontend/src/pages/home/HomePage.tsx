@@ -21,12 +21,11 @@ export default function HomePage({ user }: Props) {
   const [showQr, setShowQr] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  const {
-    data: streaks = [],
-    error: streaksError,
-    isLoading,
-    mutate: mutateStreaks,
-  } = useSWR<StreakListItem[]>(SWR_KEYS.streaks, fetcher)
+  const { data, error: streaksError, mutate: mutateStreaks } = useSWR<StreakListItem[]>(
+    SWR_KEYS.streaks,
+    fetcher
+  )
+  const streaks = data ?? []
 
   const {
     query,
@@ -40,8 +39,6 @@ export default function HomePage({ user }: Props) {
   } = useFriendSearch()
 
   const { incoming, accepted, pendingOut } = partition
-
-  const loading = isLoading
 
   useEffect(() => {
     if (showSearch) searchInputRef.current?.focus()
@@ -225,9 +222,7 @@ export default function HomePage({ user }: Props) {
         )}
       </div>
 
-      {loading ? (
-        <p className="text-zinc-500 text-center py-10">{t('common.loading')}</p>
-      ) : streaksError ? (
+      {streaksError ? (
         <div className="glass-card rounded-3xl p-8 text-center border border-subtle">
           <p className="text-on-surface font-semibold mb-2">{t('home.loadFailed')}</p>
           <button

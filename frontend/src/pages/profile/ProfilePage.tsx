@@ -35,9 +35,8 @@ export default function ProfilePage({ user: initialUser }: Props) {
     if (previousPageData && !previousPageData.length) return null
     return SWR_KEYS.photosPage(pageIndex + 1)
   }
-  const { data, size, setSize, isLoading } = useSWRInfinite(getKey)
+  const { data, size, setSize } = useSWRInfinite(getKey)
   const photos = data ? data.flat() : []
-  const loadingPhotos = isLoading
   const isReachingEnd = data && data[data.length - 1]?.length < 12
 
   const [showQR, setShowQR] = useState(false)
@@ -260,11 +259,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
           {t('settings.selfies')}
         </h3>
 
-        {loadingPhotos ? (
-          <p className="text-[var(--color-on-surface-variant)] text-sm text-center py-10 opacity-70">
-            {t('common.loading')}
-          </p>
-        ) : photos.length === 0 ? (
+        {photos.length === 0 ? (
           <div className="glass-card rounded-3xl p-8 flex flex-col items-center justify-center text-center border border-subtle">
             <ImageIcon
               size={32}

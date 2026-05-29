@@ -123,21 +123,11 @@ export default function MapPage() {
   const mapDataKey = isNative && me ? SWR_KEYS.locationMe : null
   const friendsDataKey = isNative && me ? SWR_KEYS.friendLocations : null
 
-  const { data: meLocation, isLoading: meLoading, error: meError } = useSWR<MyLocationState>(
-    mapDataKey,
+  const { data: meLocation, error: meError } = useSWR<MyLocationState>(mapDataKey, fetcher)
+  const { data: friendLocations, error: friendsError } = useSWR<FriendLocation[]>(
+    friendsDataKey,
     fetcher
   )
-  const {
-    data: friendLocations,
-    isLoading: friendsLoading,
-    error: friendsError,
-  } = useSWR<FriendLocation[]>(friendsDataKey, fetcher)
-
-  const loading =
-    isNative &&
-    (meLoading || friendsLoading) &&
-    meLocation === undefined &&
-    friendLocations === undefined
 
   const markerSize = 40
   const markerAnchor = markerSize / 2
@@ -150,9 +140,8 @@ export default function MapPage() {
   const broadcastingCount = friends.length + (sharing ? 1 : 0)
   const onlineOnMap = onlineCount + (sharing ? 1 : 0)
 
-  const mapStatusText = loading
-    ? t('map.loading')
-    : friends.length === 0 && sharing
+  const mapStatusText =
+    friends.length === 0 && sharing
       ? t('map.onlyYouSharing')
       : friends.length === 0
         ? t('map.nobodySharing')

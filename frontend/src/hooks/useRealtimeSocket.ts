@@ -36,7 +36,7 @@ export function useRealtimeSocket(
     [navigate]
   )
 
-  useSocket(user !== null && bootstrapPhase === 'hidden', onEvent)
+  useSocket(user !== null && bootstrapPhase !== 'loading', onEvent)
 
   return appActiveRef
 }

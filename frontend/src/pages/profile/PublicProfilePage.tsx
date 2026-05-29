@@ -36,7 +36,6 @@ export default function PublicProfilePage({ currentUser }: Props) {
   const {
     data: profile,
     error: profileError,
-    isLoading: profileLoading,
     mutate: mutateProfile,
   } = useSWR<PublicProfile>(isValidNickname ? `/api/public/users/${normalized}` : null, fetcher)
 
@@ -52,12 +51,8 @@ export default function PublicProfilePage({ currentUser }: Props) {
     return `/api/public/users/${normalized}/photos?page=${pageIndex + 1}&limit=12`
   }
 
-  const { data, size, setSize, error: photosError, isLoading: photosLoading } = useSWRInfinite(
-    getKey,
-    fetcher
-  )
+  const { data, size, setSize, error: photosError } = useSWRInfinite(getKey, fetcher)
   const photos = data ? data.flat() : []
-  const loadingPhotos = photosLoading
   const isReachingEnd = data && data[data.length - 1]?.length < 12
 
   const [friendLoading, setFriendLoading] = useState(false)
@@ -71,16 +66,6 @@ export default function PublicProfilePage({ currentUser }: Props) {
       <div className="flex min-h-screen items-center justify-center bg-black px-6">
         <p className="text-center text-sm text-[var(--color-on-surface-variant)]">
           {getApiErrorMessage(profileError, t('profile.loadFailed'))}
-        </p>
-      </div>
-    )
-  }
-
-  if (profileLoading && !profile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
-        <p className="text-[var(--color-on-surface-variant)] animate-pulse">
-          {t('common.loading')}
         </p>
       </div>
     )
@@ -249,10 +234,6 @@ export default function PublicProfilePage({ currentUser }: Props) {
                 {t('settings.publicProfileDesc')}
               </p>
             </div>
-          ) : loadingPhotos ? (
-            <p className="text-[var(--color-on-surface-variant)] text-sm text-center py-10 opacity-70">
-              {t('common.loading')}
-            </p>
           ) : photosError ? (
             <div className="glass-card rounded-3xl p-8 text-center border border-subtle">
               <p className="text-on-surface font-semibold mb-2">{t('profile.loadFailed')}</p>
