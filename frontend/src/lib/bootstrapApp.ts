@@ -83,6 +83,8 @@ export async function bootstrapSession(): Promise<BootstrapSessionResult> {
   } catch (err) {
     const deleted = getDeletedAccountInfo(err)
     if (deleted) {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('user')
       return {
         user: null,
         legalStatus: null,

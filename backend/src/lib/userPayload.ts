@@ -32,11 +32,16 @@ export type UserProfileRow = {
   geoOnPhotos: boolean
 }
 
+/** No password set — Google/Apple-only account. */
+export function isOAuthOnlyAccount(passwordHash: string): boolean {
+  return passwordHash.length === 0
+}
+
 export function isEmailVerified(user: {
   emailVerifiedAt: Date | null
   passwordHash: string
 }): boolean {
-  if (!user.passwordHash) return true
+  if (isOAuthOnlyAccount(user.passwordHash)) return true
   return user.emailVerifiedAt != null
 }
 

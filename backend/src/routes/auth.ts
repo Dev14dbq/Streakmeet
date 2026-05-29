@@ -289,17 +289,24 @@ async function findOrCreateOAuthUser(data: {
       },
     })
     await acceptCurrentLegalForUser(user.id)
-  } else if (timezone) {
-    await syncUserTimezone(user.id, timezone)
+  } else {
+    if (timezone) {
+      await syncUserTimezone(user.id, timezone)
+    }
+    // Google/Apple already verified the email — do not require our confirmation link.
+    await markEmailVerified(user.id)
   }
 
   return user
 }
 
-async function restoreDeletedUser(userId: string) {
+async function restoreDeletedUser(userId: string, options?: { oauthVerified?: boolean }) {
   return prisma.user.update({
     where: { id: userId },
-    data: { deletedAt: null },
+    data: {
+      deletedAt: null,
+      ...(options?.oauthVerified ? { emailVerifiedAt: new Date(), emailVerifyToken: null } : {}),
+    },
     select: { ...userProfileSelect, passwordHash: true },
   })
 }
@@ -414,6 +421,8 @@ router.post('/restore-account', async (req: Request, res: Response) => {
       return
     }
 
+    const oauthRestore = provider === 'google' || provider === 'apple'
+
     if (!userEmail) {
       sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
       return
@@ -442,7 +451,7 @@ router.post('/restore-account', async (req: Request, res: Response) => {
       return
     }
 
-    const restored = await restoreDeletedUser(user.id)
+    const restored = await restoreDeletedUser(user.id, { oauthVerified: oauthRestore })
     res.json({ ...makeTokens(restored.id), user: toAuthPayload(restored) })
   } catch {
     sendError(res, 401, ErrorCodes.RESTORE_ACCOUNT_FAILED)
