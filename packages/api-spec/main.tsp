@@ -10,6 +10,7 @@ import "./routes/streaks.tsp";
 import "./routes/location.tsp";
 import "./routes/legal.tsp";
 import "./routes/public.tsp";
+import "./routes/memories.tsp";
 import "./routes/health.tsp";
 
 using TypeSpec.Http;

@@ -46,17 +46,9 @@ export {
   restoreAccount,
 } from './api/auth'
 
-export {
-  acceptFriend,
-  getFriends,
-  requestFriend,
-} from './api/friends'
+export { acceptFriend, getFriends, requestFriend } from './api/friends'
 
-export {
-  acceptLegalDocuments,
-  getLegalConsentStatus,
-  getLegalDocument,
-} from './api/legal'
+export { acceptLegalDocuments, getLegalConsentStatus, getLegalDocument } from './api/legal'
 
 export {
   getFriendLocations,
@@ -87,3 +79,12 @@ export {
   updateSettings,
   uploadAvatar,
 } from './api/users'
+
+export type {
+  MemoriesFeedResponse,
+  MemoryFeedItem,
+  MemoryMeetItem,
+  MemoryMilestoneItem,
+} from './api/memories'
+
+export { getMemories } from './api/memories'

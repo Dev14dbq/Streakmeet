@@ -421,7 +421,23 @@
   },
   "memories": {
     "title": "Лента воспоминаний",
-    "description": "Скоро здесь можно будет листать ваши встречи — как вы менялись за месяц и год."
+    "description": "Скоро здесь можно будет листать ваши встречи — как вы менялись за месяц и год.",
+    "lockedTitle": "Почти готово",
+    "lockedDescription": "Продолжайте встречаться каждый день — лента откроется после {{total}} дней встреч.",
+    "daysRemaining_one": "Остался {{count}} день",
+    "daysRemaining_few": "Осталось {{count}} дня",
+    "daysRemaining_many": "Осталось {{count}} дней",
+    "daysRemaining_other": "Осталось {{count}} дней",
+    "progressLabel": "{{current}} / {{total}} дней",
+    "unlockedTitle": "Ваши воспоминания",
+    "unlockedSubtitle": "Моменты встреч с теми, с кем вы держите streak.",
+    "milestoneBadge": "{{count}} дней",
+    "milestoneTitle": "{{count}} дней вместе",
+    "milestoneSubtitle": "С @{{nickname}}",
+    "meetWith": "Встреча с @{{nickname}}",
+    "emptyFeed": "Пока нет воспоминаний — здесь появятся фото ваших встреч.",
+    "loadFailed": "Не удалось загрузить ленту",
+    "loadMore": "Загрузить ещё"
   },
   "notFound": {
     "title": "Страница не найдена",

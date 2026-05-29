@@ -11,6 +11,7 @@ import locationRouter from './routes/location.js'
 import publicRouter from './routes/public.js'
 import legalRouter from './routes/legal.js'
 import mediaRouter from './routes/media.js'
+import memoriesRouter from './routes/memories.js'
 import { errorHandler } from './lib/httpErrors.js'
 import { initSocket } from './lib/socket.js'
 import { start as startScheduler } from './jobs/scheduler.js'
@@ -43,6 +44,7 @@ app.use('/api/friends', friendsRouter)
 app.use('/api/streaks', streaksRouter)
 app.use('/api/location', locationRouter)
 app.use('/api/legal', legalRouter)
+app.use('/api/memories', memoriesRouter)
 
 app.use(errorHandler)
 

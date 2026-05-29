@@ -381,7 +381,21 @@
   },
   "memories": {
     "title": "Anılar akışı",
-    "description": "Yakında buluşmalarını kaydırabileceksin — aylar ve yıllar içinde nasıl değiştin."
+    "description": "Soon you'll scroll through your meets — how you changed over months and years.",
+    "lockedTitle": "Almost there",
+    "lockedDescription": "Keep meeting daily — your memories feed unlocks after {{total}} days of meets.",
+    "daysRemaining_one": "{{count}} day left",
+    "daysRemaining_other": "{{count}} days left",
+    "progressLabel": "{{current}} / {{total}} days",
+    "unlockedTitle": "Your memories",
+    "unlockedSubtitle": "Meet moments with the people you streak with.",
+    "milestoneBadge": "{{count}} days",
+    "milestoneTitle": "{{count}} days together",
+    "milestoneSubtitle": "With @{{nickname}}",
+    "meetWith": "Meet with @{{nickname}}",
+    "emptyFeed": "No memories yet — your meet photos will show up here.",
+    "loadFailed": "Could not load memories",
+    "loadMore": "Load more"
   },
   "notFound": {
     "title": "Sayfa bulunamadı",
