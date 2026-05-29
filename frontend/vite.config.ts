@@ -50,6 +50,7 @@ export default defineConfig({
         theme_color: '#000000',
         background_color: '#000000',
         display: 'standalone',
+        categories: ['social'],
         icons: [
           {
             src: 'pwa-192x192.png',
