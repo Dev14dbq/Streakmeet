@@ -36,6 +36,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
   const {
     data: profile,
     error: profileError,
+    isLoading: profileLoading,
     mutate: mutateProfile,
   } = useSWR<PublicProfile>(isValidNickname ? `/api/public/users/${normalized}` : null, fetcher)
 
@@ -51,9 +52,12 @@ export default function PublicProfilePage({ currentUser }: Props) {
     return `/api/public/users/${normalized}/photos?page=${pageIndex + 1}&limit=12`
   }
 
-  const { data, size, setSize, error: photosError } = useSWRInfinite(getKey, fetcher)
+  const { data, size, setSize, error: photosError, isLoading: photosLoading } = useSWRInfinite(
+    getKey,
+    fetcher
+  )
   const photos = data ? data.flat() : []
-  const loadingPhotos = !data && !photosError
+  const loadingPhotos = photosLoading
   const isReachingEnd = data && data[data.length - 1]?.length < 12
 
   const [friendLoading, setFriendLoading] = useState(false)
@@ -72,7 +76,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
     )
   }
 
-  if (!profile) {
+  if (profileLoading && !profile) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black">
         <p className="text-[var(--color-on-surface-variant)] animate-pulse">
@@ -80,6 +84,10 @@ export default function PublicProfilePage({ currentUser }: Props) {
         </p>
       </div>
     )
+  }
+
+  if (!profile) {
+    return null
   }
 
   const { user, friendship } = profile

@@ -19,6 +19,7 @@ export {
   api,
   fetcher,
   getApiErrorMessage,
+  isNetworkError,
   setUnauthorizedHandler,
 } from './api/client'
 

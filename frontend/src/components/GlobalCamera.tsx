@@ -131,7 +131,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
   }
 
   const handleConfirm = useCallback(
-    async (imageSrc: string, burst?: string[]) => {
+    async (imageSrc: string, burst?: string[]): Promise<boolean> => {
       setProcessing(true)
       logCapture('confirm upload', {
         bytes: imageSrc.length,
@@ -143,7 +143,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
         if (!remoteTarget) {
           toastError(t('camera.choosePartner'))
           setProcessing(false)
-          return
+          return false
         }
 
         setProcessingLabel(
@@ -167,12 +167,13 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
           void mutateStreaks()
           setCameraOpen(false)
           resetRemoteState()
+          return true
         } catch (e: unknown) {
           toastError(getApiErrorMessage(e, t('streak.selfieError')))
+          return false
         } finally {
           setProcessing(false)
         }
-        return
       }
 
       let location: { lat: number; lng: number } | undefined
@@ -213,6 +214,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
         setCameraOpen(false)
         setProcessing(false)
         navigate('/magic-meet/success', { state: resultState, replace: true })
+        return true
       } catch (e: unknown) {
         const msg = getApiErrorMessage(e, t('camera.verifyError'))
         logCapture('api error', {
@@ -222,6 +224,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
         })
         toastError(msg)
         setProcessing(false)
+        return false
       }
     },
     [captureMode, remoteTarget, navigate, t, mutateStreaks, resetRemoteState]

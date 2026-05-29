@@ -32,6 +32,13 @@ api.interceptors.response.use(
   }
 )
 
+/** True when the request failed before reaching the server (offline, timeout, DNS, etc.). */
+export function isNetworkError(err: unknown): boolean {
+  if (!isAxiosError(err)) return false
+  if (!err.response) return true
+  return false
+}
+
 /** Extracts a human-readable message from API response (translated when possible) */
 export function getApiErrorMessage(err: unknown, fallback?: string): string {
   const fb = fallback ?? i18n.t('errors.generic')

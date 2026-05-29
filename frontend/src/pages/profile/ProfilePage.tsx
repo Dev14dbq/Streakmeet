@@ -35,9 +35,9 @@ export default function ProfilePage({ user: initialUser }: Props) {
     if (previousPageData && !previousPageData.length) return null
     return SWR_KEYS.photosPage(pageIndex + 1)
   }
-  const { data, size, setSize, error } = useSWRInfinite(getKey)
+  const { data, size, setSize, isLoading } = useSWRInfinite(getKey)
   const photos = data ? data.flat() : []
-  const loadingPhotos = !data && !error
+  const loadingPhotos = isLoading
   const isReachingEnd = data && data[data.length - 1]?.length < 12
 
   const [showQR, setShowQR] = useState(false)

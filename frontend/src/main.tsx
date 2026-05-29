@@ -19,7 +19,9 @@ createRoot(document.getElementById('root')!).render(
           value={{
             fetcher,
             revalidateOnFocus: true,
+            revalidateOnMount: false,
             dedupingInterval: 5_000,
+            keepPreviousData: true,
           }}
         >
           <App />

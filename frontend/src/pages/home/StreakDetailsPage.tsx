@@ -105,17 +105,16 @@ export default function StreakDetailsPage() {
   const navigate = useNavigate()
 
   const { user: me } = useAuth()
-  if (!me) return null
 
   const getKey = (pageIndex: number, previousPageData: { streakDays?: StreakDay[] } | null) => {
-    if (!nickname) return null
+    if (!me || !nickname) return null
     if (previousPageData && !previousPageData.streakDays?.length) return null
     return `/api/streaks/${encodeURIComponent(nickname.toLowerCase())}?page=${pageIndex + 1}&limit=10`
   }
 
-  const { data, size, setSize, error, mutate } = useSWRInfinite(getKey, fetcher)
+  const { data, size, setSize, error, isLoading, mutate } = useSWRInfinite(getKey, fetcher)
 
-  const loading = !data && !error
+  const loading = isLoading
   const streakMeta = data?.[0]
   const streakDays: StreakDay[] = data ? data.flatMap((page) => page.streakDays) : []
   const isReachingEnd = data && data[data.length - 1]?.streakDays.length < 10
@@ -158,13 +157,13 @@ export default function StreakDetailsPage() {
   }, [mutate])
 
   useEffect(() => {
-    if (!streakMeta || !nickname) return
+    if (!me || !streakMeta || !nickname) return
     if (!/^c[a-z0-9]{20,}$/i.test(nickname)) return
     const partner = streakMeta.userAId === me.id ? streakMeta.userB : streakMeta.userA
     if (partner?.nickname) {
       navigate(`/streaks/${partner.nickname}`, { replace: true })
     }
-  }, [streakMeta, nickname, navigate, me.id])
+  }, [streakMeta, nickname, navigate, me])
 
   const spawnParticles = useCallback((count: number) => {
     const next: Particle[] = []
@@ -214,8 +213,8 @@ export default function StreakDetailsPage() {
   }, [nickname, spawnParticles, triggerScreenShake])
 
   const handleSendRemoteSelfie = useCallback(
-    async (photoBase64: string) => {
-      if (!streakMeta) return
+    async (photoBase64: string): Promise<boolean> => {
+      if (!streakMeta) return false
 
       setRemoteSelfieUploading(true)
       try {
@@ -232,8 +231,10 @@ export default function StreakDetailsPage() {
         }
         setShowRemoteSelfieCamera(false)
         setReplyingToRequest(null)
+        return true
       } catch (e) {
         toastError(getApiErrorMessage(e, t('streak.selfieError')))
+        return false
       } finally {
         setRemoteSelfieUploading(false)
       }
@@ -252,6 +253,8 @@ export default function StreakDetailsPage() {
     setReplyingToRequest(requestId)
     setShowRemoteSelfieCamera(true)
   }
+
+  if (!me) return null
 
   if (loading) {
     return (

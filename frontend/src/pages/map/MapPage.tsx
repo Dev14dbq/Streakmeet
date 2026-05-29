@@ -3,17 +3,19 @@ import { useTranslation } from 'react-i18next'
 import { Capacitor } from '@capacitor/core'
 import { Geolocation } from '@capacitor/geolocation'
 import { type Socket } from 'socket.io-client'
+import useSWR from 'swr'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
 import CachedImage from '../../components/CachedImage'
 import { Locate, MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-react'
 import {
-  getFriendLocations,
-  getMyLocation,
+  fetcher,
   getApiErrorMessage,
   type FriendLocation,
+  type MyLocationState,
 } from '../../lib/api'
+import { SWR_KEYS } from '../../lib/swrKeys'
 import { useSocket } from '../../hooks/useSocket'
 import {
   isLocationSharingActive,
@@ -110,7 +112,6 @@ export default function MapPage() {
   const [compactShareUi, setCompactShareUi] = useState(
     () => localStorage.getItem(SHARE_UI_COMPACT_KEY) === '1'
   )
-  const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<FriendLocation | null>(null)
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null)
   const [addressLoading, setAddressLoading] = useState(false)
@@ -118,7 +119,25 @@ export default function MapPage() {
   const [locating, setLocating] = useState(false)
 
   const { user: me } = useAuth()
-  if (!me) return null
+
+  const mapDataKey = isNative && me ? SWR_KEYS.locationMe : null
+  const friendsDataKey = isNative && me ? SWR_KEYS.friendLocations : null
+
+  const { data: meLocation, isLoading: meLoading, error: meError } = useSWR<MyLocationState>(
+    mapDataKey,
+    fetcher
+  )
+  const {
+    data: friendLocations,
+    isLoading: friendsLoading,
+    error: friendsError,
+  } = useSWR<FriendLocation[]>(friendsDataKey, fetcher)
+
+  const loading =
+    isNative &&
+    (meLoading || friendsLoading) &&
+    meLocation === undefined &&
+    friendLocations === undefined
 
   const markerSize = 40
   const markerAnchor = markerSize / 2
@@ -141,10 +160,10 @@ export default function MapPage() {
 
   const avatarPaths = useMemo(() => {
     const paths = friends.map((f) => f.avatarUrl).filter(Boolean) as string[]
-    if (me.avatarUrl) paths.push(me.avatarUrl)
+    if (me?.avatarUrl) paths.push(me.avatarUrl)
     if (selected?.avatarUrl) paths.push(selected.avatarUrl)
     return paths
-  }, [friends, me.avatarUrl, selected?.avatarUrl])
+  }, [friends, me?.avatarUrl, selected?.avatarUrl])
 
   const cachedAvatars = useCachedImageSrcMap(avatarPaths)
 
@@ -196,37 +215,28 @@ export default function MapPage() {
   }, [])
 
   useEffect(() => {
-    if (!isNative) return
-
-    let cancelled = false
-    ;(async () => {
-      try {
-        const [{ data: me }, { data: list }] = await Promise.all([
-          getMyLocation(),
-          getFriendLocations(),
-        ])
-        if (cancelled) return
-        const active = me.sharingLocation || isLocationSharingActive()
-        setSharing(active)
-        if (active) {
-          setCompactShareUi(true)
-          localStorage.setItem(SHARE_UI_COMPACT_KEY, '1')
-        }
-        setFriends(list)
-        if (me.latitude != null && me.longitude != null) {
-          setSelfPos({ lat: me.latitude, lng: me.longitude })
-        }
-      } catch (e) {
-        if (!cancelled) toastError(getApiErrorMessage(e, t('map.loadFailed')))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-
-    return () => {
-      cancelled = true
+    if (friendLocations) {
+      setFriends(friendLocations)
     }
-  }, [isNative])
+  }, [friendLocations])
+
+  useEffect(() => {
+    if (!meLocation) return
+    const active = meLocation.sharingLocation || isLocationSharingActive()
+    setSharing(active)
+    if (active) {
+      setCompactShareUi(true)
+      localStorage.setItem(SHARE_UI_COMPACT_KEY, '1')
+    }
+    if (meLocation.latitude != null && meLocation.longitude != null) {
+      setSelfPos({ lat: meLocation.latitude, lng: meLocation.longitude })
+    }
+  }, [meLocation])
+
+  useEffect(() => {
+    if (!isNative || (!meError && !friendsError)) return
+    toastError(getApiErrorMessage(meError ?? friendsError, t('map.loadFailed')))
+  }, [isNative, meError, friendsError, t])
 
   const onLocationEvent = useCallback(
     (socket: Socket) => {
@@ -331,7 +341,7 @@ export default function MapPage() {
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !selfPos) return
+    if (!map || !selfPos || !me) return
 
     const icon = L.divIcon({
       className: 'map-marker-wrap',
@@ -351,7 +361,7 @@ export default function MapPage() {
       selfMarkerRef.current = L.marker([selfPos.lat, selfPos.lng], { icon, zIndexOffset: 1000 })
       selfMarkerRef.current.addTo(map)
     }
-  }, [selfPos, me.nickname, me.avatarUrl, markerSize, markerAnchor, cachedAvatars])
+  }, [selfPos, me, markerSize, markerAnchor, cachedAvatars, t])
 
   useEffect(() => {
     if (!selected || !mapRef.current) return
@@ -465,6 +475,7 @@ export default function MapPage() {
   }
 
   if (!isNative) return <NativeAppGate />
+  if (!me) return null
 
   return (
     <div className="relative h-[calc(100dvh-5.5rem)] min-h-[420px] w-full overflow-hidden">

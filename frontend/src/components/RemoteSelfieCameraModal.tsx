@@ -9,7 +9,7 @@ interface Props {
   friendNickname?: string
   uploading?: boolean
   onClose: () => void
-  onSend: (photoBase64: string) => Promise<void>
+  onSend: (photoBase64: string) => boolean | Promise<boolean>
 }
 
 export default function RemoteSelfieCameraModal({

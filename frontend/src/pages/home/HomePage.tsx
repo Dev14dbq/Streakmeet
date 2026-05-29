@@ -24,6 +24,7 @@ export default function HomePage({ user }: Props) {
   const {
     data: streaks = [],
     error: streaksError,
+    isLoading,
     mutate: mutateStreaks,
   } = useSWR<StreakListItem[]>(SWR_KEYS.streaks, fetcher)
 
@@ -40,7 +41,7 @@ export default function HomePage({ user }: Props) {
 
   const { incoming, accepted, pendingOut } = partition
 
-  const loading = !streaks && !streaksError
+  const loading = isLoading
 
   useEffect(() => {
     if (showSearch) searchInputRef.current?.focus()

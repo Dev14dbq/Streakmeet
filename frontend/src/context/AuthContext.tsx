@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(result.user)
-      setBootstrapPhase('leaving')
+      setBootstrapPhase(result.usedCachedSession ? 'hidden' : 'leaving')
 
       const pending = pendingNavRef.current
       if (pending && result.user) {

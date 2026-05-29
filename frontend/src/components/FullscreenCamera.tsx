@@ -29,7 +29,7 @@ type Phase = 'live' | 'preview' | 'processing'
 interface Props {
   open: boolean
   onClose: () => void
-  onConfirm: (photoBase64: string, burst?: string[]) => void | Promise<void>
+  onConfirm: (photoBase64: string, burst?: string[]) => boolean | void | Promise<boolean | void>
   confirmLabel: string
   processing?: boolean
   processingLabel?: string
@@ -380,7 +380,10 @@ export default function FullscreenCamera({
   async function handleConfirm() {
     if (!capturedPhoto || processing) return
     const burst = burstRef.current.length > 1 ? burstRef.current.slice() : undefined
-    await onConfirm(capturedPhoto, burst)
+    const ok = await onConfirm(capturedPhoto, burst)
+    if (ok === false) {
+      resetLive()
+    }
   }
 
   if (!mounted) return null
