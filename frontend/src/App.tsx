@@ -21,6 +21,12 @@ const MapPage = lazy(() => import('./pages/map/MapPage'))
 import MemoriesPage from './pages/memories/MemoriesPage'
 import ProfilePage from './pages/profile/ProfilePage'
 import SettingsPage from './pages/settings/SettingsPage'
+import AppearanceSettingsPage from './pages/settings/AppearanceSettingsPage'
+import LanguageSettingsPage from './pages/settings/LanguageSettingsPage'
+import NotificationSettingsPage from './pages/settings/NotificationSettingsPage'
+import PrivacySettingsPage from './pages/settings/PrivacySettingsPage'
+import ChangeEmailPage from './pages/settings/ChangeEmailPage'
+import ChangePasswordPage from './pages/settings/ChangePasswordPage'
 import TermsPage from './pages/legal/TermsPage'
 import PrivacyPage from './pages/legal/PrivacyPage'
 import type { AuthUser, LegalConsentStatus } from './lib/api'
@@ -471,6 +477,102 @@ export default function App() {
               ) : (
                 <AppLayout>
                   <SettingsPage user={user} onUserUpdate={setUser} />
+                </AppLayout>
+              )
+            }
+          />
+          <Route
+            path="/settings/appearance"
+            element={
+              !isLoggedIn ? (
+                <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
+              ) : needsFaceEnrollment ? (
+                <Navigate to="/face-enrollment" replace />
+              ) : (
+                <AppLayout>
+                  <AppearanceSettingsPage />
+                </AppLayout>
+              )
+            }
+          />
+          <Route
+            path="/settings/language"
+            element={
+              !isLoggedIn ? (
+                <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
+              ) : needsFaceEnrollment ? (
+                <Navigate to="/face-enrollment" replace />
+              ) : (
+                <AppLayout>
+                  <LanguageSettingsPage />
+                </AppLayout>
+              )
+            }
+          />
+          <Route
+            path="/settings/notifications"
+            element={
+              !isLoggedIn ? (
+                <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
+              ) : needsFaceEnrollment ? (
+                <Navigate to="/face-enrollment" replace />
+              ) : (
+                <AppLayout>
+                  <NotificationSettingsPage user={user} onUserUpdate={setUser} />
+                </AppLayout>
+              )
+            }
+          />
+          <Route
+            path="/settings/privacy"
+            element={
+              !isLoggedIn ? (
+                <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
+              ) : needsFaceEnrollment ? (
+                <Navigate to="/face-enrollment" replace />
+              ) : (
+                <AppLayout>
+                  <PrivacySettingsPage user={user} onUserUpdate={setUser} />
+                </AppLayout>
+              )
+            }
+          />
+          <Route
+            path="/settings/email"
+            element={
+              !isLoggedIn ? (
+                <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
+              ) : needsFaceEnrollment ? (
+                <Navigate to="/face-enrollment" replace />
+              ) : (
+                <AppLayout>
+                  <ChangeEmailPage user={user} onUserUpdate={setUser} />
+                </AppLayout>
+              )
+            }
+          />
+          <Route
+            path="/settings/password"
+            element={
+              !isLoggedIn ? (
+                <Navigate to="/login" replace />
+              ) : needsEmailVerification ? (
+                <Navigate to="/verify-email" replace />
+              ) : needsFaceEnrollment ? (
+                <Navigate to="/face-enrollment" replace />
+              ) : (
+                <AppLayout>
+                  <ChangePasswordPage />
                 </AppLayout>
               )
             }

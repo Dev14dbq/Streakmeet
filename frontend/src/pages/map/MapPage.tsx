@@ -564,15 +564,12 @@ export default function MapPage() {
               <button
                 type="button"
                 onClick={() => void openRouteToSelected()}
-                className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] py-3.5 text-sm font-black text-white shadow-[0_8px_24px_rgba(255,26,79,0.4)] active:scale-[0.98]"
+                className="btn btn--primary flex-1"
               >
                 <Navigation size={18} />
                 {t('map.route')}
               </button>
-              <Link
-                to={`/${selected.nickname}`}
-                className="flex items-center justify-center rounded-full bg-[var(--color-surface-container-highest)] px-5 py-3.5 text-sm font-semibold text-on-surface"
-              >
+              <Link to={`/${selected.nickname}`} className="btn btn--secondary">
                 {t('nav.profile')}
               </Link>
             </div>
@@ -642,7 +639,7 @@ export default function MapPage() {
                 type="button"
                 disabled={sharingBusy}
                 onClick={() => void confirmEnableSharing()}
-                className="w-full rounded-full bg-[var(--color-brand-primary)] py-3.5 text-sm font-black text-white shadow-[0_8px_24px_rgba(255,26,79,0.4)] disabled:opacity-60"
+                className="btn btn--primary w-full"
               >
                 {sharingBusy ? '…' : t('map.shareExplainContinue')}
               </button>
@@ -650,7 +647,7 @@ export default function MapPage() {
                 type="button"
                 disabled={sharingBusy}
                 onClick={() => setShareExplainOpen(false)}
-                className="w-full py-3 text-sm font-semibold text-[var(--color-on-surface-variant)]"
+                className="btn btn--ghost w-full"
               >
                 {t('common.cancel')}
               </button>
@@ -670,7 +667,7 @@ export default function MapPage() {
               type="button"
               disabled={sharingBusy}
               onClick={() => void handleStartBroadcast()}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-black text-white shadow-[0_12px_36px_rgba(255,26,79,0.45)] transition active:scale-[0.98] disabled:opacity-60"
+              className="btn btn--primary btn--lg w-full"
             >
               <Radio size={20} />
               {sharingBusy ? '…' : t('map.shareLocation')}

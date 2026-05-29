@@ -246,11 +246,7 @@ function AuthButton({
   disabled?: boolean
 }) {
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-4 text-sm font-semibold transition active:scale-95 ${className}`}
-    >
+    <button onClick={onClick} disabled={disabled} className={`btn btn--lg w-full ${className}`}>
       {icon}
       {label}
     </button>

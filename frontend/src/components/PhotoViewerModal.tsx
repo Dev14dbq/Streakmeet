@@ -129,7 +129,7 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
       <div className="flex items-center justify-between px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] relative z-10 shrink-0">
         <button
           onClick={onClose}
-          className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+          className="btn btn--icon bg-white/10 text-white hover:bg-white/20"
         >
           <X size={24} />
         </button>
@@ -137,7 +137,7 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+            className="btn btn--icon bg-white/10 text-white hover:bg-white/20"
           >
             <MoreVertical size={24} />
           </button>

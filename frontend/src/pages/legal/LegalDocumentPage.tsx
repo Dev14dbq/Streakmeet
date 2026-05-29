@@ -34,7 +34,7 @@ export default function LegalDocumentPage({ slug, fallbackTitle }: Props) {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-on-surface transition active:scale-95 hover:bg-[var(--color-surface-container-highest)]"
+          className="btn btn--icon-lg btn--secondary"
         >
           <ArrowLeft size={22} />
         </button>

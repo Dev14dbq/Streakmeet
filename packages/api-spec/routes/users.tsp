@@ -10,6 +10,12 @@ model UpdateSettingsRequest {
 
 model UpdateEmailRequest {
   email: string;
+  currentPassword: string;
+}
+
+model UpdatePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 
 model UpdatePublicRequest {
@@ -51,6 +57,11 @@ interface UsersRoutes {
   @route("/email")
   @useAuth(TypeSpec.Http.BearerAuth)
   updateEmail(@body body: UpdateEmailRequest): UserProfile;
+
+  @patch
+  @route("/password")
+  @useAuth(TypeSpec.Http.BearerAuth)
+  updatePassword(@body body: UpdatePasswordRequest): SuccessResponse;
 
   @patch
   @route("/public")

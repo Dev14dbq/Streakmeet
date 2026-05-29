@@ -58,7 +58,7 @@ export default function VerifyEmailPage({ user, onLogout, onUserUpdate }: Props)
         <button
           type="button"
           onClick={() => navigate(user.faceEnrolled ? '/' : '/face-enrollment', { replace: true })}
-          className="w-full max-w-xs rounded-2xl bg-[var(--color-brand-primary)] py-4 font-bold text-white transition active:scale-[0.98]"
+          className="btn btn--primary btn--lg w-full max-w-xs"
         >
           {user.faceEnrolled ? t('verifyEmail.continueApp') : t('verifyEmail.continueEnrollment')}
         </button>
@@ -89,16 +89,12 @@ export default function VerifyEmailPage({ user, onLogout, onUserUpdate }: Props)
           type="button"
           disabled={loading}
           onClick={() => void handleResend()}
-          className="mb-4 w-full max-w-xs rounded-2xl bg-[var(--color-brand-primary)] py-4 font-bold text-white transition active:scale-[0.98] disabled:opacity-60"
+          className="btn btn--primary btn--lg mb-4 w-full max-w-xs"
         >
           {loading ? t('common.loading') : t('verifyEmail.resend')}
         </button>
       </div>
-      <button
-        type="button"
-        onClick={onLogout}
-        className="mx-auto flex items-center gap-2 py-3 text-sm text-[var(--color-on-surface-variant)]"
-      >
+      <button type="button" onClick={onLogout} className="btn btn--ghost mx-auto">
         <LogOut size={16} />
         {t('settings.signOut')}
       </button>

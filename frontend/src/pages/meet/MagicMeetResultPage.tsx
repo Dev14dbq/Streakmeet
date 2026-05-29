@@ -23,7 +23,7 @@ export default function MagicMeetResultPage() {
         <button
           type="button"
           onClick={() => navigate('/', { replace: true })}
-          className="rounded-full bg-[var(--color-brand-primary)] px-8 py-3 font-bold text-white"
+          className="btn btn--primary px-8"
         >
           {t('notFound.goHome')}
         </button>
@@ -83,7 +83,7 @@ export default function MagicMeetResultPage() {
       <button
         type="button"
         onClick={() => navigate('/', { replace: true })}
-        className="enroll-success-btn w-full max-w-sm mx-auto rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95"
+        className="enroll-success-btn btn btn--primary btn--lg mx-auto w-full max-w-sm"
       >
         {t('meet.great')}
       </button>

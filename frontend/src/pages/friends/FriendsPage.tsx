@@ -186,7 +186,7 @@ export default function FriendsPage() {
                 </div>
                 <button
                   onClick={() => handleStartStreak(f.friend.id)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-brand-primary)]/10 text-[var(--color-brand-primary)] text-sm font-bold rounded-full hover:bg-[var(--color-brand-primary)]/20 transition active:scale-95"
+                  className="btn btn--sm btn--soft"
                 >
                   <Flame width={18} height={18} /> {t('home.streak')}
                 </button>

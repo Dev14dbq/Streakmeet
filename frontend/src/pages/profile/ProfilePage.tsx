@@ -192,7 +192,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
         <button
           type="button"
           onClick={() => setShowQR(true)}
-          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] hover:text-on-surface hover:bg-[var(--color-surface-container-highest)] transition active:scale-95"
+          className="btn btn--icon-lg btn--secondary text-[var(--color-on-surface-variant)] hover:text-on-surface"
           aria-label={t('profile.myQr')}
         >
           <QrCode size={22} />
@@ -201,7 +201,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
         <button
           type="button"
           onClick={() => navigate('/settings')}
-          className="p-3 rounded-full bg-[var(--color-surface-container-high)] text-[var(--color-on-surface-variant)] hover:text-on-surface hover:bg-[var(--color-surface-container-highest)] transition active:scale-95"
+          className="btn btn--icon-lg btn--secondary text-[var(--color-on-surface-variant)] hover:text-on-surface"
           aria-label={t('profile.settings')}
         >
           <Settings size={22} />
@@ -333,7 +333,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
               <button
                 type="button"
                 onClick={() => setSize(size + 1)}
-                className="w-full mt-6 py-4 rounded-full bg-[var(--color-surface-container-high)] text-on-surface font-bold hover:bg-[var(--color-surface-container-highest)] transition"
+                className="btn btn--secondary btn--lg mt-6 w-full"
               >
                 {t('common.retry')}
               </button>
@@ -382,21 +382,21 @@ export default function ProfilePage({ user: initialUser }: Props) {
                     setShowAvatarSheet(false)
                     setShowCamera(true)
                   }}
-                  className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-on-surface font-semibold active:scale-[0.99] transition"
+                  className="btn btn--secondary btn--lg w-full rounded-[1.25rem]"
                 >
                   {t('profile.takePhoto')}
                 </button>
                 <button
                   type="button"
                   onClick={handlePickFromGallery}
-                  className="w-full rounded-2xl bg-[var(--color-surface-container-highest)] py-4 text-on-surface font-semibold active:scale-[0.99] transition"
+                  className="btn btn--secondary btn--lg w-full rounded-[1.25rem]"
                 >
                   {t('profile.pickFromGallery')}
                 </button>
                 <button
                   type="button"
                   onClick={closeAvatarSheet}
-                  className="w-full py-4 text-[var(--color-on-surface-variant)] font-semibold"
+                  className="btn btn--ghost btn--lg w-full"
                 >
                   {t('common.cancel')}
                 </button>
@@ -416,7 +416,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
             <button
               type="button"
               onClick={() => setShowCamera(false)}
-              className="p-2 bg-zinc-900 rounded-full text-white"
+              className="btn btn--icon bg-zinc-900 text-white"
             >
               <X size={20} />
             </button>
@@ -455,7 +455,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
               type="button"
               onClick={handleCaptureAvatar}
               disabled={uploading || !cameraReady || !cameraGranted}
-              className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 font-bold text-lg text-white transition active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
+              className="btn btn--primary btn--lg w-full"
             >
               {uploading ? t('common.saving') : t('profile.takePhoto')}
             </button>

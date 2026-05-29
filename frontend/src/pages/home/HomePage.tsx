@@ -187,9 +187,7 @@ export default function HomePage({ user }: Props) {
               aria-hidden={showSearch}
               tabIndex={showSearch ? -1 : 0}
               className={[
-                'home-add-bar__find flex w-full items-center justify-center gap-2 rounded-full',
-                'bg-[var(--color-surface-container-high)] py-3.5 text-sm font-semibold text-on-surface',
-                'transition hover:bg-[var(--color-surface-container-highest)] active:scale-[0.98]',
+                'home-add-bar__find btn btn--secondary w-full',
                 showSearch ? 'home-add-bar__find--hidden' : '',
               ].join(' ')}
             >
@@ -215,7 +213,7 @@ export default function HomePage({ user }: Props) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 tabIndex={showSearch ? 0 : -1}
-                className="w-full rounded-full bg-[var(--color-surface-container-high)] py-3.5 pl-14 pr-12 text-on-surface outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+                className="field pl-14 pr-12"
               />
               <button
                 type="button"
@@ -235,7 +233,7 @@ export default function HomePage({ user }: Props) {
           <button
             type="button"
             onClick={() => setShowQr(true)}
-            className="home-add-bar__qr flex h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)] transition hover:bg-[var(--color-brand-primary)]/25 active:scale-[0.96]"
+            className="btn btn--icon-lg btn--soft home-add-bar__qr shrink-0"
             aria-label={t('profile.myQr')}
           >
             <QrCode size={22} strokeWidth={2.25} />
@@ -274,7 +272,7 @@ export default function HomePage({ user }: Props) {
                   <button
                     type="button"
                     onClick={() => handleAdd(u.id)}
-                    className="p-2.5 bg-[var(--color-brand-primary)] text-white rounded-full active:scale-95 shrink-0 ml-2"
+                    className="btn btn--icon btn--primary ml-2 shrink-0"
                   >
                     <UserPlus size={18} />
                   </button>
@@ -320,7 +318,7 @@ export default function HomePage({ user }: Props) {
                     <button
                       type="button"
                       onClick={() => handleAccept(f.id)}
-                      className="px-4 py-2 bg-[var(--color-brand-primary)] text-white text-sm font-bold rounded-full active:scale-95 shrink-0"
+                      className="btn btn--sm btn--primary shrink-0"
                     >
                       {t('common.accept')}
                     </button>
@@ -378,7 +376,7 @@ export default function HomePage({ user }: Props) {
                     <button
                       type="button"
                       onClick={() => handleStartStreak(f.friend.id)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)] text-sm font-bold rounded-full active:scale-95 shrink-0"
+                      className="btn btn--sm btn--soft shrink-0"
                     >
                       <Flame size={16} fill="currentColor" />
                       {t('home.streak')}
@@ -425,7 +423,7 @@ export default function HomePage({ user }: Props) {
               <button
                 type="button"
                 onClick={() => setShowSearch(true)}
-                className="rounded-full bg-[var(--color-brand-primary)] px-8 py-3.5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] active:scale-95"
+                className="btn btn--primary px-8"
               >
                 {t('home.findPerson')}
               </button>

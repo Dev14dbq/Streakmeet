@@ -56,7 +56,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
           <button
             type="button"
             onClick={() => setShowScanner(false)}
-            className="rounded-full bg-[var(--color-surface-container-high)] p-2 text-on-surface"
+            className="btn btn--icon btn--secondary"
             aria-label={t('common.close')}
           >
             <X size={20} />
@@ -108,7 +108,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
           <button
             type="button"
             onClick={handleCloseAll}
-            className="rounded-full bg-[var(--color-surface-container-high)] p-3 text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+            className="btn btn--icon-lg btn--secondary"
             aria-label={t('common.back')}
           >
             <ArrowLeft size={24} />
@@ -129,7 +129,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
           <button
             type="button"
             onClick={handleShareProfile}
-            className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-lg font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition active:scale-95"
+            className="btn btn--primary btn--lg w-full"
           >
             {t('profile.shareDialogTitle')}
           </button>
@@ -139,7 +139,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
               onClose()
               setShowScanner(true)
             }}
-            className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 text-lg font-bold text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+            className="btn btn--secondary btn--lg w-full"
           >
             {t('common.qr')}
           </button>

@@ -68,19 +68,13 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
 
         <div className="flex flex-col gap-2 mb-6">
           {termsUpdated && (
-            <Link
-              to="/terms"
-              className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-container-highest)] px-4 py-3 text-sm font-semibold text-on-surface transition hover:bg-overlay-scrim"
-            >
+            <Link to="/terms" className="btn btn--secondary justify-start rounded-[1.25rem]">
               <FileText size={18} className="text-[var(--color-on-surface-variant)]" />
               {t('legal.readTerms')}
             </Link>
           )}
           {privacyUpdated && (
-            <Link
-              to="/privacy"
-              className="flex items-center gap-3 rounded-2xl bg-[var(--color-surface-container-highest)] px-4 py-3 text-sm font-semibold text-on-surface transition hover:bg-overlay-scrim"
-            >
+            <Link to="/privacy" className="btn btn--secondary justify-start rounded-[1.25rem]">
               <Shield size={18} className="text-[var(--color-on-surface-variant)]" />
               {t('legal.readPrivacy')}
             </Link>
@@ -91,7 +85,7 @@ export default function LegalConsentModal({ status, onAccepted }: Props) {
           type="button"
           onClick={handleAccept}
           disabled={accepting}
-          className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition active:scale-95 disabled:opacity-60"
+          className="btn btn--primary btn--lg w-full"
         >
           {accepting ? t('common.saving') : t('legal.accept')}
         </button>

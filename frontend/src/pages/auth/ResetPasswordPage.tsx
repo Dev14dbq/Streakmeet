@@ -66,7 +66,7 @@ export default function ResetPasswordPage() {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder={t('auth.passwordPlaceholder')}
-        className="mb-3 w-full rounded-2xl border border-subtle bg-[var(--color-surface-container)] px-4 py-3 text-on-surface outline-none"
+        className="field mb-3 border border-subtle"
         autoComplete="new-password"
       />
       <input
@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
         value={confirm}
         onChange={(e) => setConfirm(e.target.value)}
         placeholder={t('auth.confirmPasswordPlaceholder')}
-        className="mb-4 w-full rounded-2xl border border-subtle bg-[var(--color-surface-container)] px-4 py-3 text-on-surface outline-none"
+        className="field mb-4 border border-subtle"
         autoComplete="new-password"
       />
       {error && <p className="mb-4 text-sm text-[var(--color-error)]">{error}</p>}
@@ -82,7 +82,7 @@ export default function ResetPasswordPage() {
         type="button"
         disabled={loading}
         onClick={() => void handleSubmit()}
-        className="w-full rounded-2xl bg-[var(--color-brand-primary)] py-4 font-bold text-white disabled:opacity-60"
+        className="btn btn--primary btn--lg w-full"
       >
         {loading ? t('common.loading') : t('resetPassword.submit')}
       </button>

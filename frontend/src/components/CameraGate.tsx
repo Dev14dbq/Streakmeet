@@ -34,11 +34,7 @@ export default function CameraGate({
         ) : null}
         <p className="text-xs font-medium text-white/90">{message}</p>
         {display === 'denied' && (
-          <button
-            type="button"
-            className="mt-4 rounded-full bg-[var(--color-brand-primary)] px-5 py-2.5 text-sm font-bold text-white active:scale-95"
-            onClick={onRetry}
-          >
+          <button type="button" className="btn btn--sm btn--primary mt-4" onClick={onRetry}>
             {t('face.cameraRetry')}
           </button>
         )}
@@ -53,11 +49,7 @@ export default function CameraGate({
       <span className="fullscreen-camera__spinner" />
       <p className="mt-2">{message}</p>
       {display === 'denied' && (
-        <button
-          type="button"
-          className="mt-4 rounded-full bg-[var(--color-brand-primary)] px-6 py-3 text-sm font-bold text-white active:scale-95"
-          onClick={onRetry}
-        >
+        <button type="button" className="btn btn--primary mt-4" onClick={onRetry}>
           {t('face.cameraRetry')}
         </button>
       )}

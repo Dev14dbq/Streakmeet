@@ -218,7 +218,7 @@ function SuccessScreen({ onContinue }: { onContinue: () => void }) {
       <button
         type="button"
         onClick={onContinue}
-        className="enroll-success-btn w-full max-w-sm rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 mb-6"
+        className="enroll-success-btn btn btn--primary btn--lg mb-6 w-full max-w-sm"
       >
         {t('auth.continue')}
       </button>
@@ -644,7 +644,7 @@ export default function FaceEnrollmentPage({
                 type="button"
                 onClick={handleStart}
                 disabled={!cameraReady || !cameraGranted}
-                className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                className="btn btn--primary btn--lg w-full disabled:pointer-events-none"
               >
                 {t('auth.continue')}
               </button>
@@ -652,7 +652,7 @@ export default function FaceEnrollmentPage({
                 <button
                   type="button"
                   onClick={() => void requestAccess()}
-                  className="w-full py-3 text-sm font-semibold text-[var(--color-brand-primary)]"
+                  className="btn btn--ghost w-full text-[var(--color-brand-primary)]"
                 >
                   {t('face.cameraRetry')}
                 </button>
@@ -665,7 +665,7 @@ export default function FaceEnrollmentPage({
                 loopRunning.current = false
                 navigate(-1)
               }}
-              className="w-full py-4 text-sm font-semibold text-[var(--color-on-surface-variant)] hover:text-on-surface transition"
+              className="btn btn--ghost w-full"
             >
               {phase === 'intro' ? t('face.skipLater') : t('common.cancel')}
             </button>

@@ -153,7 +153,7 @@ The shape language is defined by extreme roundness, mimicking hardware industria
 
 ## Components
 
-- **Buttons:** Primary buttons are Solid #FF1A4F with white text. Secondary buttons are the "Glass" style (translucent gray) with white text. No borders allowed.
+- **Buttons:** Use the shared classes in `frontend/src/index.css`. Base buttons use `btn` at 52px height, main CTAs use `btn btn--lg` at 56px, inline actions use `btn btn--sm` at 40px, and icon actions use `btn--icon` (44px) or `btn--icon-lg` (52px). Primary buttons are Solid #FF1A4F with white text. Secondary buttons are the "Glass" style (translucent gray) with white text. No borders allowed for primary CTAs.
 - **Floating Tab Bar:** A pill-shaped floating element docked 20px from the bottom. It uses the frosted glass effect. Icons glow slightly when active.
 - **Input Fields:** Semi-transparent dark gray backgrounds, `rounded-full`, with 24px horizontal padding. The cursor and selection highlight must use the Primary Crimson.
 - **Cards:** Use the `rounded-3xl` (24px) corners. Content within cards should have 20px of internal padding.

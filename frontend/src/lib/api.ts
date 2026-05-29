@@ -141,7 +141,10 @@ export const searchUsers = (q: string) =>
   api.get<AuthUser[]>(`/api/users/search?q=${encodeURIComponent(q)}`)
 export const uploadAvatar = (photoBase64: string) =>
   api.post<{ avatarUrl: string }>('/api/users/avatar', { photoBase64 })
-export const updateEmail = (email: string) => api.patch<AuthUser>('/api/users/email', { email })
+export const updateEmail = (email: string, currentPassword: string) =>
+  api.patch<AuthUser>('/api/users/email', { email, currentPassword })
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  api.patch<{ success: true }>('/api/users/password', { currentPassword, newPassword })
 
 export const updateSettings = (timezone: string) =>
   api.patch<AuthUser & { timezone: string }>('/api/users/settings', { timezone })

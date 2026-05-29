@@ -90,7 +90,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
       <div className="flex items-center gap-4 px-6 pt-14 pb-4">
         <button
           onClick={() => (step === 'password' ? setStep('email') : navigate('/login'))}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+          className="btn btn--icon-lg btn--secondary shrink-0"
         >
           ←
         </button>
@@ -128,7 +128,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
                 setEmail(e.target.value)
                 setEmailError('')
               }}
-              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)] text-base disabled:opacity-50"
+              className="field"
             />
             {emailError && (
               <p className="mt-2 text-sm text-[var(--color-error)] pl-4">{emailError}</p>
@@ -152,7 +152,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
                   setPassword(e.target.value)
                   setPasswordError('')
                 }}
-                className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)] text-base"
+                className="field"
               />
               {passwordError && (
                 <p className="mt-2 text-sm text-[var(--color-error)] pl-4">{passwordError}</p>
@@ -170,11 +170,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
             </button>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white transition hover:bg-[var(--color-primary-container)] active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)] mt-2"
-          >
+          <button type="submit" disabled={loading} className="btn btn--primary btn--lg mt-2 w-full">
             {loading ? '...' : step === 'email' ? t('auth.continue') : t('auth.signIn')}
           </button>
         </div>

@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t('auth.emailPlaceholder')}
-            className="mb-4 w-full rounded-2xl border border-subtle bg-[var(--color-surface-container)] px-4 py-3 text-on-surface outline-none focus:border-[var(--color-brand-primary)]"
+            className="field mb-4 border border-subtle"
             autoComplete="email"
           />
           {error && <p className="mb-4 text-sm text-[var(--color-error)]">{error}</p>}
@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
             type="button"
             disabled={loading}
             onClick={() => void handleSubmit()}
-            className="w-full rounded-2xl bg-[var(--color-brand-primary)] py-4 font-bold text-white disabled:opacity-60"
+            className="btn btn--primary btn--lg w-full"
           >
             {loading ? t('common.loading') : t('forgotPassword.submit')}
           </button>

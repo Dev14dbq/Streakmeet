@@ -1,0 +1,16 @@
+---
+description: UI/UX and button sizing rules for StreakMeet frontend work
+globs: frontend/src/**/*.{tsx,css}
+alwaysApply: false
+---
+
+# UI/UX Rules
+
+- Treat StreakMeet as mobile-first, dark, tactile, and social: glass surfaces, high contrast, rounded controls, fast feedback.
+- Use `px-6` / 24px as the default page gutter and keep content in a focused single column.
+- Prefer shared UI classes from `frontend/src/index.css` over hand-written button/input sizing.
+- Buttons should use `btn` plus a variant: `btn--primary`, `btn--secondary`, `btn--soft`, or `btn--ghost`.
+- Button sizes are fixed: default `btn` is 52px, `btn--lg` is 56px, `btn--sm` is 40px, `btn--icon` is 44px, and `btn--icon-lg` is 52px.
+- Primary buttons are only for high-intent actions. Secondary is neutral, soft is low-risk brand action, ghost is cancel/back/text-like action.
+- Standard inputs should use `field` for 56px pill controls with theme-aware background and brand focus ring.
+- Use CSS variables for colors. Avoid introducing new hardcoded colors unless the UI is camera/photo-specific.

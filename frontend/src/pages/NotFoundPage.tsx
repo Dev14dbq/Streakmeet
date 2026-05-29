@@ -29,15 +29,11 @@ export default function NotFoundPage({ homeTo = '/', title, message }: Props) {
         <button
           type="button"
           onClick={() => navigate(homeTo, { replace: true })}
-          className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95"
+          className="btn btn--primary btn--lg w-full"
         >
           {t('notFound.goHome')}
         </button>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="w-full py-4 text-sm font-semibold text-[var(--color-on-surface-variant)] transition hover:text-on-surface"
-        >
+        <button type="button" onClick={() => navigate(-1)} className="btn btn--ghost w-full">
           {t('common.back')}
         </button>
       </div>

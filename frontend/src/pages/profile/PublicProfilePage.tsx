@@ -121,10 +121,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
   function renderFriendButton() {
     if (isSelf) {
       return (
-        <Link
-          to="/profile"
-          className="w-full max-w-sm rounded-full bg-[var(--color-surface-container-high)] py-4 text-base font-bold text-on-surface text-center transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
-        >
+        <Link to="/profile" className="btn btn--secondary btn--lg w-full max-w-sm">
           {t('streak.myProfile')}
         </Link>
       )
@@ -137,7 +134,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
         <button
           type="button"
           disabled
-          className="w-full max-w-sm rounded-full bg-[var(--color-surface-container-high)] py-4 text-base font-bold text-[var(--color-on-surface-variant)] flex items-center justify-center gap-2"
+          className="btn btn--secondary btn--lg w-full max-w-sm text-[var(--color-on-surface-variant)]"
         >
           <Check size={20} />
           {t('settings.friends')}
@@ -151,7 +148,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
           type="button"
           onClick={handleAcceptFriend}
           disabled={friendLoading}
-          className="w-full max-w-sm rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+          className="btn btn--primary btn--lg w-full max-w-sm"
         >
           {friendLoading ? '...' : t('profile.acceptRequest')}
         </button>
@@ -163,7 +160,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
         <button
           type="button"
           disabled
-          className="w-full max-w-sm rounded-full bg-[var(--color-surface-container-high)] py-4 text-base font-bold text-[var(--color-on-surface-variant)] flex items-center justify-center gap-2"
+          className="btn btn--secondary btn--lg w-full max-w-sm text-[var(--color-on-surface-variant)]"
         >
           <Clock size={20} />
           {t('profile.requestSent')}
@@ -176,7 +173,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
         type="button"
         onClick={handleAddFriend}
         disabled={friendLoading}
-        className="w-full max-w-sm rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+        className="btn btn--primary btn--lg w-full max-w-sm"
       >
         <UserPlus size={20} />
         {friendLoading ? '...' : currentUser ? t('profile.addFriend') : t('profile.signInToAdd')}
@@ -192,7 +189,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
           onClick={() =>
             window.history.length > 1 ? navigate(-1) : navigate(currentUser ? '/' : '/login')
           }
-          className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+          className="btn btn--icon-lg btn--secondary mb-6"
           aria-label={t('common.back')}
         >
           <ArrowLeft size={22} />
@@ -325,7 +322,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
                 <button
                   type="button"
                   onClick={() => setSize(size + 1)}
-                  className="w-full mt-6 py-4 rounded-full bg-[var(--color-surface-container-high)] text-on-surface font-bold hover:bg-[var(--color-surface-container-highest)] transition"
+                  className="btn btn--secondary btn--lg mt-6 w-full"
                 >
                   {t('common.retry')}
                 </button>

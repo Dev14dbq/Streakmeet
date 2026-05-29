@@ -1,4 +1,5 @@
 import { Router, type Response } from 'express'
+import bcrypt from 'bcryptjs'
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
 import { requireEmailVerified } from '../middleware/requireEmailVerified.js'
 import { prisma } from '../lib/prisma.js'
@@ -85,9 +86,13 @@ router.patch('/preferences', async (req: AuthRequest, res: Response) => {
 })
 
 router.patch('/email', async (req: AuthRequest, res: Response) => {
-  const { email } = req.body as { email?: string }
+  const { email, currentPassword } = req.body as { email?: string; currentPassword?: string }
   if (!email || !email.includes('@')) {
     sendError(res, 400, ErrorCodes.INVALID_EMAIL)
+    return
+  }
+  if (!currentPassword) {
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
     return
   }
 
@@ -103,6 +108,19 @@ router.patch('/email', async (req: AuthRequest, res: Response) => {
     where: { id: req.userId },
     select: { passwordHash: true },
   })
+  if (!current) {
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
+    return
+  }
+  if (!current.passwordHash) {
+    sendError(res, 400, ErrorCodes.OAUTH_ACCOUNT_NO_PASSWORD)
+    return
+  }
+  const validPassword = await bcrypt.compare(currentPassword, current.passwordHash)
+  if (!validPassword) {
+    sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
+    return
+  }
 
   const user = await prisma.user.update({
     where: { id: req.userId },
@@ -122,6 +140,45 @@ router.patch('/email', async (req: AuthRequest, res: Response) => {
   }
 
   res.json(userProfilePayload(user))
+})
+
+router.patch('/password', async (req: AuthRequest, res: Response) => {
+  const { currentPassword, newPassword } = req.body as {
+    currentPassword?: string
+    newPassword?: string
+  }
+  if (!currentPassword || !newPassword) {
+    sendError(res, 400, ErrorCodes.MISSING_FIELD)
+    return
+  }
+  if (newPassword.length < 6) {
+    sendError(res, 400, ErrorCodes.PASSWORD_TOO_SHORT)
+    return
+  }
+
+  const current = await prisma.user.findUnique({
+    where: { id: req.userId },
+    select: { passwordHash: true },
+  })
+  if (!current) {
+    sendError(res, 404, ErrorCodes.USER_NOT_FOUND)
+    return
+  }
+  if (!current.passwordHash) {
+    sendError(res, 400, ErrorCodes.OAUTH_ACCOUNT_NO_PASSWORD)
+    return
+  }
+  const validPassword = await bcrypt.compare(currentPassword, current.passwordHash)
+  if (!validPassword) {
+    sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
+    return
+  }
+
+  await prisma.user.update({
+    where: { id: req.userId },
+    data: { passwordHash: await bcrypt.hash(newPassword, 12) },
+  })
+  res.json({ success: true })
 })
 
 // PATCH /api/users/public

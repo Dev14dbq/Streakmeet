@@ -72,7 +72,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
       <div className="flex items-center gap-4 px-6 pt-14 pb-4">
         <button
           onClick={() => navigate('/login')}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] text-on-surface transition hover:bg-[var(--color-surface-container-highest)] active:scale-95"
+          className="btn btn--icon-lg btn--secondary shrink-0"
         >
           ←
         </button>
@@ -123,7 +123,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
                   setErrors((prev) => ({ ...prev, username: '' }))
                 }}
                 maxLength={20}
-                className="w-full rounded-full bg-[var(--color-surface-container-high)] py-4 pl-10 pr-6 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+                className="field pl-10"
               />
             </div>
             {errors.username && (
@@ -146,7 +146,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
                 setPassword(e.target.value)
                 setErrors((prev) => ({ ...prev, password: '' }))
               }}
-              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+              className="field"
             />
             {errors.password && (
               <p className="mt-2 text-xs text-[var(--color-error)] pl-4">{errors.password}</p>
@@ -168,7 +168,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
                 setConfirmPassword(e.target.value)
                 setErrors((prev) => ({ ...prev, confirmPassword: '' }))
               }}
-              className="w-full rounded-full bg-[var(--color-surface-container-high)] px-6 py-4 text-on-surface placeholder-[var(--color-on-surface-variant)] outline-none transition focus:ring-2 focus:ring-[var(--color-brand-primary)]"
+              className="field"
             />
             {errors.confirmPassword && (
               <p className="mt-2 text-xs text-[var(--color-error)] pl-4">
@@ -177,11 +177,7 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-4 w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white transition hover:bg-[var(--color-primary-container)] active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
-          >
+          <button type="submit" disabled={loading} className="btn btn--primary btn--lg mt-4 w-full">
             {loading ? t('auth.creatingAccount') : t('auth.createAccountBtn')}
           </button>
         </div>

@@ -85,7 +85,7 @@ export default function AccountDeletedPage({ onAuth }: Props) {
           type="button"
           onClick={handleRestore}
           disabled={loading}
-          className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 disabled:opacity-50"
+          className="btn btn--primary btn--lg w-full"
         >
           {loading ? t('auth.restoring') : t('auth.restoreAccount')}
         </button>
@@ -93,7 +93,7 @@ export default function AccountDeletedPage({ onAuth }: Props) {
           type="button"
           onClick={() => navigate('/login', { replace: true })}
           disabled={loading}
-          className="w-full py-4 text-sm font-semibold text-[var(--color-on-surface-variant)] hover:text-white transition"
+          className="btn btn--ghost w-full"
         >
           {t('auth.keepDeleted')}
         </button>

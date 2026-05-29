@@ -278,11 +278,7 @@ export default function StreakDetailsPage() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 gap-4">
         <p className="text-[var(--color-on-surface-variant)] text-center">{message}</p>
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="rounded-full bg-[var(--color-surface-container-high)] px-6 py-3 text-on-surface font-semibold"
-        >
+        <button type="button" onClick={() => navigate('/')} className="btn btn--secondary">
           {t('notFound.goHome')}
         </button>
       </div>
@@ -329,14 +325,14 @@ export default function StreakDetailsPage() {
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-on-surface border border-white/10 transition active:scale-95"
+              className="btn btn--icon bg-black/40 text-on-surface backdrop-blur-md border border-white/10"
               aria-label={t('common.back')}
             >
               <ArrowLeft size={20} />
             </button>
             <Link
               to={`/${partner.nickname}`}
-              className="rounded-full bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 text-xs font-bold text-on-surface/90 transition hover:text-[var(--color-brand-primary)] active:scale-95"
+              className="btn btn--sm bg-black/40 text-on-surface/90 backdrop-blur-md border border-white/10 hover:text-[var(--color-brand-primary)]"
             >
               @{partner.nickname}
             </Link>
@@ -433,7 +429,7 @@ export default function StreakDetailsPage() {
           <button
             type="button"
             onClick={() => openRemoteSelfieReply(pendingRemoteSelfie.id)}
-            className="w-full rounded-full py-4 bg-gradient-to-r from-purple-500 to-indigo-500 text-on-surface font-bold text-base shadow-[0_8px_30px_rgba(139,92,246,0.4)] transition active:scale-[0.96] flex items-center justify-center gap-2"
+            className="btn btn--lg w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-on-surface shadow-[0_8px_30px_rgba(139,92,246,0.4)]"
           >
             <Camera size={20} />
             {t('camera.sendReply')} @{pendingRemoteSelfie.sender.nickname}
@@ -447,7 +443,7 @@ export default function StreakDetailsPage() {
           <button
             type="button"
             onClick={openRemoteSelfieInit}
-            className="w-full rounded-full py-4 bg-[var(--color-surface-container-high)] text-on-surface font-bold text-sm transition active:scale-[0.96] hover:bg-[var(--color-surface-container-highest)] flex items-center justify-center gap-2"
+            className="btn btn--secondary btn--lg w-full"
           >
             <Smartphone size={18} />
             {t('camera.meetPhoto')}
@@ -517,7 +513,7 @@ export default function StreakDetailsPage() {
               <button
                 type="button"
                 onClick={() => setSize(size + 1)}
-                className="w-full py-4 rounded-full bg-[var(--color-surface-container-high)] text-on-surface font-bold hover:bg-[var(--color-surface-container-highest)] transition active:scale-[0.98] flex items-center justify-center gap-2"
+                className="btn btn--secondary btn--lg w-full"
               >
                 <ImageIcon size={18} />
                 {t('common.retry')}

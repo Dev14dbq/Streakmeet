@@ -93,7 +93,7 @@ export default function VerifyEmailConfirmPage() {
           <button
             type="button"
             onClick={goNext}
-            className="w-full max-w-xs rounded-2xl bg-[var(--color-brand-primary)] py-4 font-bold text-white transition active:scale-[0.98]"
+            className="btn btn--primary btn--lg w-full max-w-xs"
           >
             {t('verifyEmail.continueApp')}
           </button>
@@ -114,7 +114,7 @@ export default function VerifyEmailConfirmPage() {
           <button
             type="button"
             onClick={() => navigate('/login', { replace: true })}
-            className="w-full max-w-xs rounded-2xl bg-[var(--color-brand-primary)] py-4 font-bold text-white"
+            className="btn btn--primary btn--lg w-full max-w-xs"
           >
             {t('auth.signIn')}
           </button>
@@ -135,7 +135,7 @@ export default function VerifyEmailConfirmPage() {
           <button
             type="button"
             onClick={() => navigate('/login', { replace: true })}
-            className="w-full max-w-xs rounded-2xl bg-[var(--color-brand-primary)] py-4 font-bold text-white"
+            className="btn btn--primary btn--lg w-full max-w-xs"
           >
             {t('auth.signIn')}
           </button>
