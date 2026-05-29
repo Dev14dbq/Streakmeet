@@ -4,14 +4,18 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { QrCode, Image as ImageIcon, Settings, X, MapPin, Camera } from 'lucide-react'
 import Webcam from 'react-webcam'
 import useSWRInfinite from 'swr/infinite'
+import CameraGate from '../../components/CameraGate'
 import ProfileQrModal from '../../components/ProfileQrModal'
 import CachedImage from '../../components/CachedImage'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 import { uploadAvatar, getApiErrorMessage, type AuthUser } from '../../lib/api'
 import { avatarInitial } from '../../lib/avatarInitial'
+import { captureVideoFrame } from '../../lib/captureVideoFrame'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { invalidateCachedImage } from '../../lib/remoteImageCache'
+import { useCameraGate } from '../../lib/useCameraGate'
 import { useOverlayTransition } from '../../lib/useOverlayTransition'
+import { waitForLiveVideo } from '../../lib/webCamera'
 import { toastError } from '../../lib/toast'
 
 interface Props {
@@ -40,6 +44,14 @@ export default function ProfilePage({ user: initialUser }: Props) {
   const [showQR, setShowQR] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
   const [cameraReady, setCameraReady] = useState(false)
+  const {
+    cameraAccess,
+    webcamMountKey,
+    isGranted: cameraGranted,
+    showGate: showCameraGate,
+    requestAccess,
+    handleStreamError,
+  } = useCameraGate({ active: showCamera })
   const [showAvatarSheet, setShowAvatarSheet] = useState(false)
   const [avatarSheetPhase, setAvatarSheetPhase] = useState<'choose' | 'uploading'>('choose')
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -64,6 +76,17 @@ export default function ProfilePage({ user: initialUser }: Props) {
   useEffect(() => {
     if (!showCamera) setCameraReady(false)
   }, [showCamera])
+
+  const handleWebcamReady = async () => {
+    const video = webcamRef.current?.video
+    if (!video) {
+      setCameraReady(false)
+      return
+    }
+    const live = await waitForLiveVideo(video)
+    setCameraReady(live)
+    if (!live) toastError(t('face.cameraNotReady'))
+  }
 
   useEffect(() => {
     if (showAvatarSheet) {
@@ -117,9 +140,16 @@ export default function ProfilePage({ user: initialUser }: Props) {
   }
 
   async function handleCaptureAvatar() {
-    if (!webcamRef.current) return
-    const imageSrc = webcamRef.current.getScreenshot()
-    if (!imageSrc) return
+    const video = webcamRef.current?.video
+    if (!video || !cameraReady) {
+      toastError(t('face.cameraNotReady'))
+      return
+    }
+    const imageSrc = captureVideoFrame(video, { minWidth: 720, quality: 0.92, mirror: true })
+    if (!imageSrc) {
+      toastError(t('profile.cameraError'))
+      return
+    }
     await saveAvatar(imageSrc)
   }
 
@@ -393,18 +423,28 @@ export default function ProfilePage({ user: initialUser }: Props) {
           </div>
 
           <div className="flex-1 relative overflow-hidden rounded-3xl mx-4 mb-6 bg-zinc-900 flex items-center justify-center">
-            <Webcam
-              ref={webcamRef}
-              audio={false}
-              screenshotFormat="image/jpeg"
-              videoConstraints={{ facingMode: 'user', aspectRatio: 1 }}
-              className={`camera-video w-full h-full object-cover max-w-md ${cameraReady ? 'camera-video--ready' : ''}`}
-              onUserMedia={() => setCameraReady(true)}
-              onUserMediaError={() => {
-                setCameraReady(false)
-                toastError(t('profile.cameraError'))
-              }}
-            />
+            {showCameraGate ? (
+              <CameraGate
+                access={cameraAccess}
+                onRetry={() => void requestAccess()}
+                variant="fullscreen"
+                className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-900"
+              />
+            ) : cameraGranted ? (
+              <Webcam
+                key={webcamMountKey}
+                ref={webcamRef}
+                audio={false}
+                screenshotFormat="image/jpeg"
+                videoConstraints={{ facingMode: 'user', aspectRatio: 1 }}
+                className={`camera-video w-full h-full object-cover max-w-md scale-x-[-1] ${cameraReady ? 'camera-video--ready' : ''}`}
+                onUserMedia={() => void handleWebcamReady()}
+                onUserMediaError={(err) => {
+                  setCameraReady(false)
+                  handleStreamError(err, () => toastError(t('profile.cameraError')))
+                }}
+              />
+            ) : null}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               <div className="w-64 h-64 rounded-full border-4 border-[var(--color-brand-primary)] shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]" />
             </div>
@@ -414,7 +454,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
             <button
               type="button"
               onClick={handleCaptureAvatar}
-              disabled={uploading}
+              disabled={uploading || !cameraReady || !cameraGranted}
               className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 font-bold text-lg text-white transition active:scale-95 disabled:opacity-50 shadow-[0_8px_20px_rgba(255,26,79,0.3)]"
             >
               {uploading ? t('common.saving') : t('profile.takePhoto')}

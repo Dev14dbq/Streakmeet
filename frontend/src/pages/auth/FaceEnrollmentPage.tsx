@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Capacitor } from '@capacitor/core'
-import { App as CapApp } from '@capacitor/app'
 import Webcam from 'react-webcam'
 import * as faceapi from '@vladmandic/face-api'
+import CameraGate from '../../components/CameraGate'
 import { enrollFace, type AuthUser } from '../../lib/api'
 import { captureVideoFrame } from '../../lib/captureVideoFrame'
-import { ensureCameraAccess, waitForLiveVideo } from '../../lib/webCamera'
+import { waitForLiveVideo } from '../../lib/webCamera'
+import { useCameraGate } from '../../lib/useCameraGate'
 import { toastError } from '../../lib/toast'
 import i18n from '../../i18n'
-
-type CameraAccess = 'idle' | 'pending' | 'granted' | 'denied'
 
 type StepId =
   | 'center1'
@@ -263,8 +261,6 @@ export default function FaceEnrollmentPage({
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const [modelsLoaded, setModelsLoaded] = useState(false)
-  const [cameraAccess, setCameraAccess] = useState<CameraAccess>('idle')
-  const [webcamKey, setWebcamKey] = useState(0)
   const [cameraReady, setCameraReady] = useState(false)
   const [phase, setPhase] = useState<Phase>('loading')
   const [stepIndex, setStepIndex] = useState(0)
@@ -323,35 +319,17 @@ export default function FaceEnrollmentPage({
   const isScanning = STEPS.some((s) => s.id === phase)
   const needsCamera = modelsLoaded && (phase === 'intro' || isScanning)
 
-  const startCameraAccess = useCallback(async () => {
-    setCameraAccess('pending')
-    setCameraReady(false)
-    const ok = await ensureCameraAccess()
-    if (ok) {
-      setCameraAccess('granted')
-      setWebcamKey((k) => k + 1)
-    } else {
-      setCameraAccess('denied')
-      setStatusMsg(t('face.cameraDenied'))
-    }
-  }, [t])
-
-  useEffect(() => {
-    if (!needsCamera) return
-    void startCameraAccess()
-  }, [needsCamera, startCameraAccess])
-
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform() || !needsCamera) return
-    let remove: (() => void) | undefined
-    void CapApp.addListener('appStateChange', ({ isActive }) => {
-      if (!isActive || cameraReady) return
-      void startCameraAccess()
-    }).then((h) => {
-      remove = () => h.remove()
-    })
-    return () => remove?.()
-  }, [needsCamera, cameraReady, startCameraAccess])
+  const {
+    cameraAccess,
+    webcamMountKey: webcamKey,
+    isGranted: cameraGranted,
+    requestAccess,
+    handleStreamError,
+  } = useCameraGate({
+    active: needsCamera,
+    onDenied: () => setStatusMsg(t('face.cameraDenied')),
+    resumeRetryIf: () => !cameraReady,
+  })
 
   const handleWebcamReady = useCallback(async () => {
     const video = webcamRef.current?.video
@@ -573,7 +551,7 @@ export default function FaceEnrollmentPage({
             }}
           >
             <div className="absolute inset-[22px] rounded-full overflow-hidden">
-              {modelsLoaded && cameraAccess === 'granted' ? (
+              {modelsLoaded && cameraGranted ? (
                 <Webcam
                   key={webcamKey}
                   ref={webcamRef}
@@ -589,10 +567,8 @@ export default function FaceEnrollmentPage({
                   onUserMedia={() => void handleWebcamReady()}
                   onUserMediaError={(err) => {
                     setCameraReady(false)
-                    setStatusMsg(
-                      t('face.cameraError', {
-                        message: typeof err === 'string' ? err : err.message,
-                      })
+                    handleStreamError(err, (msg) =>
+                      setStatusMsg(t('face.cameraError', { message: msg }))
                     )
                   }}
                 />
@@ -601,12 +577,12 @@ export default function FaceEnrollmentPage({
                   <span className="text-5xl opacity-30 animate-pulse">👤</span>
                 </div>
               )}
-              {cameraAccess === 'pending' && (
-                <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/50">
-                  <p className="text-xs font-medium text-white/80 animate-pulse">
-                    {t('face.cameraWaiting')}
-                  </p>
-                </div>
+              {needsCamera && (
+                <CameraGate
+                  access={cameraAccess}
+                  onRetry={() => void requestAccess()}
+                  variant="overlay"
+                />
               )}
               <canvas
                 ref={canvasRef}
@@ -667,7 +643,7 @@ export default function FaceEnrollmentPage({
               <button
                 type="button"
                 onClick={handleStart}
-                disabled={!cameraReady || cameraAccess !== 'granted'}
+                disabled={!cameraReady || !cameraGranted}
                 className="w-full rounded-full bg-[var(--color-brand-primary)] py-4 text-base font-bold text-white shadow-[0_8px_20px_rgba(255,26,79,0.3)] transition hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
               >
                 {t('auth.continue')}
@@ -675,7 +651,7 @@ export default function FaceEnrollmentPage({
               {cameraAccess === 'denied' && (
                 <button
                   type="button"
-                  onClick={() => void startCameraAccess()}
+                  onClick={() => void requestAccess()}
                   className="w-full py-3 text-sm font-semibold text-[var(--color-brand-primary)]"
                 >
                   {t('face.cameraRetry')}
