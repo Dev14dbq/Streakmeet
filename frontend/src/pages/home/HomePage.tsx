@@ -5,17 +5,11 @@ import ProfileQrModal from '../../components/ProfileQrModal'
 import Avatar from '../../components/Avatar'
 import { Flame, Search, UserPlus, Clock, QrCode } from 'lucide-react'
 import useSWR from 'swr'
-import {
-  searchUsers,
-  requestFriend,
-  acceptFriend,
-  createStreak,
-  getApiErrorMessage,
-  type AuthUser,
-} from '../../lib/api'
+import { type AuthUser, fetcher } from '../../lib/api'
 import { SWR_KEYS } from '../../lib/swrKeys'
-import { toastError, toastSuccess } from '../../lib/toast'
 import { isStreakMetToday } from '../../lib/streakCalendar'
+import { useFriendSearch } from '../../hooks/useFriendSearch'
+import type { StreakListItem, FriendListItem } from '@streakmeet/api-spec'
 
 interface Props {
   user: AuthUser
@@ -23,12 +17,6 @@ interface Props {
 
 export default function HomePage({ user }: Props) {
   const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<
-    { id: string; nickname: string; avatarUrl?: string }[]
-  >([])
-  const [loadingSearch, setLoadingSearch] = useState(false)
-  const [searchError, setSearchError] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showQr, setShowQr] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -37,8 +25,20 @@ export default function HomePage({ user }: Props) {
     data: streaks = [],
     error: streaksError,
     mutate: mutateStreaks,
-  } = useSWR(SWR_KEYS.streaks)
-  const { data: friends = [], mutate: mutateFriends } = useSWR(SWR_KEYS.friends)
+  } = useSWR<StreakListItem[]>(SWR_KEYS.streaks, fetcher)
+
+  const {
+    query,
+    setQuery,
+    searchResults,
+    loadingSearch,
+    partition,
+    handleAdd: doHandleAdd,
+    handleAccept,
+    handleStartStreak: doHandleStartStreak,
+  } = useFriendSearch()
+
+  const { incoming, accepted, pendingOut } = partition
 
   const loading = !streaks && !streaksError
 
@@ -46,79 +46,22 @@ export default function HomePage({ user }: Props) {
     if (showSearch) searchInputRef.current?.focus()
   }, [showSearch])
 
-  useEffect(() => {
-    if (query.length < 3) {
-      setSearchResults([])
-      setSearchError(false)
-      return
-    }
-    const timer = setTimeout(async () => {
-      setLoadingSearch(true)
-      setSearchError(false)
-      try {
-        const { data } = await searchUsers(query)
-        setSearchResults(data)
-      } catch (e) {
-        setSearchResults([])
-        setSearchError(true)
-        toastError(getApiErrorMessage(e, t('home.searchFailed')))
-      } finally {
-        setLoadingSearch(false)
-      }
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [query])
-
-  const incoming = friends.filter((f: { isIncomingRequest?: boolean }) => f.isIncomingRequest)
-  const accepted = friends.filter((f: { status: string }) => f.status === 'ACCEPTED')
-  const pendingOut = friends.filter(
-    (f: { status: string; isIncomingRequest?: boolean }) =>
-      f.status === 'PENDING' && !f.isIncomingRequest
-  )
-
-  const streakPartnerIds = new Set(streaks.map((s: { partner: { id: string } }) => s.partner.id))
-  const canStartStreak = accepted.filter(
-    (f: { friend: { id: string } }) => !streakPartnerIds.has(f.friend.id)
-  )
-
-  const needsMeetToday = streaks.filter(
-    (s: { lastMetDate?: string; timezone?: string }) => !isStreakMetToday(s)
-  )
-
   async function handleAdd(id: string) {
-    try {
-      await requestFriend(id)
-      setQuery('')
-      setShowSearch(false)
-      mutateFriends()
-      toastSuccess(t('home.requestSent'))
-    } catch (e) {
-      toastError(getApiErrorMessage(e, t('home.requestFailed')))
-    }
-  }
-
-  async function handleAccept(friendshipId: string) {
-    try {
-      await acceptFriend(friendshipId)
-      mutateFriends()
-      toastSuccess(t('home.requestAccepted'))
-    } catch (e) {
-      toastError(getApiErrorMessage(e, t('home.acceptFailed')))
-    }
+    await doHandleAdd(id)
+    setShowSearch(false)
   }
 
   async function handleStartStreak(friendId: string) {
-    try {
-      await createStreak(friendId)
-      mutateStreaks()
-      mutateFriends()
-      toastSuccess(t('home.streakStarted'))
-    } catch (e) {
-      toastError(getApiErrorMessage(e, t('home.streakStartFailed')))
-    }
+    await doHandleStartStreak(friendId)
+    void mutateStreaks()
   }
 
-  function StreakCard({ s, urgent }: { s: any; urgent?: boolean }) {
+  const streakPartnerIds = new Set(streaks.map((s) => s.partner.id))
+  const canStartStreak = accepted.filter((f) => !streakPartnerIds.has(f.friend.id))
+
+  const needsMeetToday = streaks.filter((s) => !isStreakMetToday(s))
+
+  function StreakCard({ s, urgent }: { s: StreakListItem; urgent?: boolean }) {
     return (
       <Link
         to={`/streaks/${s.partner.nickname}`}
@@ -246,8 +189,6 @@ export default function HomePage({ user }: Props) {
               <p className="text-[var(--color-on-surface-variant)] text-sm py-2">
                 {t('common.searching')}
               </p>
-            ) : searchError ? (
-              <p className="text-[var(--color-error)] text-sm py-2">{t('home.searchError')}</p>
             ) : searchResults.length === 0 ? (
               <p className="text-[var(--color-on-surface-variant)] text-sm py-2">
                 {t('home.noResults')}
@@ -271,7 +212,7 @@ export default function HomePage({ user }: Props) {
                   </Link>
                   <button
                     type="button"
-                    onClick={() => handleAdd(u.id)}
+                    onClick={() => void handleAdd(u.id)}
                     className="btn btn--icon btn--primary ml-2 shrink-0"
                   >
                     <UserPlus size={18} />
@@ -304,7 +245,7 @@ export default function HomePage({ user }: Props) {
                 {t('home.requests')} · {incoming.length}
               </h2>
               <div className="flex flex-col gap-2">
-                {incoming.map((f: any) => (
+                {incoming.map((f: FriendListItem) => (
                   <div
                     key={f.id}
                     className="flex items-center justify-between glass-card p-4 rounded-2xl border border-[var(--color-brand-primary)]/25"
@@ -317,7 +258,7 @@ export default function HomePage({ user }: Props) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleAccept(f.id)}
+                      onClick={() => void handleAccept(f.id)}
                       className="btn btn--sm btn--primary shrink-0"
                     >
                       {t('common.accept')}
@@ -334,7 +275,7 @@ export default function HomePage({ user }: Props) {
                 {t('home.todayMeet')}
               </h2>
               <div className="flex flex-col gap-3">
-                {needsMeetToday.map((s: any) => (
+                {needsMeetToday.map((s: StreakListItem) => (
                   <StreakCard key={s.id} s={s} urgent />
                 ))}
               </div>
@@ -348,8 +289,8 @@ export default function HomePage({ user }: Props) {
               </h2>
               <div className="flex flex-col gap-3">
                 {streaks
-                  .filter((s: any) => isStreakMetToday(s))
-                  .map((s: any) => (
+                  .filter((s) => isStreakMetToday(s))
+                  .map((s: StreakListItem) => (
                     <StreakCard key={s.id} s={s} />
                   ))}
               </div>
@@ -362,7 +303,7 @@ export default function HomePage({ user }: Props) {
                 {t('home.startStreak')}
               </h2>
               <div className="flex flex-col gap-2">
-                {canStartStreak.map((f: any) => (
+                {canStartStreak.map((f: FriendListItem) => (
                   <div
                     key={f.id}
                     className="flex items-center justify-between glass-card p-4 rounded-2xl"
@@ -375,7 +316,7 @@ export default function HomePage({ user }: Props) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleStartStreak(f.friend.id)}
+                      onClick={() => void handleStartStreak(f.friend.id)}
                       className="btn btn--sm btn--soft shrink-0"
                     >
                       <Flame size={16} fill="currentColor" />
@@ -393,7 +334,7 @@ export default function HomePage({ user }: Props) {
                 {t('home.pending')}
               </h2>
               <div className="flex flex-col gap-2">
-                {pendingOut.map((f: any) => (
+                {pendingOut.map((f: FriendListItem) => (
                   <div
                     key={f.id}
                     className="flex items-center justify-between border border-subtle p-4 rounded-2xl opacity-60"

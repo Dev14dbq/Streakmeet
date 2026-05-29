@@ -28,6 +28,7 @@
     "@capgo/capacitor-social-login": "^8.3.22",
     "@react-oauth/google": "^0.13.5",
     "@streakmeet/api-spec": "*",
+    "@streakmeet/shared": "*",
     "@vladmandic/face-api": "^1.7.15",
     "@yudiel/react-qr-scanner": "^2.6.0",
     "axios": "^1.16.1",

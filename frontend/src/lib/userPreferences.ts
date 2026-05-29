@@ -1,3 +1,5 @@
+import { getStoredUser } from '../context/AuthContext'
+
 const SETTINGS_KEY = 'streakmeet_settings'
 
 export interface NotificationPrefs {
@@ -15,19 +17,12 @@ const defaults: NotificationPrefs = {
 }
 
 function fromStoredUser(): Partial<NotificationPrefs> {
-  try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}') as {
-      notifyFriends?: boolean
-      notifyMeet?: boolean
-      geoOnPhotos?: boolean
-    }
-    return {
-      notifyFriends: user.notifyFriends,
-      notifyMeet: user.notifyMeet,
-      geoOnPhotos: user.geoOnPhotos,
-    }
-  } catch {
-    return {}
+  const user = getStoredUser()
+  if (!user) return {}
+  return {
+    notifyFriends: user.notifyFriends,
+    notifyMeet: user.notifyMeet,
+    geoOnPhotos: user.geoOnPhotos,
   }
 }
 

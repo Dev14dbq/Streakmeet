@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Capacitor } from '@capacitor/core'
 import { Geolocation } from '@capacitor/geolocation'
-import { io, type Socket } from 'socket.io-client'
+import { type Socket } from 'socket.io-client'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
@@ -11,11 +11,10 @@ import { Locate, MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-
 import {
   getFriendLocations,
   getMyLocation,
-  getRealtimeServerUrl,
   getApiErrorMessage,
-  type AuthUser,
   type FriendLocation,
 } from '../../lib/api'
+import { useSocket } from '../../hooks/useSocket'
 import {
   isLocationSharingActive,
   startLocationSharing,
@@ -37,6 +36,7 @@ import { useCachedImageSrcMap } from '../../lib/useCachedImageSrc'
 import { formatRelativeTime } from '../../i18n/format'
 import { toastError } from '../../lib/toast'
 import { MAP_TILE_URLS, useResolvedTheme } from '../../lib/theme'
+import { useAuth } from '../../context/AuthContext'
 
 const SHARE_UI_COMPACT_KEY = 'map_share_ui_compact'
 const TILE_ATTRIBUTION =
@@ -117,13 +117,8 @@ export default function MapPage() {
   const [selfPos, setSelfPos] = useState<{ lat: number; lng: number } | null>(null)
   const [locating, setLocating] = useState(false)
 
-  const me = useMemo<AuthUser>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('user') || '{}') as AuthUser
-    } catch {
-      return {} as AuthUser
-    }
-  }, [])
+  const { user: me } = useAuth()
+  if (!me) return null
 
   const markerSize = 40
   const markerAnchor = markerSize / 2
@@ -233,29 +228,23 @@ export default function MapPage() {
     }
   }, [isNative])
 
-  useEffect(() => {
-    if (!isNative) return
+  const onLocationEvent = useCallback(
+    (socket: Socket) => {
+      socket.on('friend:location', (payload: FriendLocation) => {
+        if (payload?.id) upsertFriend(payload)
+      })
+      socket.on('friend:location:off', (payload: { id?: string }) => {
+        if (payload?.id) removeFriend(payload.id)
+      })
+      return () => {
+        socket.off('friend:location')
+        socket.off('friend:location:off')
+      }
+    },
+    [upsertFriend, removeFriend]
+  )
 
-    const token = localStorage.getItem('accessToken')
-    if (!token) return
-
-    const socket: Socket = io(getRealtimeServerUrl(), {
-      auth: { token },
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-    })
-
-    socket.on('friend:location', (payload: FriendLocation) => {
-      if (payload?.id) upsertFriend(payload)
-    })
-    socket.on('friend:location:off', (payload: { id?: string }) => {
-      if (payload?.id) removeFriend(payload.id)
-    })
-
-    return () => {
-      socket.disconnect()
-    }
-  }, [isNative, upsertFriend, removeFriend])
+  useSocket(isNative, onLocationEvent)
 
   useEffect(() => {
     if (!isNative || !mapElRef.current || mapRef.current) return

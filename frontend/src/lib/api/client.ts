@@ -1,0 +1,54 @@
+import axios, { isAxiosError } from 'axios'
+import i18n from '../../i18n'
+
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || '',
+  headers: { 'Content-Type': 'application/json' },
+})
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('accessToken')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+let onUnauthorized: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: () => void) {
+  onUnauthorized = handler
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status
+    const code = error.response?.data?.code
+    if (status === 401 && code !== 'ACCOUNT_DELETED') {
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('user')
+      onUnauthorized?.()
+    }
+    return Promise.reject(error)
+  }
+)
+
+/** Extracts a human-readable message from API response (translated when possible) */
+export function getApiErrorMessage(err: unknown, fallback?: string): string {
+  const fb = fallback ?? i18n.t('errors.generic')
+  if (isAxiosError(err)) {
+    const data = err.response?.data as { error?: string; code?: string } | undefined
+    if (typeof data?.code === 'string' && data.code.trim()) {
+      const codeKey = `errors.${data.code}`
+      if (i18n.exists(codeKey)) return i18n.t(codeKey)
+    }
+    if (typeof data?.error === 'string' && data.error.trim()) {
+      return data.error
+    }
+    if (err.code === 'ECONNABORTED') return i18n.t('errors.timeout')
+    if (!err.response) return i18n.t('errors.noConnection')
+  }
+  if (err instanceof Error && err.message) return err.message
+  return fb
+}
+
+export const fetcher = (url: string) => api.get(url).then((res) => res.data)

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
 import { Camera } from 'lucide-react'
@@ -10,17 +10,21 @@ import {
   initRemoteSelfie,
   magicMeet,
   replyRemoteSelfie,
-  type AuthUser,
 } from '../lib/api'
 import { SWR_KEYS } from '../lib/swrKeys'
 import { toastError, toastLink, toastSuccess } from '../lib/toast'
 import type { MagicMeetResultState } from '../pages/meet/MagicMeetResultPage'
+import { magicMeetResponseToParts } from '../lib/translateNotification'
 import FullscreenCamera, { type CameraCaptureMode } from './FullscreenCamera'
 import CameraRemotePartnerPicker, { type StreakPartnerOption } from './CameraRemotePartnerPicker'
 import CachedImage from './CachedImage'
+import { useAuth } from '../context/AuthContext'
+import { getNotificationPrefs } from '../lib/userPreferences'
 
 function logCapture(step: string, detail?: unknown) {
-  console.log(`[magic-camera] ${step}`, detail ?? '')
+  if (import.meta.env.DEV) {
+    console.log(`[magic-camera] ${step}`, detail ?? '')
+  }
 }
 
 interface RemoteTarget {
@@ -38,7 +42,7 @@ interface Props {
 export default function GlobalCamera({ variant = 'side' }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [user, setUser] = useState<AuthUser | null>(null)
+  const { user } = useAuth()
   const [cameraOpen, setCameraOpen] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [processingLabel, setProcessingLabel] = useState('')
@@ -65,15 +69,6 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
       })),
     [streaksRaw]
   )
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('user')
-      if (stored) setUser(JSON.parse(stored))
-    } catch {
-      /* ignore */
-    }
-  }, [])
 
   const resetRemoteState = useCallback(() => {
     setCaptureMode('meet')
@@ -181,22 +176,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
       }
 
       let location: { lat: number; lng: number } | undefined
-      const geoEnabled = (() => {
-        try {
-          return (() => {
-            try {
-              const u = JSON.parse(localStorage.getItem('user') || '{}')
-              if (u.geoOnPhotos === false) return false
-              const s = JSON.parse(localStorage.getItem('streakmeet_settings') || '{}')
-              return s.geoOnPhotos !== false
-            } catch {
-              return true
-            }
-          })()
-        } catch {
-          return true
-        }
-      })()
+      const geoEnabled = getNotificationPrefs().geoOnPhotos
 
       if (geoEnabled) {
         setProcessingLabel(t('camera.gettingLocation'))
@@ -226,8 +206,8 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
 
         const resultState: MagicMeetResultState = {
           photo: imageSrc,
-          message: data.message,
           partners: data.partners ?? [],
+          ...magicMeetResponseToParts(data),
         }
 
         setCameraOpen(false)

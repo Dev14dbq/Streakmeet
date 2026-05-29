@@ -1,12 +1,11 @@
 import { type Request, type Response, type NextFunction } from 'express'
-import jwt from 'jsonwebtoken'
-import { prisma } from '../lib/prisma.js'
+import { verifyAuthToken } from '../lib/authToken.js'
 import { deletedAccountPayload } from '../lib/accountDeletion.js'
 import { ErrorCodes, sendError } from '../lib/apiErrors.js'
-import { getJwtSecret } from '../lib/jwtSecret.js'
 
 export interface AuthRequest extends Request {
   userId?: string
+  emailVerified?: boolean
 }
 
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
@@ -22,25 +21,19 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     return
   }
 
-  try {
-    const payload = jwt.verify(token, getJwtSecret()) as { sub: string }
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { deletedAt: true, email: true },
-    })
-    if (!user) {
-      sendError(res, 401, ErrorCodes.UNAUTHORIZED)
-      return
+  const result = await verifyAuthToken(token)
+  if (!result.ok) {
+    if (result.reason === 'deleted') {
+      res.status(403).json(deletedAccountPayload({ email: result.email, deletedAt: result.deletedAt }))
+    } else {
+      sendError(res, 401, ErrorCodes.INVALID_TOKEN)
     }
-    if (user.deletedAt) {
-      res.status(403).json(deletedAccountPayload({ email: user.email, deletedAt: user.deletedAt }))
-      return
-    }
-    req.userId = payload.sub
-    next()
-  } catch {
-    sendError(res, 401, ErrorCodes.INVALID_TOKEN)
+    return
   }
+
+  req.userId = result.userId
+  req.emailVerified = result.emailVerified
+  next()
 }
 
 export async function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction) {
@@ -56,17 +49,9 @@ export async function optionalAuth(req: AuthRequest, _res: Response, next: NextF
     return
   }
 
-  try {
-    const payload = jwt.verify(token, getJwtSecret()) as { sub: string }
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { deletedAt: true },
-    })
-    if (user && !user.deletedAt) {
-      req.userId = payload.sub
-    }
-  } catch {
-    // ignore invalid token for public routes
+  const result = await verifyAuthToken(token)
+  if (result.ok) {
+    req.userId = result.userId
   }
   next()
 }

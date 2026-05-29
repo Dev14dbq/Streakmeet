@@ -13,6 +13,16 @@ export async function requireEmailVerified(
     sendError(res, 401, ErrorCodes.UNAUTHORIZED)
     return
   }
+  // Fast path: requireAuth already fetched verification state
+  if (req.emailVerified !== undefined) {
+    if (!req.emailVerified) {
+      sendError(res, 403, ErrorCodes.EMAIL_NOT_VERIFIED)
+      return
+    }
+    next()
+    return
+  }
+  // Fallback: standalone use without requireAuth
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
     select: { emailVerifiedAt: true, passwordHash: true },

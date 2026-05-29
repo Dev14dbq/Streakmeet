@@ -5,6 +5,10 @@ function nick(params?: Record<string, string>): string {
   return params?.nickname?.trim() || i18n.t('notifications.someone')
 }
 
+function partner(params?: Record<string, string>): string {
+  return params?.partner?.trim() || nick(params)
+}
+
 /** Localized text for realtime / push notifications from the server */
 export function translateNotification(data: AppNotificationPayload): string {
   const { type, params, message } = data
@@ -23,6 +27,12 @@ export function translateNotification(data: AppNotificationPayload): string {
       const v = Math.min(4, Math.max(0, Number(params?.variant ?? 0)))
       return i18n.t(`notifications.streakRemind${v}`, { nickname: nick(params) })
     }
+    case 'streak_1h':
+      return i18n.t('notifications.streak1h', { partner: partner(params) })
+    case 'streak_30m':
+      return i18n.t('notifications.streak30m', { partner: partner(params) })
+    case 'streak_burned':
+      return i18n.t('notifications.streakBurned', { partner: partner(params) })
     case 'remote_selfie_request':
       return i18n.t('notifications.remoteSelfieRequest', { nickname: nick(params) })
     case 'remote_selfie_completed':
@@ -39,6 +49,21 @@ export interface MagicMeetResultParts {
   addedNicknames?: string[]
   skippedDuplicates?: string[]
   message?: string
+}
+
+/** Maps API magic-meet payload (legacy or structured) to localized message parts. */
+export function magicMeetResponseToParts(data: {
+  message?: string
+  extended?: { nickname: string }[]
+  added?: { nickname: string }[]
+  skippedDuplicates?: string[]
+}): MagicMeetResultParts {
+  return {
+    extendedNicknames: data.extended?.map((p) => p.nickname),
+    addedNicknames: data.added?.map((p) => p.nickname),
+    skippedDuplicates: data.skippedDuplicates,
+    message: data.message,
+  }
 }
 
 export function formatMagicMeetMessage(parts: MagicMeetResultParts): string {

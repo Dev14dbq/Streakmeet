@@ -1,20 +1,26 @@
-import { prisma } from './prisma.js'
-import { notifyUser } from './socket.js'
+import { prisma } from '../lib/prisma.js'
+import { notifyUser, type NotificationPayload, type NotificationType } from '../lib/socket.js'
 import {
   addDaysToDateString,
   getLocalDateString,
   getLocalTimeParts,
   normalizeTimezone,
-} from './timezone.js'
+} from '../lib/timezone.js'
 
 type NotifyKind = 'STREAK_1H' | 'STREAK_30M' | 'STREAK_BURNED'
+
+const KIND_TO_TYPE: Record<NotifyKind, NotificationType> = {
+  STREAK_1H: 'streak_1h',
+  STREAK_30M: 'streak_30m',
+  STREAK_BURNED: 'streak_burned',
+}
 
 async function sendStreakNotification(
   userId: string,
   streakId: string,
   kind: NotifyKind,
   localDate: string,
-  payload: { message: string; route: string }
+  payload: NotificationPayload
 ) {
   try {
     await prisma.streakNotificationLog.create({
@@ -47,15 +53,12 @@ export async function processStreakNotifications(): Promise<number> {
     const yesterday = addDaysToDateString(today, -1)
     const metToday = streak.lastMetDate === today
 
-    const notifyBoth = async (
-      kind: NotifyKind,
-      localDate: string,
-      messageFor: (partnerNickname: string) => string
-    ) => {
+    const notifyBoth = async (kind: NotifyKind, localDate: string) => {
       for (const user of [streak.userA, streak.userB]) {
         const partner = user.id === streak.userAId ? streak.userB : streak.userA
         await sendStreakNotification(user.id, streak.id, kind, localDate, {
-          message: messageFor(partner.nickname),
+          type: KIND_TO_TYPE[kind],
+          params: { partner: partner.nickname },
           route: `/streaks/${partner.nickname}`,
         })
         sent++
@@ -63,16 +66,12 @@ export async function processStreakNotifications(): Promise<number> {
     }
 
     if (hour === 23 && minute < 5 && !metToday) {
-      await notifyBoth('STREAK_1H', today, (partner) => `Серия с @${partner} сгорит через час!`)
+      await notifyBoth('STREAK_1H', today)
       continue
     }
 
     if (hour === 23 && minute >= 30 && minute < 35 && !metToday) {
-      await notifyBoth(
-        'STREAK_30M',
-        today,
-        (partner) => `Серия с @${partner} сгорит через 30 минут!`
-      )
+      await notifyBoth('STREAK_30M', today)
       continue
     }
 
@@ -81,7 +80,7 @@ export async function processStreakNotifications(): Promise<number> {
         where: { id: streak.id },
         data: { count: 0 },
       })
-      await notifyBoth('STREAK_BURNED', yesterday, (partner) => `Серия с @${partner} сгорела 🔥`)
+      await notifyBoth('STREAK_BURNED', yesterday)
     }
   }
 

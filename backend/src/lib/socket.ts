@@ -1,8 +1,6 @@
 import { Server } from 'socket.io'
 import type { Server as HttpServer } from 'http'
-import jwt from 'jsonwebtoken'
-import { prisma } from './prisma.js'
-import { getJwtSecret } from './jwtSecret.js'
+import { verifyAuthToken } from './authToken.js'
 
 let io: Server
 
@@ -14,18 +12,10 @@ export function initSocket(server: HttpServer) {
   io.use(async (socket, next) => {
     const token = socket.handshake.auth.token
     if (!token) return next(new Error('Authentication error'))
-    try {
-      const payload = jwt.verify(token, getJwtSecret()) as { sub: string }
-      const user = await prisma.user.findUnique({
-        where: { id: payload.sub },
-        select: { deletedAt: true },
-      })
-      if (!user || user.deletedAt) return next(new Error('Authentication error'))
-      socket.data.userId = payload.sub
-      next()
-    } catch {
-      next(new Error('Authentication error'))
-    }
+    const result = await verifyAuthToken(token)
+    if (!result.ok) return next(new Error('Authentication error'))
+    socket.data.userId = result.userId
+    next()
   })
 
   io.on('connection', (socket) => {
@@ -40,7 +30,29 @@ export function initSocket(server: HttpServer) {
   })
 }
 
-export function notifyUser(userId: string, event: string, data: any) {
+export type NotificationType =
+  | 'friend_request'
+  | 'friend_accepted'
+  | 'meet_extended'
+  | 'meet_photo_added'
+  | 'streak_remind'
+  | 'streak_1h'
+  | 'streak_30m'
+  | 'streak_burned'
+  | 'remote_selfie_request'
+  | 'remote_selfie_completed'
+
+/** Realtime push payload; aligns with frontend AppNotificationPayload */
+export interface NotificationPayload {
+  message?: string
+  route: string
+  type?: NotificationType
+  params?: Record<string, string>
+}
+
+export function notifyUser(userId: string, event: 'notification', data: NotificationPayload): void
+export function notifyUser(userId: string, event: string, data: unknown): void
+export function notifyUser(userId: string, event: string, data: unknown) {
   const socketId = userSockets.get(userId)
   if (socketId && io) {
     io.to(socketId).emit(event, data)

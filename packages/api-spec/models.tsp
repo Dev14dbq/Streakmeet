@@ -14,8 +14,14 @@ model SuccessResponse {
   success: true;
 }
 
-/** User info returned in auth flows and stored client-side */
-model AuthUser {
+/** Minimal user reference: id + nickname */
+model UserRef {
+  id: string;
+  nickname: string;
+}
+
+/** Shared base for AuthUser and UserProfile (all fields except avatarUrl) */
+model UserBase {
   id: string;
   email: string;
   nickname: string;
@@ -23,7 +29,6 @@ model AuthUser {
   gemsBalance?: int32;
   faceEnrolled: boolean;
   emailVerified: boolean;
-  avatarUrl?: string;
   timezone?: string;
   isPublic?: boolean;
   notifyFriends?: boolean;
@@ -31,21 +36,14 @@ model AuthUser {
   geoOnPhotos?: boolean;
 }
 
-/** Full user profile */
-model UserProfile {
-  id: string;
-  email: string;
-  nickname: string;
-  qrCodeId?: string;
-  gemsBalance?: int32;
-  faceEnrolled: boolean;
-  emailVerified: boolean;
+/** User info returned in auth flows and stored client-side */
+model AuthUser extends UserBase {
+  avatarUrl?: string;
+}
+
+/** Full user profile — avatarUrl may be explicitly null when cleared */
+model UserProfile extends UserBase {
   avatarUrl?: string | null;
-  timezone?: string;
-  isPublic?: boolean;
-  notifyFriends?: boolean;
-  notifyMeet?: boolean;
-  geoOnPhotos?: boolean;
 }
 
 model UserPreferences {
@@ -89,15 +87,8 @@ enum StreakDayStatus {
   MISSED: "MISSED",
 }
 
-model MeetProofUploader {
-  id: string;
-  nickname: string;
-}
-
-model MeetProofStreakUser {
-  id: string;
-  nickname: string;
-}
+model MeetProofUploader extends UserRef {}
+model MeetProofStreakUser extends UserRef {}
 
 model MeetProofStreak {
   userA: MeetProofStreakUser;

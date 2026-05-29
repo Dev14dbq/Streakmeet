@@ -19,6 +19,7 @@ import { deleteAccount, syncDeviceTimezone, type AuthUser } from '../../lib/api'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { toastError } from '../../lib/toast'
 import { stopLocationSharing } from '../../lib/locationSharing'
+import { useAuth } from '../../context/AuthContext'
 import { SettingsPageShell, SettingsRow, SettingsSection } from './settingsUi'
 
 interface Props {
@@ -29,6 +30,7 @@ interface Props {
 export default function SettingsPage({ user: initialUser }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { handleLogout } = useAuth()
   const { data: me, mutate } = useSWR<AuthUser & { timezone?: string }>(SWR_KEYS.me)
 
   useEffect(() => {
@@ -40,19 +42,13 @@ export default function SettingsPage({ user: initialUser }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function handleLogout() {
-    if (!confirm(t('settings.logoutConfirm'))) return
-    await stopLocationSharing().catch(() => {})
-    localStorage.clear()
-    window.location.href = '/login'
-  }
-
   async function handleDeleteAccount() {
     if (!confirm(t('settings.deleteConfirm'))) return
     try {
       await deleteAccount()
       await stopLocationSharing().catch(() => {})
-      localStorage.clear()
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('user')
       window.location.href = '/login'
     } catch {
       toastError(t('settings.deleteFailed'))

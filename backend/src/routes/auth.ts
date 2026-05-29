@@ -1,721 +1,154 @@
-import { Router, type Request, type Response } from 'express'
-import bcrypt from 'bcryptjs'
-import jwt from 'jsonwebtoken'
-import appleSignin from 'apple-signin-auth'
-import { OAuth2Client } from 'google-auth-library'
-import { prisma } from '../lib/prisma.js'
-import {
-  CURRENT_FACE_MODEL,
-  embedBurstFromBase64,
-  ensureFaceService,
-  passesEnrollQuality,
-} from '../lib/face.js'
-import { faceErrorFromException, ErrorCodes, sendError } from '../lib/apiErrors.js'
-import {
-  deletedAccountPayload,
-  findActiveUserByNickname,
-  findUserByEmail,
-  isRetentionExpired,
-  purgeUser,
-} from '../lib/accountDeletion.js'
-import { isValidTimezone, normalizeTimezone } from '../lib/timezone.js'
-import { acceptCurrentLegalForUser } from '../lib/legalDocuments.js'
-import { getJwtSecret } from '../lib/jwtSecret.js'
-import type { AuthResponse } from '../types/api.js'
-import { authUserPayload, userProfileSelect, type UserProfileRow } from '../lib/userPayload.js'
-import { issueEmailVerification, markEmailVerified, generateToken } from '../lib/emailVerify.js'
-import { sendPasswordResetEmail } from '../lib/email.js'
+import { Router } from 'express'
+import { ErrorCodes, sendError } from '../lib/apiErrors.js'
+import { asyncHandler } from '../lib/httpErrors.js'
 import { authRateLimit, sensitiveAuthRateLimit } from '../middleware/rateLimit.js'
 import { requireEmailVerified } from '../middleware/requireEmailVerified.js'
-
 import { requireAuth, type AuthRequest } from '../middleware/auth.js'
+import {
+  checkEmail,
+  enrollFace,
+  forgotPassword,
+  googleLogin,
+  login,
+  register,
+  resendVerification,
+  resetPassword,
+  restoreAccount,
+  appleLogin,
+  verifyEmailAndGetRedirect,
+  verifyEmailWithToken,
+} from '../services/authService.js'
 
 const router = Router()
 
-// Подтверждение email по ссылке — без общего rate limit (письмо открывают один раз)
-router.post('/verify-email', async (req: Request, res: Response) => {
-  const { token } = req.body as { token?: string }
-  if (!token || typeof token !== 'string') {
-    sendError(res, 400, ErrorCodes.MISSING_FIELD)
-    return
-  }
-  const user = await prisma.user.findFirst({
-    where: { emailVerifyToken: token },
-    select: { id: true },
+router.post(
+  '/verify-email',
+  asyncHandler(async (req, res) => {
+    const { token } = req.body as { token?: string }
+    if (!token || typeof token !== 'string') {
+      sendError(res, 400, ErrorCodes.MISSING_FIELD)
+      return
+    }
+    await verifyEmailWithToken(token)
+    res.json({ success: true })
   })
-  if (!user) {
-    sendError(res, 400, ErrorCodes.EMAIL_VERIFY_TOKEN_INVALID)
-    return
-  }
-  await markEmailVerified(user.id)
-  res.json({ success: true })
-})
+)
 
-router.get('/verify-email', async (req: Request, res: Response) => {
-  const token = typeof req.query.token === 'string' ? req.query.token : ''
-  const appUrl = (process.env.APP_PUBLIC_URL ?? 'https://spectrmod.com').replace(/\/$/, '')
-  if (!token) {
-    res.redirect(302, `${appUrl}/verify-email?error=invalid`)
-    return
-  }
-  const user = await prisma.user.findFirst({
-    where: { emailVerifyToken: token },
-    select: { id: true },
+router.get(
+  '/verify-email',
+  asyncHandler(async (req, res) => {
+    const token = typeof req.query.token === 'string' ? req.query.token : ''
+    const redirect = await verifyEmailAndGetRedirect(token)
+    res.redirect(302, redirect)
   })
-  if (!user) {
-    res.redirect(302, `${appUrl}/verify-email?error=invalid`)
-    return
-  }
-  await markEmailVerified(user.id)
-  res.redirect(302, `${appUrl}/verify-email?verified=1`)
-})
+)
 
 router.use(authRateLimit)
-
-async function resolveGoogleProfile(body: {
-  accessToken?: string
-  idToken?: string
-}): Promise<{ email: string; name?: string }> {
-  const { accessToken, idToken } = body
-  if (!accessToken && !idToken) {
-    throw new Error('token_required')
-  }
-  if (!process.env.GOOGLE_CLIENT_ID) {
-    throw new Error('not_configured')
-  }
-
-  if (idToken) {
-    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    })
-    const payload = ticket.getPayload()
-    if (!payload?.email) throw new Error('no_email')
-    return { email: payload.email, name: payload.name }
-  }
-
-  const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  })
-  if (!infoRes.ok) throw new Error('invalid_access_token')
-  const info = (await infoRes.json()) as { email?: string; name?: string }
-  if (!info.email) throw new Error('no_email')
-  return { email: info.email, name: info.name }
-}
-
-// POST /api/auth/enroll-face
-//
-// Accepts a burst of frames captured during the enrollment flow (different
-// poses / expressions). Each frame is independently embedded by the Python
-// face-service; quality-poor frames are rejected. We keep ALL accepted
-// embeddings as a gallery — matching later uses max-cosine over the gallery,
-// which is dramatically more robust to pose than a single averaged centroid.
-const MIN_INPUT_FRAMES = 3
-const MAX_INPUT_FRAMES = 16
-const MIN_ACCEPTED_EMBEDDINGS = 4
 
 router.post(
   '/enroll-face',
   requireAuth,
   requireEmailVerified,
-  async (req: AuthRequest, res: Response) => {
+  asyncHandler(async (req: AuthRequest, res) => {
     const { photos } = req.body as { photos?: string[] }
-    if (!photos || !Array.isArray(photos) || photos.length === 0) {
-      sendError(res, 400, ErrorCodes.PHOTOS_REQUIRED)
-      return
-    }
-    if (photos.length < MIN_INPUT_FRAMES || photos.length > MAX_INPUT_FRAMES) {
-      sendError(res, 400, ErrorCodes.FACE_ENROLL_TOO_FEW_FRAMES)
-      return
-    }
-    for (const photo of photos) {
-      if (typeof photo !== 'string' || !photo.startsWith('data:image/')) {
-        sendError(res, 400, ErrorCodes.INVALID_PHOTO)
-        return
-      }
-    }
-
-    try {
-      await ensureFaceService()
-      const results = await embedBurstFromBase64(photos)
-
-      const accepted: {
-        vector: number[]
-        detScore: number
-        yaw: number
-        pitch: number
-        blurVar: number
-      }[] = []
-      const reasons: Record<string, number> = {}
-
-      for (const r of results) {
-        if (!r.face) {
-          const k = r.error ?? 'no_face'
-          reasons[k] = (reasons[k] ?? 0) + 1
-          continue
-        }
-        const q = passesEnrollQuality(r.face)
-        if (!q.ok) {
-          reasons[q.reason ?? 'low_quality'] = (reasons[q.reason ?? 'low_quality'] ?? 0) + 1
-          continue
-        }
-        accepted.push({
-          vector: r.face.embedding,
-          detScore: r.face.det_score,
-          yaw: r.face.yaw,
-          pitch: r.face.pitch,
-          blurVar: r.face.blur_var,
-        })
-      }
-
-      console.log(
-        `[enroll-face] user=${req.userId} frames=${photos.length} accepted=${accepted.length} reasons=${JSON.stringify(reasons)}`
-      )
-
-      if (accepted.length < MIN_ACCEPTED_EMBEDDINGS) {
-        sendError(res, 400, ErrorCodes.FACE_ENROLL_LOW_QUALITY, undefined, {
-          accepted: accepted.length,
-          needed: MIN_ACCEPTED_EMBEDDINGS,
-          reasons,
-        })
-        return
-      }
-
-      await prisma.$transaction(async (tx) => {
-        await tx.faceEmbedding.deleteMany({ where: { userId: req.userId! } })
-        await tx.faceEmbedding.createMany({
-          data: accepted.map((a) => ({
-            userId: req.userId!,
-            vector: a.vector,
-            detScore: a.detScore,
-            yaw: a.yaw,
-            pitch: a.pitch,
-            blurVar: a.blurVar,
-            faceModel: CURRENT_FACE_MODEL,
-            source: 'enrollment',
-          })),
-        })
-        await tx.user.update({
-          where: { id: req.userId! },
-          data: {
-            faceEnrolled: true,
-            faceModel: CURRENT_FACE_MODEL,
-            faceEnrolledAt: new Date(),
-          },
-        })
-      })
-
-      res.json({ success: true, accepted: accepted.length, total: photos.length })
-    } catch (e) {
-      console.error('[enroll-face]', e)
-      const { code, message } = faceErrorFromException(e)
-      sendError(res, 500, code, message)
-    }
-  }
+    const result = await enrollFace(req.userId!, photos)
+    res.json(result)
+  })
 )
 
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN ?? '7d'
-
-function makeTokens(userId: string): Pick<AuthResponse, 'accessToken'> {
-  const accessToken = jwt.sign({ sub: userId }, getJwtSecret(), {
-    expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
+router.post(
+  '/check-email',
+  asyncHandler(async (req, res) => {
+    const { email } = req.body as { email?: string }
+    res.json(await checkEmail(email ?? ''))
   })
-  return { accessToken }
-}
+)
 
-async function syncUserTimezone(userId: string, timezone?: string) {
-  if (!timezone || !isValidTimezone(timezone)) return
-  await prisma.user.update({
-    where: { id: userId },
-    data: { timezone },
+router.post(
+  '/login',
+  asyncHandler(async (req, res) => {
+    const { email, password, timezone } = req.body as {
+      email?: string
+      password?: string
+      timezone?: string
+    }
+    res.json(await login({ email, password, timezone }))
   })
-}
+)
 
-function safeNickname(email: string) {
-  return email
-    .split('@')[0]!
-    .toLowerCase()
-    .replace(/[^a-z0-9_]/g, '_')
-    .slice(0, 20)
-}
-
-async function resolveDeletedAccount(
-  user: { id: string; email: string; deletedAt: Date | null },
-  res: Response
-) {
-  if (!user.deletedAt) return false
-
-  if (isRetentionExpired(user.deletedAt)) {
-    await purgeUser(user.id)
-    sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-    return true
-  }
-
-  res.status(403).json(deletedAccountPayload({ email: user.email, deletedAt: user.deletedAt }))
-  return true
-}
-
-async function findOrCreateOAuthUser(data: {
-  email: string
-  provider: 'google' | 'apple'
-  displayName?: string
-  timezone?: string
-}) {
-  let user = await findUserByEmail(data.email)
-
-  if (user?.deletedAt) {
-    return user
-  }
-
-  const timezone = data.timezone && isValidTimezone(data.timezone) ? data.timezone : undefined
-
-  if (!user) {
-    let base = safeNickname(data.email)
-    let nick = base
-    let attempt = 0
-    while (await findActiveUserByNickname(nick)) {
-      attempt++
-      nick = `${base}${attempt}`
+router.post(
+  '/restore-account',
+  asyncHandler(async (req, res) => {
+    const body = req.body as {
+      email?: string
+      password?: string
+      provider?: 'google' | 'apple'
+      accessToken?: string
+      idToken?: string
     }
-
-    user = await prisma.user.create({
-      data: {
-        email: data.email,
-        passwordHash: '',
-        nickname: nick,
-        emailVerifiedAt: new Date(),
-        ...(timezone ? { timezone } : {}),
-      },
-    })
-    await acceptCurrentLegalForUser(user.id)
-  } else {
-    if (timezone) {
-      await syncUserTimezone(user.id, timezone)
-    }
-    // Google/Apple already verified the email — do not require our confirmation link.
-    await markEmailVerified(user.id)
-  }
-
-  return user
-}
-
-async function restoreDeletedUser(userId: string, options?: { oauthVerified?: boolean }) {
-  return prisma.user.update({
-    where: { id: userId },
-    data: {
-      deletedAt: null,
-      ...(options?.oauthVerified ? { emailVerifiedAt: new Date(), emailVerifyToken: null } : {}),
-    },
-    select: { ...userProfileSelect, passwordHash: true },
+    res.json(await restoreAccount(body))
   })
-}
+)
 
-function toAuthPayload(user: UserProfileRow & { passwordHash: string }): AuthResponse['user'] {
-  return authUserPayload(user)
-}
-
-// ─── Email flow ────────────────────────────────────────────────────────────────
-
-// POST /api/auth/check-email
-router.post('/check-email', async (req: Request, res: Response) => {
-  const { email } = req.body as { email?: string }
-  if (!email || !email.includes('@')) {
-    sendError(res, 400, ErrorCodes.INVALID_EMAIL)
-    return
-  }
-  const user = await findUserByEmail(email)
-  res.json({ exists: !!user })
-})
-
-// POST /api/auth/login
-router.post('/login', async (req: Request, res: Response) => {
-  const { email, password, timezone } = req.body as {
-    email?: string
-    password?: string
-    timezone?: string
-  }
-  if (!email || !password) {
-    sendError(res, 400, ErrorCodes.MISSING_FIELD)
-    return
-  }
-  const user = await findUserByEmail(email)
-  if (!user || !user.passwordHash) {
-    sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-    return
-  }
-  const valid = await bcrypt.compare(password, user.passwordHash)
-  if (!valid) {
-    sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-    return
-  }
-  if (await resolveDeletedAccount(user, res)) return
-
-  await syncUserTimezone(user.id, timezone)
-
-  res.json({
-    ...makeTokens(user.id),
-    user: toAuthPayload(user as UserProfileRow & { passwordHash: string }),
+router.post(
+  '/register',
+  asyncHandler(async (req, res) => {
+    const body = req.body as {
+      email?: string
+      password?: string
+      nickname?: string
+      username?: string
+      timezone?: string
+    }
+    res.status(201).json(await register(body))
   })
-})
+)
 
-// POST /api/auth/restore-account
-router.post('/restore-account', async (req: Request, res: Response) => {
-  const { email, password, provider, accessToken, idToken } = req.body as {
-    email?: string
-    password?: string
-    provider?: 'google' | 'apple'
-    accessToken?: string
-    idToken?: string
-  }
-
-  try {
-    let userEmail: string | undefined
-
-    if (provider === 'google') {
-      if (!accessToken && !idToken) {
-        sendError(res, 400, ErrorCodes.MISSING_FIELD)
-        return
-      }
-      const profile = await resolveGoogleProfile({ accessToken, idToken })
-      userEmail = profile.email
-    } else if (provider === 'apple') {
-      if (!idToken) {
-        sendError(res, 400, ErrorCodes.MISSING_FIELD)
-        return
-      }
-      const payload = await appleSignin.verifyIdToken(idToken, {
-        audience: process.env.APPLE_CLIENT_ID,
-        ignoreExpiration: false,
-      })
-      userEmail = payload.email
-    } else {
-      if (!email || !password) {
-        sendError(res, 400, ErrorCodes.MISSING_FIELD)
-        return
-      }
-      const user = await findUserByEmail(email)
-      if (!user || !user.passwordHash) {
-        sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-        return
-      }
-      const valid = await bcrypt.compare(password, user.passwordHash)
-      if (!valid) {
-        sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-        return
-      }
-      if (!user.deletedAt) {
-        res.json({
-          ...makeTokens(user.id),
-          user: toAuthPayload(user as UserProfileRow & { passwordHash: string }),
-        })
-        return
-      }
-      if (isRetentionExpired(user.deletedAt)) {
-        await purgeUser(user.id)
-        sendError(res, 410, ErrorCodes.ACCOUNT_RETENTION_EXPIRED)
-        return
-      }
-      const restored = await restoreDeletedUser(user.id)
-      res.json({ ...makeTokens(restored.id), user: toAuthPayload(restored) })
-      return
+router.post(
+  '/google',
+  asyncHandler(async (req, res) => {
+    const { accessToken, idToken, timezone } = req.body as {
+      accessToken?: string
+      idToken?: string
+      timezone?: string
     }
-
-    const oauthRestore = provider === 'google' || provider === 'apple'
-
-    if (!userEmail) {
-      sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-      return
-    }
-
-    const user = await findUserByEmail(userEmail)
-    if (!user) {
-      sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-      return
-    }
-    if (!user.deletedAt) {
-      const full = await prisma.user.findUnique({
-        where: { id: user.id },
-        select: { ...userProfileSelect, passwordHash: true },
-      })
-      if (!full) {
-        sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-        return
-      }
-      res.json({ ...makeTokens(full.id), user: toAuthPayload(full) })
-      return
-    }
-    if (isRetentionExpired(user.deletedAt)) {
-      await purgeUser(user.id)
-      sendError(res, 410, ErrorCodes.ACCOUNT_RETENTION_EXPIRED)
-      return
-    }
-
-    const restored = await restoreDeletedUser(user.id, { oauthVerified: oauthRestore })
-    res.json({ ...makeTokens(restored.id), user: toAuthPayload(restored) })
-  } catch {
-    sendError(res, 401, ErrorCodes.RESTORE_ACCOUNT_FAILED)
-  }
-})
-
-// POST /api/auth/register
-router.post('/register', async (req: Request, res: Response) => {
-  const { email, password, nickname, username, timezone } = req.body as {
-    email?: string
-    password?: string
-    nickname?: string
-    username?: string
-    timezone?: string
-  }
-  if (!email || !password || !username) {
-    sendError(res, 400, ErrorCodes.MISSING_FIELD)
-    return
-  }
-  if (password.length < 6) {
-    sendError(res, 400, ErrorCodes.PASSWORD_TOO_SHORT)
-    return
-  }
-  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
-    sendError(res, 400, ErrorCodes.INVALID_USERNAME)
-    return
-  }
-
-  const normalizedEmail = email.toLowerCase().trim()
-  const normalizedUsername = username.toLowerCase()
-
-  const existingEmail = await findUserByEmail(normalizedEmail)
-  if (existingEmail) {
-    if (existingEmail.deletedAt) {
-      if (isRetentionExpired(existingEmail.deletedAt)) {
-        await purgeUser(existingEmail.id)
-      } else {
-        sendError(res, 409, ErrorCodes.ACCOUNT_DELETED)
-        return
-      }
-    } else {
-      sendError(res, 409, ErrorCodes.EMAIL_ALREADY_IN_USE)
-      return
-    }
-  }
-
-  const existingNickname = await findActiveUserByNickname(normalizedUsername)
-  if (existingNickname) {
-    sendError(res, 409, ErrorCodes.USERNAME_TAKEN)
-    return
-  }
-
-  const user = await prisma.user.create({
-    data: {
-      email: normalizedEmail,
-      passwordHash: await bcrypt.hash(password, 12),
-      nickname: normalizedUsername,
-      timezone: normalizeTimezone(timezone),
-    },
-    select: { ...userProfileSelect, passwordHash: true },
+    res.json(await googleLogin({ accessToken, idToken, timezone }))
   })
-  await acceptCurrentLegalForUser(user.id)
-  try {
-    await issueEmailVerification(user.id, user.email)
-  } catch (e) {
-    console.error('[register] verification email failed:', e)
-  }
-  res.status(201).json({
-    ...makeTokens(user.id),
-    user: toAuthPayload(user),
+)
+
+router.post(
+  '/apple',
+  asyncHandler(async (req, res) => {
+    const { idToken, timezone } = req.body as { idToken?: string; timezone?: string }
+    res.json(await appleLogin({ idToken, timezone }))
   })
-})
+)
 
-// ─── Google OAuth ─────────────────────────────────────────────────────────────
-
-// POST /api/auth/google  { accessToken?, idToken? }
-router.post('/google', async (req: Request, res: Response) => {
-  const { accessToken, idToken, timezone } = req.body as {
-    accessToken?: string
-    idToken?: string
-    timezone?: string
-  }
-  if (!accessToken && !idToken) {
-    sendError(res, 400, ErrorCodes.MISSING_FIELD)
-    return
-  }
-  if (!process.env.GOOGLE_CLIENT_ID) {
-    sendError(res, 503, ErrorCodes.OAUTH_NOT_CONFIGURED)
-    return
-  }
-  try {
-    const info = await resolveGoogleProfile({ accessToken, idToken })
-
-    const user = await findOrCreateOAuthUser({
-      email: info.email,
-      provider: 'google',
-      displayName: info.name,
-      timezone,
-    })
-
-    if (await resolveDeletedAccount(user, res)) return
-
-    const full = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { ...userProfileSelect, passwordHash: true },
-    })
-    if (!full) {
-      sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-      return
-    }
-    res.json({
-      ...makeTokens(full.id),
-      user: toAuthPayload(full),
-    })
-  } catch {
-    sendError(res, 401, ErrorCodes.OAUTH_INVALID_TOKEN)
-  }
-})
-
-// ─── Apple Sign In ────────────────────────────────────────────────────────────
-
-// POST /api/auth/apple  { idToken, user? }
-router.post('/apple', async (req: Request, res: Response) => {
-  const { idToken, timezone } = req.body as { idToken?: string; timezone?: string }
-  if (!idToken) {
-    sendError(res, 400, ErrorCodes.MISSING_FIELD)
-    return
-  }
-  if (!process.env.APPLE_CLIENT_ID) {
-    sendError(res, 503, ErrorCodes.OAUTH_NOT_CONFIGURED)
-    return
-  }
-  try {
-    const payload = await appleSignin.verifyIdToken(idToken, {
-      audience: process.env.APPLE_CLIENT_ID,
-      ignoreExpiration: false,
-    })
-    if (!payload.email) throw new Error('No email in token')
-
-    const user = await findOrCreateOAuthUser({ email: payload.email, provider: 'apple', timezone })
-    if (await resolveDeletedAccount(user, res)) return
-
-    const full = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { ...userProfileSelect, passwordHash: true },
-    })
-    if (!full) {
-      sendError(res, 401, ErrorCodes.INVALID_CREDENTIALS)
-      return
-    }
-    res.json({
-      ...makeTokens(full.id),
-      user: toAuthPayload(full),
-    })
-  } catch {
-    sendError(res, 401, ErrorCodes.OAUTH_INVALID_TOKEN)
-  }
-})
-
-const lastResendAt = new Map<string, number>()
-
-// POST /api/auth/resend-verification
 router.post(
   '/resend-verification',
   sensitiveAuthRateLimit,
   requireAuth,
-  async (req: AuthRequest, res: Response) => {
-    const userId = req.userId!
-    const last = lastResendAt.get(userId) ?? 0
-    if (Date.now() - last < 60_000) {
-      sendError(res, 429, ErrorCodes.RESEND_COOLDOWN)
-      return
-    }
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true, emailVerifiedAt: true, passwordHash: true },
-    })
-    if (!user || !user.passwordHash) {
-      res.json({ success: true })
-      return
-    }
-    if (user.emailVerifiedAt) {
-      res.json({ success: true })
-      return
-    }
-    try {
-      await issueEmailVerification(userId, user.email)
-      lastResendAt.set(userId, Date.now())
-      res.json({ success: true })
-    } catch (e) {
-      console.error('[resend-verification]', e)
-      sendError(res, 500, ErrorCodes.EMAIL_SEND_FAILED)
-    }
-  }
+  asyncHandler(async (req: AuthRequest, res) => {
+    res.json(await resendVerification(req.userId!))
+  })
 )
 
-// POST /api/auth/forgot-password
-router.post('/forgot-password', sensitiveAuthRateLimit, async (req: Request, res: Response) => {
-  const { email } = req.body as { email?: string }
-  if (!email || !email.includes('@')) {
-    sendError(res, 400, ErrorCodes.INVALID_EMAIL)
-    return
-  }
-  const normalizedEmail = email.toLowerCase().trim()
-  const user = await findUserByEmail(normalizedEmail)
-
-  if (!user || user.deletedAt) {
-    res.json({ success: true })
-    return
-  }
-
-  if (!user.passwordHash) {
-    sendError(res, 400, ErrorCodes.OAUTH_ACCOUNT_NO_PASSWORD)
-    return
-  }
-
-  const token = generateToken()
-  const expires = new Date(Date.now() + 3_600_000)
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordResetToken: token, passwordResetExpires: expires },
+router.post(
+  '/forgot-password',
+  sensitiveAuthRateLimit,
+  asyncHandler(async (req, res) => {
+    const { email } = req.body as { email?: string }
+    res.json(await forgotPassword(email))
   })
+)
 
-  try {
-    await sendPasswordResetEmail(user.email, token)
-  } catch (e) {
-    console.error('[forgot-password] send failed:', e)
-    sendError(res, 500, ErrorCodes.EMAIL_SEND_FAILED)
-    return
-  }
-
-  res.json({ success: true })
-})
-
-// POST /api/auth/reset-password
-router.post('/reset-password', sensitiveAuthRateLimit, async (req: Request, res: Response) => {
-  const { token, password } = req.body as { token?: string; password?: string }
-  if (!token || !password) {
-    sendError(res, 400, ErrorCodes.MISSING_FIELD)
-    return
-  }
-  if (password.length < 6) {
-    sendError(res, 400, ErrorCodes.PASSWORD_TOO_SHORT)
-    return
-  }
-  const user = await prisma.user.findFirst({
-    where: {
-      passwordResetToken: token,
-      passwordResetExpires: { gt: new Date() },
-    },
+router.post(
+  '/reset-password',
+  sensitiveAuthRateLimit,
+  asyncHandler(async (req, res) => {
+    const { token, password } = req.body as { token?: string; password?: string }
+    res.json(await resetPassword({ token, password }))
   })
-  if (!user) {
-    sendError(res, 400, ErrorCodes.PASSWORD_RESET_TOKEN_INVALID)
-    return
-  }
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      passwordHash: await bcrypt.hash(password, 12),
-      passwordResetToken: null,
-      passwordResetExpires: null,
-    },
-  })
-  res.json({ success: true })
-})
+)
 
 export default router

@@ -4,9 +4,7 @@ using TypeSpec.Http;
 
 namespace StreakMeet.Streaks;
 
-model StreakPartner {
-  id: string;
-  nickname: string;
+model StreakPartner extends UserRef {
   avatarUrl?: string | null;
 }
 
@@ -93,14 +91,7 @@ model StreakDetailDay {
   meetProofs: StreakDetailMeetProof[];
 }
 
-model RemoteSelfiePending {
-  id: string;
-  streakId: string;
-  senderId: string;
-  receiverId: string;
-  senderPhotoUrl: string;
-  status: string;
-  createdAt?: utcDateTime;
+model RemoteSelfiePending extends RemoteSelfieRequest {
   sender?: UserSummary;
 }
 

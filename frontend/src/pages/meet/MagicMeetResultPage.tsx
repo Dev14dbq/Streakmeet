@@ -2,12 +2,16 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Flame } from 'lucide-react'
 import type { MagicMeetPartner } from '../../lib/api'
+import { formatMagicMeetMessage } from '../../lib/translateNotification'
 import Avatar from '../../components/Avatar'
 
 export interface MagicMeetResultState {
   photo: string
-  message: string
   partners: MagicMeetPartner[]
+  extendedNicknames?: string[]
+  addedNicknames?: string[]
+  skippedDuplicates?: string[]
+  message?: string
 }
 
 export default function MagicMeetResultPage() {
@@ -31,7 +35,8 @@ export default function MagicMeetResultPage() {
     )
   }
 
-  const { photo, message, partners } = state
+  const { photo, partners } = state
+  const message = formatMagicMeetMessage(state)
 
   return (
     <div className="min-h-[100dvh] bg-[var(--color-background)] flex flex-col px-6 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">

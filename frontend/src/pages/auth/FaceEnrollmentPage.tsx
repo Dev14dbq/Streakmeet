@@ -4,7 +4,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import Webcam from 'react-webcam'
 import * as faceapi from '@vladmandic/face-api'
 import CameraGate from '../../components/CameraGate'
-import { enrollFace, type AuthUser } from '../../lib/api'
+import { enrollFace } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
 import { captureVideoFrame } from '../../lib/captureVideoFrame'
 import { waitForLiveVideo } from '../../lib/webCamera'
 import { useCameraGate } from '../../lib/useCameraGate'
@@ -248,13 +249,10 @@ function StepBar({ stepIndex, total }: { stepIndex: number; total: number }) {
   )
 }
 
-export default function FaceEnrollmentPage({
-  onUserUpdate,
-}: {
-  onUserUpdate?: (user: AuthUser) => void
-}) {
+export default function FaceEnrollmentPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { user, setUser } = useAuth()
   const location = useLocation()
   const autoStart = !!(location.state as { autoStart?: boolean } | null)?.autoStart
   const webcamRef = useRef<Webcam>(null)
@@ -483,10 +481,7 @@ export default function FaceEnrollmentPage({
         throw new Error(t('face.saveFailed'))
       }
       await enrollFace(photosRef.current)
-      const user = JSON.parse(localStorage.getItem('user') || '{}') as AuthUser
-      user.faceEnrolled = true
-      localStorage.setItem('user', JSON.stringify(user))
-      onUserUpdate?.(user)
+      if (user) setUser({ ...user, faceEnrolled: true })
       setPhase('done')
     } catch (e: unknown) {
       const code = (e as { response?: { data?: { code?: string } } })?.response?.data?.code

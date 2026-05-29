@@ -7,7 +7,7 @@ import VerifyEmailConfirmPage from './VerifyEmailConfirmPage'
 interface Props {
   user: AuthUser | null
   isLoggedIn: boolean
-  onLogout: () => void
+  onLogout: () => void | Promise<void>
   onUserUpdate: (user: AuthUser) => void
 }
 

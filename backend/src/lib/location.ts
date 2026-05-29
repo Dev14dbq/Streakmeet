@@ -1,4 +1,5 @@
 import { prisma } from './prisma.js'
+import { partnerIdOf } from './relations.js'
 import { broadcastToUsers } from './socket.js'
 
 export interface FriendLocationPayload {
@@ -19,7 +20,7 @@ export async function getAcceptedFriendIds(userId: string): Promise<string[]> {
     select: { userAId: true, userBId: true },
   })
 
-  return friendships.map((f) => (f.userAId === userId ? f.userBId : f.userAId))
+  return friendships.map((f) => partnerIdOf(f, userId))
 }
 
 export async function broadcastLocationToFriends(

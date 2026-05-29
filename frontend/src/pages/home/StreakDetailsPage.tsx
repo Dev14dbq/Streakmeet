@@ -9,7 +9,6 @@ import {
   initRemoteSelfie,
   replyRemoteSelfie,
   getApiErrorMessage,
-  type AuthUser,
 } from '../../lib/api'
 import CachedImage from '../../components/CachedImage'
 import { avatarInitial } from '../../lib/avatarInitial'
@@ -19,6 +18,7 @@ import { vibrateRemind } from '../../lib/haptics'
 import { isStreakMetToday } from '../../lib/streakCalendar'
 import { formatDate, formatMonthYear } from '../../i18n/format'
 import { toastError, toastSuccess } from '../../lib/toast'
+import { useAuth } from '../../context/AuthContext'
 
 const PARTICLE_EMOJIS = ['🔔', '🔥', '⚡', '💥', '📣', '👋', '❗', '💫']
 
@@ -104,13 +104,8 @@ export default function StreakDetailsPage() {
   const { nickname = '' } = useParams()
   const navigate = useNavigate()
 
-  const me: AuthUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('user') || '{}') as AuthUser
-    } catch {
-      return {} as AuthUser
-    }
-  }, [])
+  const { user: me } = useAuth()
+  if (!me) return null
 
   const getKey = (pageIndex: number, previousPageData: { streakDays?: StreakDay[] } | null) => {
     if (!nickname) return null

@@ -13,6 +13,7 @@ import {
   useNativeGoogleSignIn,
   type GoogleSignInTokens,
 } from '../../lib/googleAuth'
+import { Flame } from 'lucide-react'
 import { toastError, toastInfo } from '../../lib/toast'
 import { getApiErrorMessage } from '../../lib/api'
 
@@ -127,8 +128,15 @@ export default function AuthPage({ onAuth }: Props) {
     <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
       {/* Центральная часть */}
       <div className="flex flex-1 flex-col items-center justify-center px-6">
-        <div className="mb-3 text-7xl select-none drop-shadow-[0_0_20px_rgba(255,26,79,0.5)]">
-          🔥
+        <div className="relative mb-3 select-none">
+          <div className="absolute inset-0 m-auto h-28 w-28 rounded-full bg-[var(--color-brand-primary)] opacity-20 blur-3xl" />
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] ring-1 ring-[var(--color-outline-variant)]/40 drop-shadow-[0_0_20px_rgba(255,26,79,0.5)]">
+            <Flame
+              size={44}
+              className="text-[var(--color-brand-primary)]"
+              fill="currentColor"
+            />
+          </div>
         </div>
         <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">StreakMeet</h1>
         <p className="mt-3 text-center text-sm text-[var(--color-on-surface-variant)] leading-relaxed">

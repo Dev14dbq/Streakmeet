@@ -1,3 +1,8 @@
+import {
+  addDaysToDateString as addDaysToDateStringShared,
+  getLocalDateString,
+} from '@streakmeet/shared'
+
 /** IANA timezone устройства, напр. Europe/Moscow */
 export function getDeviceTimezone(): string {
   try {
@@ -9,17 +14,7 @@ export function getDeviceTimezone(): string {
 
 /** YYYY-MM-DD в локальном (или указанном) часовом поясе */
 export function getLocalToday(timezone?: string): string {
-  const tz = timezone ?? getDeviceTimezone()
-  try {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: tz,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date())
-  } catch {
-    return new Intl.DateTimeFormat('en-CA').format(new Date())
-  }
+  return getLocalDateString(timezone ?? getDeviceTimezone())
 }
 
 export function formatTimezoneLabel(timezone: string): string {
@@ -40,11 +35,7 @@ export function formatTimezoneLabel(timezone: string): string {
   }
 }
 
-export function addDaysToDateString(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number) as [number, number, number]
-  const dt = new Date(Date.UTC(y, m - 1, d + days))
-  return dt.toISOString().slice(0, 10)
-}
+export const addDaysToDateString = addDaysToDateStringShared
 
 /** Локальное время в IANA timezone → Date (UTC instant) */
 export function localTimeInZoneToDate(

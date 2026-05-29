@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { QrCode, Image as ImageIcon, Settings, X, MapPin, Camera } from 'lucide-react'
 import Webcam from 'react-webcam'
 import useSWRInfinite from 'swr/infinite'
+import { mutate } from 'swr'
 import CameraGate from '../../components/CameraGate'
 import ProfileQrModal from '../../components/ProfileQrModal'
 import CachedImage from '../../components/CachedImage'
@@ -17,6 +18,7 @@ import { useCameraGate } from '../../lib/useCameraGate'
 import { useOverlayTransition } from '../../lib/useOverlayTransition'
 import { waitForLiveVideo } from '../../lib/webCamera'
 import { toastError } from '../../lib/toast'
+import { useAuth } from '../../context/AuthContext'
 
 interface Props {
   user: AuthUser
@@ -26,11 +28,8 @@ export default function ProfilePage({ user: initialUser }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const [user, setUser] = useState(initialUser)
-
-  useEffect(() => {
-    setUser(initialUser)
-  }, [initialUser])
+  const { user: authUser, setUser: authSetUser } = useAuth()
+  const user = authUser ?? initialUser
 
   const getKey = (pageIndex: number, previousPageData: unknown[]) => {
     if (previousPageData && !previousPageData.length) return null
@@ -111,8 +110,8 @@ export default function ProfilePage({ user: initialUser }: Props) {
       const { data: res } = await uploadAvatar(base64)
       await invalidateCachedImage(previousAvatar)
       const updatedUser = { ...user, avatarUrl: res.avatarUrl }
-      setUser(updatedUser)
-      localStorage.setItem('user', JSON.stringify(updatedUser))
+      authSetUser(updatedUser)
+      void mutate(SWR_KEYS.me, updatedUser, { revalidate: false })
       setShowCamera(false)
       setShowAvatarSheet(false)
       setAvatarSheetPhase('choose')
@@ -174,8 +173,6 @@ export default function ProfilePage({ user: initialUser }: Props) {
       setUploading(false)
     }
   }
-
-  if (!user) return null
 
   return (
     <div className="flex flex-col px-6 pt-12 pb-6 min-h-screen relative">

@@ -9,19 +9,22 @@ import './index.css'
 initTheme()
 import App from './App.tsx'
 import { fetcher } from './lib/api'
+import { AuthProvider } from './context/AuthContext'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <SWRConfig
-        value={{
-          fetcher,
-          revalidateOnFocus: true,
-          dedupingInterval: 5_000,
-        }}
-      >
-        <App />
-      </SWRConfig>
+      <AuthProvider>
+        <SWRConfig
+          value={{
+            fetcher,
+            revalidateOnFocus: true,
+            dedupingInterval: 5_000,
+          }}
+        >
+          <App />
+        </SWRConfig>
+      </AuthProvider>
     </BrowserRouter>
   </StrictMode>
 )
