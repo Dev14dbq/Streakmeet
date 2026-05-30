@@ -175,8 +175,8 @@ pub async fn request_friend(
 
     let created = sqlx::query_as::<_, FriendshipRow>(
         r#"
-        INSERT INTO friendships ("userAId", "userBId", status)
-        VALUES ($1, $2, 'PENDING')
+        INSERT INTO friendships ("userAId", "userBId", status, "updatedAt")
+        VALUES ($1, $2, 'PENDING', NOW())
         RETURNING id, "userAId" AS user_a_id, "userBId" AS user_b_id, status::text AS status
         "#,
     )

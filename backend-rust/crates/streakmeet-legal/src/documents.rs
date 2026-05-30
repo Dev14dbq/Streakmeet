@@ -36,8 +36,8 @@ pub async fn ensure_legal_documents(pool: &PgPool) -> Result<(), ApiError> {
         if existing.is_none() {
             sqlx::query(
                 r#"
-                INSERT INTO legal_documents (id, slug, title, version, content)
-                VALUES ($1, $2::"LegalDocSlug", $3, 1, $4)
+                INSERT INTO legal_documents (id, slug, title, version, content, "updatedAt")
+                VALUES ($1, $2::"LegalDocSlug", $3, 1, $4, NOW())
                 "#,
             )
             .bind(streakmeet_types::new_cuid()?)

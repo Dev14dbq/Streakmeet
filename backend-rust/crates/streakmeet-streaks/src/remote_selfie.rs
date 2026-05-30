@@ -218,9 +218,9 @@ pub async fn init_remote_selfie(
     let row = sqlx::query_as::<_, RemoteSelfieRow>(
         r#"
         INSERT INTO remote_selfie_requests (
-            id, "streakId", "senderId", "receiverId", "senderPhotoUrl", status
+            id, "streakId", "senderId", "receiverId", "senderPhotoUrl", status, "updatedAt"
         )
-        VALUES ($1, $2, $3, $4, $5, 'PENDING')
+        VALUES ($1, $2, $3, $4, $5, 'PENDING', NOW())
         RETURNING
             id, "streakId" AS streak_id, "senderId" AS sender_id,
             "receiverId" AS receiver_id, "senderPhotoUrl" AS sender_photo_url,

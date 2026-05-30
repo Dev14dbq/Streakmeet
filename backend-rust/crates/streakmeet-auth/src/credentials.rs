@@ -71,8 +71,8 @@ pub async fn register(
 
     let sql = format!(
         r#"
-        INSERT INTO users (id, email, "passwordHash", nickname, timezone, "qrCodeId")
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO users (id, email, "passwordHash", nickname, timezone, "qrCodeId", "updatedAt")
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
         RETURNING {USER_PROFILE_SELECT}
         "#
     );
@@ -145,16 +145,16 @@ pub async fn find_or_create_oauth_user(
     let sql = if tz.is_some() {
         format!(
             r#"
-            INSERT INTO users (id, email, "passwordHash", nickname, "qrCodeId", "emailVerifiedAt", timezone)
-            VALUES ($1, $2, '', $3, $4, NOW(), $5)
+            INSERT INTO users (id, email, "passwordHash", nickname, "qrCodeId", "emailVerifiedAt", timezone, "updatedAt")
+            VALUES ($1, $2, '', $3, $4, NOW(), $5, NOW())
             RETURNING {USER_PROFILE_SELECT}
             "#
         )
     } else {
         format!(
             r#"
-            INSERT INTO users (id, email, "passwordHash", nickname, "qrCodeId", "emailVerifiedAt")
-            VALUES ($1, $2, '', $3, $4, NOW())
+            INSERT INTO users (id, email, "passwordHash", nickname, "qrCodeId", "emailVerifiedAt", "updatedAt")
+            VALUES ($1, $2, '', $3, $4, NOW(), NOW())
             RETURNING {USER_PROFILE_SELECT}
             "#
         )

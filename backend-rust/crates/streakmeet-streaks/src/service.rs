@@ -242,8 +242,8 @@ pub async fn create_streak(
 
     let created = sqlx::query_as::<_, StreakIdRow>(
         r#"
-        INSERT INTO streaks ("userAId", "userBId", count, timezone, active)
-        VALUES ($1, $2, 0, $3, true)
+        INSERT INTO streaks ("userAId", "userBId", count, timezone, active, "updatedAt")
+        VALUES ($1, $2, 0, $3, true, NOW())
         RETURNING id
         "#,
     )
