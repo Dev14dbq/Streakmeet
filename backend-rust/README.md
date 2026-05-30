@@ -66,8 +66,16 @@ cargo run -p worker-service   # streak burn cron every 5 min
 - [x] worker-service: burn at local 00:05–00:10 when `lastMetDate != yesterday`
 - [x] Sync: `streaks.burned` → both users (`streakBurned` Connect JSON)
 - [x] Frontend: patch `SWR_KEYS.streaks` + revalidate streak detail prefix
-- [x] Friends reject/cancel REST stubs (no sync events yet)
-- [ ] meet / magic-meet (TODO — Node still owns meet mutations)
+- [x] Friends reject/cancel/unfriend + sync events
+- [x] meet stub + magic-meet + remote selfie (Rust; requires face-service on :8001)
+
+## Phase 4 — Auth + advanced streaks (partial)
+
+- [x] register, check-email, OAuth Google/Apple, verify-email, forgot/reset password
+- [x] enroll-face, restore-account, resend-verification
+- [x] magic-meet, remote selfie, streak meet sync events
+- [ ] memories, legal, full users settings — still on Node
+- [ ] production nginx cutover / disable Node PM2
 
 ### Browser path
 
@@ -197,16 +205,14 @@ Open two browser profiles → login as A and B → A creates streak → B sees c
 
 - SQLx uses runtime queries (no compile-time DB verification yet).
 - JWT must share `JWT_SECRET` with Node during transition.
-- Meet / magic-meet / remote selfie still on Node backend.
-- 1h/30m streak warning notifications not ported to worker (burn only).
-- Friends reject/cancel: REST works; sync events deferred to Phase 3.
-- Push notifications (FCM) not wired in Rust yet — sync events only.
+- **face-service** (Python :8001) required for magic-meet / enroll-face.
+- memories / legal / some user settings still on Node (:3000).
+- 1h/30m streak warnings not in worker (burn only).
+- Push notifications (FCM) not wired — sync events only.
+- MinIO may be down locally; media falls back to `/tmp/streakmeet-uploads`.
 
-## Phase 3 outline
+## Phase 5 outline
 
-- location-service + `location.updated` / `location.sharing_off` sync
-- users-service: profile, avatar presigned upload
-- friends reject/cancel/unfriend sync events
-- meet + magic-meet in streaks-service + `streaks.meet_extended`
-- CatchUp from JetStream consumer cursor
-- Contract tests: Node JSON vs Rust JSON parity
+- memories + legal in Rust
+- JetStream durable CatchUp, contract tests
+- FCM background wake, nginx production cutover
