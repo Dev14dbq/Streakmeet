@@ -232,6 +232,38 @@ pub fn envelope_to_connect_json(envelope: &SyncEnvelope) -> Option<String> {
                 }),
             );
         }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::Location(loc)) => {
+            root.insert(
+                "locationUpdated".into(),
+                serde_json::json!({
+                    "id": loc.user_id,
+                    "nickname": loc.nickname,
+                    "avatarUrl": null_if_empty(&loc.avatar_url),
+                    "latitude": loc.lat,
+                    "longitude": loc.lng,
+                    "updatedAt": null_if_empty_str(&loc.updated_at),
+                }),
+            );
+        }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::LocationRemoved(loc)) => {
+            root.insert(
+                "locationRemoved".into(),
+                serde_json::json!({
+                    "id": loc.user_id,
+                    "removed": true,
+                }),
+            );
+        }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::ProfileUpdated(p)) => {
+            root.insert(
+                "profileUpdated".into(),
+                serde_json::json!({
+                    "userId": p.user_id,
+                    "nickname": p.nickname,
+                    "avatarUrl": null_if_empty(&p.avatar_url),
+                }),
+            );
+        }
         Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::Heartbeat(hb)) => {
             root.insert("heartbeat".into(), serde_json::json!({ "message": hb.message }));
         }

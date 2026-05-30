@@ -1,10 +1,12 @@
 mod auth;
 mod friends;
+mod location;
 mod routes;
 mod streaks;
+mod users;
 
 use axum::{
-    routing::{get, post},
+    routing::{delete, get, patch, post},
     Router,
 };
 use streakmeet_auth::config_from_env;
@@ -54,10 +56,21 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/friends/accept", post(friends::accept_friend_handler))
         .route("/api/friends/reject", post(friends::reject_friend_handler))
         .route("/api/friends/cancel", post(friends::cancel_friend_handler))
+        .route("/api/friends/{id}", delete(friends::remove_friend_handler))
+        .route("/api/location/me", get(location::get_my_location_handler))
+        .route("/api/location/friends", get(location::get_friends_locations_handler))
+        .route("/api/location/sharing", post(location::set_sharing_handler))
+        .route("/api/location/update", post(location::update_location_handler))
+        .route("/api/users/me", get(users::get_me_handler))
+        .route("/api/users/me", patch(users::patch_me_handler))
+        .route("/api/users/avatar", post(users::upload_avatar_handler))
+        .route("/api/users/search", get(users::search_handler))
+        .route("/api/public/users/{nickname}", get(users::public_profile_handler))
+        .route("/api/streaks/meet", post(streaks::record_meet_handler))
         .route("/api/streaks/", get(streaks::list_streaks_handler))
         .route("/api/streaks/", post(streaks::create_streak_handler))
         .route(
-            "/api/streaks/:partner_nickname",
+            "/api/streaks/{partner_nickname}",
             get(streaks::get_streak_detail_handler),
         )
         .with_state(state)

@@ -1,12 +1,10 @@
 [package]
-name = "streakmeet-streaks"
+name = "streakmeet-location"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-anyhow = { workspace = true }
 chrono = { workspace = true }
-chrono-tz = { workspace = true }
 prost = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -14,7 +12,5 @@ sqlx = { workspace = true }
 streakmeet-proto = { workspace = true }
 streakmeet-sync = { workspace = true }
 streakmeet-types = { workspace = true }
-streakmeet-media = { workspace = true }
-sha2 = "0.10"
 tracing = { workspace = true }
 uuid = { workspace = true }

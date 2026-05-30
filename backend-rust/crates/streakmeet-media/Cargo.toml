@@ -1,0 +1,14 @@
+[package]
+name = "streakmeet-media"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+rgb = "0.8"
+ravif = { version = "0.11", default-features = false }
+sha2 = "0.10"
+base64 = "0.22"
+tokio = { workspace = true }
+tracing = { workspace = true }

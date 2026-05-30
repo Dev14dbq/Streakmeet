@@ -16,6 +16,7 @@ import {
   type MyLocationState,
 } from '../../lib/api'
 import { SWR_KEYS } from '../../lib/swrKeys'
+import { isSyncStreamEnabled } from '../../lib/connect/client'
 import { useSocket } from '../../hooks/useSocket'
 import {
   isLocationSharingActive,
@@ -239,7 +240,7 @@ export default function MapPage() {
     [upsertFriend, removeFriend]
   )
 
-  useSocket(isNative, onLocationEvent)
+  useSocket(isNative && !isSyncStreamEnabled(), onLocationEvent)
 
   useEffect(() => {
     if (!isNative || !mapElRef.current || mapRef.current) return

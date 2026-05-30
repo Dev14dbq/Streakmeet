@@ -39,6 +39,21 @@ export function useSyncStream(user: AuthUser | null, bootstrapPhase: BootstrapPh
         applySyncEvent(env)
         return
       }
+      if (env.payload.case === 'locationUpdated') {
+        console.debug('[sync] locationUpdated', env.payload.value.id, env.eventId)
+        applySyncEvent(env)
+        return
+      }
+      if (env.payload.case === 'locationRemoved') {
+        console.debug('[sync] locationRemoved', env.payload.value.id, env.eventId)
+        applySyncEvent(env)
+        return
+      }
+      if (env.payload.case === 'profileUpdated') {
+        console.debug('[sync] profileUpdated', env.payload.value.userId, env.eventId)
+        applySyncEvent(env)
+        return
+      }
       console.debug('[sync] envelope', env)
     }
   })

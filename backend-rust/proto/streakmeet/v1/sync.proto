@@ -55,10 +55,19 @@ message LocationUpdated {
   string user_id = 1;
   double lat = 2;
   double lng = 3;
+  string nickname = 4;
+  string avatar_url = 5;
+  string updated_at = 6;
 }
 
 message LocationRemoved {
   string user_id = 1;
+}
+
+message ProfileUpdated {
+  string user_id = 1;
+  string nickname = 2;
+  string avatar_url = 3;
 }
 
 message Notification {
@@ -85,6 +94,7 @@ message SyncEnvelope {
     StreakBurned streak_burned = 17;
     LocationUpdated location = 13;
     LocationRemoved location_removed = 14;
+    ProfileUpdated profile_updated = 18;
     Notification notification = 16;
     Heartbeat heartbeat = 99;
   }

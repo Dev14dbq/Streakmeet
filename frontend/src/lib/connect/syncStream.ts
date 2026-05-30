@@ -8,6 +8,9 @@ import { getConnectBaseUrl, persistLastEventId, readLastEventId } from './client
 import { getAccessToken } from '../../context/AuthContext'
 import type {
   FriendSyncPayload,
+  LocationRemovedPayload,
+  LocationUpdatedPayload,
+  ProfileUpdatedPayload,
   StreakBurnedPayload,
   StreakCreatedPayload,
   StreakMeetPayload,
@@ -19,6 +22,9 @@ export type SyncEnvelopePayload =
   | { case: 'streakCreated'; value: StreakCreatedPayload }
   | { case: 'streakMeet'; value: StreakMeetPayload }
   | { case: 'streakBurned'; value: StreakBurnedPayload }
+  | { case: 'locationUpdated'; value: LocationUpdatedPayload }
+  | { case: 'locationRemoved'; value: LocationRemovedPayload }
+  | { case: 'profileUpdated'; value: ProfileUpdatedPayload }
   | { case: 'unknown'; raw: unknown }
 
 export interface SyncEnvelope {
@@ -212,6 +218,101 @@ function parseEnvelope(raw: unknown): SyncEnvelope | null {
         eventId,
         sequence,
         payload: { case: 'streakBurned', value: { streakId, count } },
+      }
+    }
+  }
+
+  const locationUpdatedRaw = obj.locationUpdated ?? obj.location_updated
+  if (locationUpdatedRaw && typeof locationUpdatedRaw === 'object') {
+    const loc = locationUpdatedRaw as Record<string, unknown>
+    const id =
+      typeof loc.id === 'string'
+        ? loc.id
+        : typeof loc.userId === 'string'
+          ? loc.userId
+          : typeof loc.user_id === 'string'
+            ? loc.user_id
+            : ''
+    const nickname = typeof loc.nickname === 'string' ? loc.nickname : ''
+    const latitude = typeof loc.latitude === 'number' ? loc.latitude : typeof loc.lat === 'number' ? loc.lat : NaN
+    const longitude =
+      typeof loc.longitude === 'number' ? loc.longitude : typeof loc.lng === 'number' ? loc.lng : NaN
+    if (id && nickname && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      return {
+        eventId,
+        sequence,
+        payload: {
+          case: 'locationUpdated',
+          value: {
+            id,
+            nickname,
+            avatarUrl:
+              typeof loc.avatarUrl === 'string'
+                ? loc.avatarUrl
+                : typeof loc.avatar_url === 'string'
+                  ? loc.avatar_url
+                  : null,
+            latitude,
+            longitude,
+            updatedAt:
+              typeof loc.updatedAt === 'string'
+                ? loc.updatedAt
+                : typeof loc.updated_at === 'string'
+                  ? loc.updated_at
+                  : null,
+          },
+        },
+      }
+    }
+  }
+
+  const locationRemovedRaw = obj.locationRemoved ?? obj.location_removed
+  if (locationRemovedRaw && typeof locationRemovedRaw === 'object') {
+    const loc = locationRemovedRaw as Record<string, unknown>
+    const id =
+      typeof loc.id === 'string'
+        ? loc.id
+        : typeof loc.userId === 'string'
+          ? loc.userId
+          : typeof loc.user_id === 'string'
+            ? loc.user_id
+            : ''
+    if (id) {
+      return {
+        eventId,
+        sequence,
+        payload: { case: 'locationRemoved', value: { id, removed: true } },
+      }
+    }
+  }
+
+  const profileUpdatedRaw = obj.profileUpdated ?? obj.profile_updated
+  if (profileUpdatedRaw && typeof profileUpdatedRaw === 'object') {
+    const p = profileUpdatedRaw as Record<string, unknown>
+    const userId =
+      typeof p.userId === 'string'
+        ? p.userId
+        : typeof p.user_id === 'string'
+          ? p.user_id
+          : ''
+    const nickname = typeof p.nickname === 'string' ? p.nickname : ''
+    if (userId && nickname) {
+      return {
+        eventId,
+        sequence,
+        payload: {
+          case: 'profileUpdated',
+          value: {
+            userId,
+            nickname,
+            avatarUrl:
+              typeof p.avatarUrl === 'string'
+                ? p.avatarUrl
+                : typeof p.avatar_url === 'string'
+                  ? p.avatar_url
+                  : null,
+          },
+        },
       }
     }
   }

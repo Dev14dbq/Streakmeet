@@ -7,8 +7,8 @@ pub use outbox::{enqueue_outbox, publish_pending_outbox, run_outbox_worker, Outb
 use chrono::Utc;
 use prost_types::Timestamp;
 use streakmeet_proto::{
-    FriendEvent, FriendListItem, StreakBurned, StreakCreated, StreakListItem, SyncEnvelope,
-    UserSummary,
+    FriendEvent, FriendListItem, LocationRemoved, LocationUpdated, ProfileUpdated, StreakBurned,
+    StreakCreated, StreakListItem, StreakMeetUpdated, SyncEnvelope, UserSummary,
 };
 use uuid::Uuid;
 
@@ -76,6 +76,77 @@ pub fn streak_burned_envelope(actor_id: &str, streak_id: &str, count: i32) -> Sy
         streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakBurned(StreakBurned {
             streak_id: streak_id.to_string(),
             count,
+        }),
+    )
+}
+
+pub fn location_updated_envelope(
+    actor_id: &str,
+    user_id: &str,
+    lat: f64,
+    lng: f64,
+    nickname: &str,
+    avatar_url: Option<&str>,
+    updated_at: &str,
+) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::Location(LocationUpdated {
+            user_id: user_id.to_string(),
+            lat,
+            lng,
+            nickname: nickname.to_string(),
+            avatar_url: avatar_url.unwrap_or("").to_string(),
+            updated_at: updated_at.to_string(),
+        }),
+    )
+}
+
+pub fn location_removed_envelope(actor_id: &str, user_id: &str) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::LocationRemoved(LocationRemoved {
+            user_id: user_id.to_string(),
+        }),
+    )
+}
+
+pub fn profile_updated_envelope(
+    actor_id: &str,
+    user_id: &str,
+    nickname: &str,
+    avatar_url: Option<&str>,
+) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::ProfileUpdated(ProfileUpdated {
+            user_id: user_id.to_string(),
+            nickname: nickname.to_string(),
+            avatar_url: avatar_url.unwrap_or("").to_string(),
+        }),
+    )
+}
+
+pub fn streak_meet_envelope(
+    actor_id: &str,
+    streak_id: &str,
+    count: i32,
+    last_met_date: &str,
+    partner_id: &str,
+    partner_nickname: &str,
+    partner_avatar_url: Option<&str>,
+) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakMeet(StreakMeetUpdated {
+            streak_id: streak_id.to_string(),
+            count,
+            last_met_date: last_met_date.to_string(),
+            partner: Some(UserSummary {
+                id: partner_id.to_string(),
+                nickname: partner_nickname.to_string(),
+                avatar_url: partner_avatar_url.unwrap_or("").to_string(),
+            }),
         }),
     )
 }

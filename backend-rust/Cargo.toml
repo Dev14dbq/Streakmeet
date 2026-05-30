@@ -9,6 +9,9 @@ members = [
     "crates/streakmeet-sync",
     "crates/streakmeet-social",
     "crates/streakmeet-streaks",
+    "crates/streakmeet-location",
+    "crates/streakmeet-users",
+    "crates/streakmeet-media",
     "services/api-gateway",
     "services/streaks-service",
     "services/worker-service",
@@ -44,6 +47,9 @@ streakmeet-nats = { path = "crates/streakmeet-nats" }
 streakmeet-proto = { path = "crates/streakmeet-proto" }
 streakmeet-social = { path = "crates/streakmeet-social" }
 streakmeet-streaks = { path = "crates/streakmeet-streaks" }
+streakmeet-location = { path = "crates/streakmeet-location" }
+streakmeet-users = { path = "crates/streakmeet-users" }
+streakmeet-media = { path = "crates/streakmeet-media" }
 streakmeet-sync = { path = "crates/streakmeet-sync" }
 streakmeet-types = { path = "crates/streakmeet-types" }
 thiserror = "2"

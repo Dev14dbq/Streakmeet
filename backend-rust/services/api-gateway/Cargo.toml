@@ -20,6 +20,8 @@ streakmeet-db = { workspace = true }
 streakmeet-nats = { workspace = true }
 streakmeet-social = { workspace = true }
 streakmeet-streaks = { workspace = true }
+streakmeet-location = { workspace = true }
+streakmeet-users = { workspace = true }
 streakmeet-sync = { workspace = true }
 streakmeet-types = { workspace = true }
 tokio = { workspace = true }

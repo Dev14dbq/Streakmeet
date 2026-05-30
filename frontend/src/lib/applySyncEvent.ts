@@ -24,6 +24,26 @@ export interface StreakBurnedPayload {
   count: number
 }
 
+export interface LocationUpdatedPayload {
+  id: string
+  nickname: string
+  avatarUrl?: string | null
+  latitude: number
+  longitude: number
+  updatedAt?: string | null
+}
+
+export interface LocationRemovedPayload {
+  id: string
+  removed: true
+}
+
+export interface ProfileUpdatedPayload {
+  userId: string
+  nickname: string
+  avatarUrl?: string | null
+}
+
 /** Patch SWR caches from a live SyncEnvelope (no refetch). */
 export function applySyncEvent(env: SyncEnvelope): void {
   switch (env.payload.case) {
@@ -38,6 +58,15 @@ export function applySyncEvent(env: SyncEnvelope): void {
       break
     case 'streakBurned':
       patchStreaksCacheBurn(env.payload.value)
+      break
+    case 'locationUpdated':
+      patchFriendLocationsCache(env.payload.value)
+      break
+    case 'locationRemoved':
+      patchFriendLocationsRemoved(env.payload.value)
+      break
+    case 'profileUpdated':
+      patchProfileCache(env.payload.value)
       break
     default:
       break
@@ -118,4 +147,68 @@ function patchStreaksCacheBurn(update: StreakBurnedPayload): void {
   void mutate((key) => typeof key === 'string' && key.startsWith('/api/streaks/'), undefined, {
     revalidate: true,
   })
+}
+
+function patchFriendLocationsCache(update: LocationUpdatedPayload): void {
+  void mutate<LocationUpdatedPayload[]>(
+    SWR_KEYS.friendLocations,
+    (current = []) => {
+      const idx = current.findIndex((f) => f.id === update.id)
+      const entry = {
+        id: update.id,
+        nickname: update.nickname,
+        avatarUrl: update.avatarUrl ?? null,
+        latitude: update.latitude,
+        longitude: update.longitude,
+        updatedAt: update.updatedAt ?? new Date().toISOString(),
+      }
+      if (idx >= 0) {
+        const next = [...current]
+        next[idx] = entry
+        return next
+      }
+      return [...current, entry]
+    },
+    { revalidate: false }
+  )
+}
+
+function patchFriendLocationsRemoved(update: LocationRemovedPayload): void {
+  void mutate<LocationUpdatedPayload[]>(
+    SWR_KEYS.friendLocations,
+    (current = []) => current.filter((f) => f.id !== update.id),
+    { revalidate: false }
+  )
+}
+
+function patchProfileCache(update: ProfileUpdatedPayload): void {
+  void mutate(SWR_KEYS.friends, (current: FriendListItem[] = []) =>
+    current.map((f) =>
+      f.friend.id === update.userId
+        ? {
+            ...f,
+            friend: {
+              ...f.friend,
+              nickname: update.nickname,
+              avatarUrl: update.avatarUrl ?? f.friend.avatarUrl,
+            },
+          }
+        : f
+    )
+  )
+
+  void mutate(SWR_KEYS.streaks, (current: StreakListItem[] = []) =>
+    current.map((s) =>
+      s.partner.id === update.userId
+        ? {
+            ...s,
+            partner: {
+              ...s.partner,
+              nickname: update.nickname,
+              avatarUrl: update.avatarUrl ?? s.partner.avatarUrl,
+            },
+          }
+        : s
+    )
+  )
 }

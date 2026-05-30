@@ -103,3 +103,33 @@ fn internal_error() -> (StatusCode, Json<serde_json::Value>) {
         })),
     )
 }
+
+/// Optional JWT — for public routes that work with or without auth.
+pub struct OptionalAuthUser {
+    pub user_id: Option<String>,
+}
+
+impl FromRequestParts<AppState> for OptionalAuthUser {
+    type Rejection = (StatusCode, Json<serde_json::Value>);
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let auth = parts
+            .headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok());
+
+        let Some(auth) = auth else {
+            return Ok(OptionalAuthUser { user_id: None });
+        };
+
+        let Some(token) = auth.strip_prefix("Bearer ") else {
+            return Ok(OptionalAuthUser { user_id: None });
+        };
+
+        let user_id = verify_access_token(token, &state.auth_config.jwt_secret).ok();
+        Ok(OptionalAuthUser { user_id })
+    }
+}

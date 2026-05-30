@@ -12,7 +12,7 @@ pub use streakmeet::v1::{
     AcceptFriendRequest, AckRequest, AckResponse, AuthUser, CatchUpRequest, CreateStreakRequest,
     FriendEvent, FriendListItem, FriendshipRecord, GetStreakDetailRequest, Heartbeat,
     ListFriendsRequest, ListFriendsResponse, ListStreaksRequest, ListStreaksResponse,
-    LocationRemoved, LocationUpdated, LoginRequest, LoginResponse, Notification,
+    LocationRemoved, LocationUpdated, LoginRequest, LoginResponse, Notification, ProfileUpdated,
     RequestFriendRequest, StreakBurned, StreakCreated, StreakDetailDay, StreakDetailResponse,
     StreakEvent, StreakListItem, StreakMeetUpdated, StreakRecord, SubscribeRequest, SyncEnvelope,
     UserSummary,

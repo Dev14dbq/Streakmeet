@@ -306,10 +306,10 @@ pub async fn list_friends_proto(pool: &PgPool, user_id: &str) -> Result<ListFrie
     })
 }
 
-/// Stub: reject incoming friend request (sync event TODO in Phase 3).
+/// Reject incoming friend request — sync `friends.rejected` to both users.
 pub async fn reject_friend(
     pool: &PgPool,
-    _publisher: &OutboxPublisher,
+    publisher: &OutboxPublisher,
     user_id: &str,
     friendship_id: Option<&str>,
 ) -> Result<FriendshipRecordJson, ApiError> {
@@ -317,8 +317,22 @@ pub async fn reject_friend(
         ApiError::new(400, codes::MISSING_FIELD, None)
     })?;
 
-    let friendship = sqlx::query_as::<_, FriendshipRow>(
-        r#"SELECT id, "userAId" AS user_a_id, "userBId" AS user_b_id, status::text AS status FROM friendships WHERE id = $1"#,
+    let with_users = sqlx::query_as::<_, FriendshipWithUsersRow>(
+        r#"
+        SELECT
+            f.id,
+            f."userAId" AS user_a_id,
+            f."userBId" AS user_b_id,
+            f.status::text AS status,
+            ua.nickname AS user_a_nickname,
+            ua."avatarUrl" AS user_a_avatar_url,
+            ub.nickname AS user_b_nickname,
+            ub."avatarUrl" AS user_b_avatar_url
+        FROM friendships f
+        JOIN users ua ON ua.id = f."userAId"
+        JOIN users ub ON ub.id = f."userBId"
+        WHERE f.id = $1
+        "#,
     )
     .bind(friendship_id)
     .fetch_optional(pool)
@@ -326,28 +340,35 @@ pub async fn reject_friend(
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
     .ok_or_else(|| ApiError::new(404, codes::FRIENDSHIP_NOT_FOUND, None))?;
 
-    if friendship.user_b_id != user_id || friendship.status != "PENDING" {
+    if with_users.user_b_id != user_id || with_users.status != "PENDING" {
         return Err(ApiError::new(404, codes::FRIENDSHIP_NOT_FOUND, None));
     }
 
+    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
     sqlx::query(r#"DELETE FROM friendships WHERE id = $1"#)
         .bind(friendship_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
+    let envelopes = enqueue_friend_events(&mut tx, user_id, &with_users, "friends.rejected").await?;
+    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    publish_envelopes(publisher, &with_users, envelopes).await?;
+
     Ok(FriendshipRecordJson {
-        id: friendship.id,
+        id: with_users.id,
         status: "REJECTED".into(),
-        user_a_id: friendship.user_a_id,
-        user_b_id: friendship.user_b_id,
+        user_a_id: with_users.user_a_id,
+        user_b_id: with_users.user_b_id,
     })
 }
 
-/// Stub: cancel outgoing friend request (sync event TODO in Phase 3).
+/// Cancel outgoing friend request — sync `friends.cancelled` to both users.
 pub async fn cancel_friend(
     pool: &PgPool,
-    _publisher: &OutboxPublisher,
+    publisher: &OutboxPublisher,
     user_id: &str,
     friendship_id: Option<&str>,
 ) -> Result<FriendshipRecordJson, ApiError> {
@@ -355,8 +376,22 @@ pub async fn cancel_friend(
         ApiError::new(400, codes::MISSING_FIELD, None)
     })?;
 
-    let friendship = sqlx::query_as::<_, FriendshipRow>(
-        r#"SELECT id, "userAId" AS user_a_id, "userBId" AS user_b_id, status::text AS status FROM friendships WHERE id = $1"#,
+    let with_users = sqlx::query_as::<_, FriendshipWithUsersRow>(
+        r#"
+        SELECT
+            f.id,
+            f."userAId" AS user_a_id,
+            f."userBId" AS user_b_id,
+            f.status::text AS status,
+            ua.nickname AS user_a_nickname,
+            ua."avatarUrl" AS user_a_avatar_url,
+            ub.nickname AS user_b_nickname,
+            ub."avatarUrl" AS user_b_avatar_url
+        FROM friendships f
+        JOIN users ua ON ua.id = f."userAId"
+        JOIN users ub ON ub.id = f."userBId"
+        WHERE f.id = $1
+        "#,
     )
     .bind(friendship_id)
     .fetch_optional(pool)
@@ -364,21 +399,86 @@ pub async fn cancel_friend(
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
     .ok_or_else(|| ApiError::new(404, codes::FRIENDSHIP_NOT_FOUND, None))?;
 
-    if friendship.user_a_id != user_id || friendship.status != "PENDING" {
+    if with_users.user_a_id != user_id || with_users.status != "PENDING" {
         return Err(ApiError::new(404, codes::FRIENDSHIP_NOT_FOUND, None));
     }
 
+    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
     sqlx::query(r#"DELETE FROM friendships WHERE id = $1"#)
         .bind(friendship_id)
-        .execute(pool)
+        .execute(&mut *tx)
         .await
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
+    let envelopes = enqueue_friend_events(&mut tx, user_id, &with_users, "friends.cancelled").await?;
+    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    publish_envelopes(publisher, &with_users, envelopes).await?;
+
     Ok(FriendshipRecordJson {
-        id: friendship.id,
+        id: with_users.id,
         status: "CANCELLED".into(),
-        user_a_id: friendship.user_a_id,
-        user_b_id: friendship.user_b_id,
+        user_a_id: with_users.user_a_id,
+        user_b_id: with_users.user_b_id,
+    })
+}
+
+/// Unfriend an accepted friendship — sync `friends.removed` to both users.
+pub async fn remove_friend(
+    pool: &PgPool,
+    publisher: &OutboxPublisher,
+    user_id: &str,
+    friendship_id: &str,
+) -> Result<FriendshipRecordJson, ApiError> {
+    let with_users = sqlx::query_as::<_, FriendshipWithUsersRow>(
+        r#"
+        SELECT
+            f.id,
+            f."userAId" AS user_a_id,
+            f."userBId" AS user_b_id,
+            f.status::text AS status,
+            ua.nickname AS user_a_nickname,
+            ua."avatarUrl" AS user_a_avatar_url,
+            ub.nickname AS user_b_nickname,
+            ub."avatarUrl" AS user_b_avatar_url
+        FROM friendships f
+        JOIN users ua ON ua.id = f."userAId"
+        JOIN users ub ON ub.id = f."userBId"
+        WHERE f.id = $1
+        "#,
+    )
+    .bind(friendship_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+    .ok_or_else(|| ApiError::new(404, codes::FRIENDSHIP_NOT_FOUND, None))?;
+
+    if with_users.user_a_id != user_id && with_users.user_b_id != user_id {
+        return Err(ApiError::new(404, codes::FRIENDSHIP_NOT_FOUND, None));
+    }
+    if with_users.status != "ACCEPTED" {
+        return Err(ApiError::new(400, codes::FRIENDSHIP_NOT_PENDING, None));
+    }
+
+    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    sqlx::query(r#"DELETE FROM friendships WHERE id = $1"#)
+        .bind(friendship_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    let envelopes = enqueue_friend_events(&mut tx, user_id, &with_users, "friends.removed").await?;
+    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    publish_envelopes(publisher, &with_users, envelopes).await?;
+
+    Ok(FriendshipRecordJson {
+        id: with_users.id,
+        status: "REMOVED".into(),
+        user_a_id: with_users.user_a_id,
+        user_b_id: with_users.user_b_id,
     })
 }
 
