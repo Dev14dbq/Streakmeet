@@ -1,9 +1,9 @@
-import { purgeExpiredDeletedUsers } from '../lib/accountDeletion.js'
+import { purgeExpiredDeletedUsers } from '../common/account.js'
 import { processStreakNotifications } from './streakNotifications.js'
-import { reconcileStreakTimezones } from '../lib/streakCalendar.js'
-import { ensureFaceService } from '../lib/face.js'
-import { ensureLegalDocuments } from '../lib/legalDocuments.js'
-import { ensureBucket } from '../lib/mediaStorage.js'
+import { reconcileStreakTimezones } from '../streaks/calendar.js'
+import { ensureFaceService } from '../face/service.js'
+import { ensureLegalDocuments } from '../legal/documents.js'
+import { ensureBucket } from '../storage/media.js'
 
 const DAY_MS = 86_400_000
 const STREAK_NOTIFY_MS = 5 * 60_000
