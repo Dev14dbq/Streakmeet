@@ -200,6 +200,37 @@ curl -s http://127.0.0.1:8080/api/friends/reject \
   -d '{"friendshipId":"<id>"}'
 ```
 
+### 7. Memories, legal, users, uploads
+
+```bash
+TOKEN=...  # from login
+
+# Legal status + accept
+curl -s http://127.0.0.1:8080/api/legal/status/me -H "Authorization: Bearer $TOKEN" | jq
+curl -s -X POST http://127.0.0.1:8080/api/legal/accept -H "Authorization: Bearer $TOKEN" | jq
+curl -s 'http://127.0.0.1:8080/api/legal/terms?locale=en' | jq '.slug,.version,.title'
+
+# Memories feed (requires 7+ MET streak days)
+curl -s 'http://127.0.0.1:8080/api/memories/?page=1&limit=20' \
+  -H "Authorization: Bearer $TOKEN" | jq '.unlocked,.items|length'
+curl -s 'http://127.0.0.1:8080/api/memories/?streakId=<streak-id>' \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# User settings / preferences / photos
+curl -s -X PATCH http://127.0.0.1:8080/api/users/settings \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"timezone":"Europe/Moscow"}' | jq '.timezone'
+curl -s -X PATCH http://127.0.0.1:8080/api/users/preferences \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"notifyFriends":true,"notifyMeet":true,"geoOnPhotos":false}' | jq '.notifyFriends'
+curl -s 'http://127.0.0.1:8080/api/users/photos?page=1&limit=12' \
+  -H "Authorization: Bearer $TOKEN" | jq 'length'
+curl -s 'http://127.0.0.1:8080/api/public/users/<nickname>/photos?page=1' | jq 'length'
+
+# Uploaded media (AVIF)
+curl -sI http://127.0.0.1:8080/uploads/<filename>.avif | grep -i content-type
+```
+
 ## Frontend dev test (quick)
 
 ```bash
