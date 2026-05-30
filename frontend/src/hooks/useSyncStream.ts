@@ -24,6 +24,21 @@ export function useSyncStream(user: AuthUser | null, bootstrapPhase: BootstrapPh
         applySyncEvent(env)
         return
       }
+      if (env.payload.case === 'streakCreated') {
+        console.debug('[sync] streakCreated', env.payload.value.streak.id, env.eventId)
+        applySyncEvent(env)
+        return
+      }
+      if (env.payload.case === 'streakMeet') {
+        console.debug('[sync] streakMeet', env.payload.value.streakId, env.eventId)
+        applySyncEvent(env)
+        return
+      }
+      if (env.payload.case === 'streakBurned') {
+        console.debug('[sync] streakBurned', env.payload.value.streakId, env.eventId)
+        applySyncEvent(env)
+        return
+      }
       console.debug('[sync] envelope', env)
     }
   })

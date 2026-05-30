@@ -1,5 +1,5 @@
 import { mutate } from 'swr'
-import type { FriendListItem } from '@streakmeet/api-spec'
+import type { FriendListItem, StreakListItem } from '@streakmeet/api-spec'
 import { SWR_KEYS } from './swrKeys'
 import type { SyncEnvelope } from '../connect/syncStream'
 
@@ -8,10 +8,40 @@ export interface FriendSyncPayload {
   friendship: FriendListItem
 }
 
+export interface StreakCreatedPayload {
+  streak: StreakListItem
+}
+
+export interface StreakMeetPayload {
+  streakId: string
+  count: number
+  lastMetDate?: string | null
+  partner?: StreakListItem['partner']
+}
+
+export interface StreakBurnedPayload {
+  streakId: string
+  count: number
+}
+
 /** Patch SWR caches from a live SyncEnvelope (no refetch). */
 export function applySyncEvent(env: SyncEnvelope): void {
-  if (env.payload.case !== 'friendEvent') return
-  patchFriendsCache(env.payload.value)
+  switch (env.payload.case) {
+    case 'friendEvent':
+      patchFriendsCache(env.payload.value)
+      break
+    case 'streakCreated':
+      patchStreaksCacheInsert(env.payload.value.streak)
+      break
+    case 'streakMeet':
+      patchStreaksCacheMeet(env.payload.value)
+      break
+    case 'streakBurned':
+      patchStreaksCacheBurn(env.payload.value)
+      break
+    default:
+      break
+  }
 }
 
 function patchFriendsCache(event: FriendSyncPayload): void {
@@ -38,4 +68,54 @@ function patchFriendsCache(event: FriendSyncPayload): void {
     },
     { revalidate: false }
   )
+}
+
+function patchStreaksCacheInsert(streak: StreakListItem): void {
+  void mutate<StreakListItem[]>(
+    SWR_KEYS.streaks,
+    (current = []) => {
+      if (current.some((s) => s.id === streak.id)) {
+        return current.map((s) => (s.id === streak.id ? streak : s))
+      }
+      return [streak, ...current]
+    },
+    { revalidate: false }
+  )
+}
+
+function patchStreaksCacheMeet(update: StreakMeetPayload): void {
+  void mutate<StreakListItem[]>(
+    SWR_KEYS.streaks,
+    (current = []) =>
+      current.map((s) =>
+        s.id === update.streakId
+          ? {
+              ...s,
+              count: update.count,
+              lastMetDate: update.lastMetDate ?? s.lastMetDate,
+              partner: update.partner ?? s.partner,
+            }
+          : s
+      ),
+    { revalidate: false }
+  )
+
+  void mutate((key) => typeof key === 'string' && key.startsWith('/api/streaks/'), undefined, {
+    revalidate: true,
+  })
+}
+
+function patchStreaksCacheBurn(update: StreakBurnedPayload): void {
+  void mutate<StreakListItem[]>(
+    SWR_KEYS.streaks,
+    (current = []) =>
+      current.map((s) =>
+        s.id === update.streakId ? { ...s, count: update.count, lastMetDate: null } : s
+      ),
+    { revalidate: false }
+  )
+
+  void mutate((key) => typeof key === 'string' && key.startsWith('/api/streaks/'), undefined, {
+    revalidate: true,
+  })
 }

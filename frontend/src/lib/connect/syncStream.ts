@@ -6,11 +6,19 @@
 
 import { getConnectBaseUrl, persistLastEventId, readLastEventId } from './client'
 import { getAccessToken } from '../../context/AuthContext'
-import type { FriendSyncPayload } from '../applySyncEvent'
+import type {
+  FriendSyncPayload,
+  StreakBurnedPayload,
+  StreakCreatedPayload,
+  StreakMeetPayload,
+} from '../applySyncEvent'
 
 export type SyncEnvelopePayload =
   | { case: 'heartbeat'; message: string }
   | { case: 'friendEvent'; value: FriendSyncPayload }
+  | { case: 'streakCreated'; value: StreakCreatedPayload }
+  | { case: 'streakMeet'; value: StreakMeetPayload }
+  | { case: 'streakBurned'; value: StreakBurnedPayload }
   | { case: 'unknown'; raw: unknown }
 
 export interface SyncEnvelope {
@@ -91,6 +99,38 @@ function parseFriendEvent(raw: Record<string, unknown>): FriendSyncPayload | nul
   }
 }
 
+function parseStreakListItem(raw: Record<string, unknown>) {
+  const id = typeof raw.id === 'string' ? raw.id : ''
+  const count = typeof raw.count === 'number' ? raw.count : 0
+  const timezone = typeof raw.timezone === 'string' ? raw.timezone : 'UTC'
+  const lastMetDate =
+    typeof raw.lastMetDate === 'string'
+      ? raw.lastMetDate
+      : typeof raw.last_met_date === 'string'
+        ? raw.last_met_date
+        : null
+  const partnerRaw = raw.partner
+  if (!id || !partnerRaw || typeof partnerRaw !== 'object') return null
+  const partner = partnerRaw as Record<string, unknown>
+  if (typeof partner.id !== 'string' || typeof partner.nickname !== 'string') return null
+  return {
+    id,
+    count,
+    timezone,
+    lastMetDate,
+    partner: {
+      id: partner.id,
+      nickname: partner.nickname,
+      avatarUrl:
+        typeof partner.avatarUrl === 'string'
+          ? partner.avatarUrl
+          : typeof partner.avatar_url === 'string'
+            ? partner.avatar_url
+            : null,
+    },
+  } satisfies StreakCreatedPayload['streak']
+}
+
 /** Parse Connect JSON SyncEnvelope lines from sync-gateway. */
 function parseEnvelope(raw: unknown): SyncEnvelope | null {
   if (!raw || typeof raw !== 'object') return null
@@ -108,6 +148,71 @@ function parseEnvelope(raw: unknown): SyncEnvelope | null {
     const parsed = parseFriendEvent(friendEventRaw as Record<string, unknown>)
     if (parsed) {
       return { eventId, sequence, payload: { case: 'friendEvent', value: parsed } }
+    }
+  }
+
+  const streakCreatedRaw = obj.streakCreated ?? obj.streak_created
+  if (streakCreatedRaw && typeof streakCreatedRaw === 'object') {
+    const sc = streakCreatedRaw as Record<string, unknown>
+    const streakRaw = sc.streak
+    if (streakRaw && typeof streakRaw === 'object') {
+      const streak = parseStreakListItem(streakRaw as Record<string, unknown>)
+      if (streak) {
+        return { eventId, sequence, payload: { case: 'streakCreated', value: { streak } } }
+      }
+    }
+  }
+
+  const streakMeetRaw = obj.streakMeet ?? obj.streak_meet
+  if (streakMeetRaw && typeof streakMeetRaw === 'object') {
+    const sm = streakMeetRaw as Record<string, unknown>
+    const streakId =
+      typeof sm.streakId === 'string'
+        ? sm.streakId
+        : typeof sm.streak_id === 'string'
+          ? sm.streak_id
+          : ''
+    const count = typeof sm.count === 'number' ? sm.count : 0
+    const lastMetDate =
+      typeof sm.lastMetDate === 'string'
+        ? sm.lastMetDate
+        : typeof sm.last_met_date === 'string'
+          ? sm.last_met_date
+          : null
+    if (streakId) {
+      const partnerRaw = sm.partner
+      const partner =
+        partnerRaw && typeof partnerRaw === 'object'
+          ? parseStreakListItem({ id: streakId, count, timezone: 'UTC', partner: partnerRaw })
+              ?.partner
+          : undefined
+      return {
+        eventId,
+        sequence,
+        payload: {
+          case: 'streakMeet',
+          value: { streakId, count, lastMetDate, partner },
+        },
+      }
+    }
+  }
+
+  const streakBurnedRaw = obj.streakBurned ?? obj.streak_burned
+  if (streakBurnedRaw && typeof streakBurnedRaw === 'object') {
+    const sb = streakBurnedRaw as Record<string, unknown>
+    const streakId =
+      typeof sb.streakId === 'string'
+        ? sb.streakId
+        : typeof sb.streak_id === 'string'
+          ? sb.streak_id
+          : ''
+    const count = typeof sb.count === 'number' ? sb.count : 0
+    if (streakId) {
+      return {
+        eventId,
+        sequence,
+        payload: { case: 'streakBurned', value: { streakId, count } },
+      }
     }
   }
 
