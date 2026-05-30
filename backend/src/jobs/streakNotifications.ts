@@ -1,11 +1,15 @@
-import { prisma } from '../lib/prisma.js'
-import { notifyUser, type NotificationPayload, type NotificationType } from '../lib/socket.js'
+import { prisma } from '../db/client.js'
+import {
+  notifyUser,
+  type NotificationPayload,
+  type NotificationType,
+} from '../notifications/socket.js'
 import {
   addDaysToDateString,
   getLocalDateString,
   getLocalTimeParts,
   normalizeTimezone,
-} from '../lib/timezone.js'
+} from '../common/helpers.js'
 
 type NotifyKind = 'STREAK_1H' | 'STREAK_30M' | 'STREAK_BURNED'
 

@@ -2,18 +2,19 @@ import express from 'express'
 import { createServer } from 'http'
 import cors from 'cors'
 import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
-import authRouter from './routes/auth.js'
-import usersRouter from './routes/users.js'
-import friendsRouter from './routes/friends.js'
-import streaksRouter from './routes/streaks.js'
-import locationRouter from './routes/location.js'
-import publicRouter from './routes/public.js'
-import legalRouter from './routes/legal.js'
-import mediaRouter from './routes/media.js'
-import memoriesRouter from './routes/memories.js'
-import { errorHandler } from './lib/httpErrors.js'
-import { initSocket } from './lib/socket.js'
+import authRouter from './auth/route.js'
+import usersRouter from './users/route.js'
+import friendsRouter from './friends/route.js'
+import streaksRouter from './streaks/route.js'
+import locationRouter from './location/route.js'
+import publicRouter from './users/public.js'
+import legalRouter from './legal/route.js'
+import mediaRouter from './media/route.js'
+import memoriesRouter from './memories/route.js'
+import { errorHandler } from './common/errors.js'
+import { initSocket } from './notifications/socket.js'
 import { start as startScheduler } from './jobs/scheduler.js'
 
 dotenv.config()
@@ -22,14 +23,25 @@ const app = express()
 const httpServer = createServer(app)
 const port = process.env.PORT ?? 3000
 
-// nginx проксирует API — нужно для rate-limit и req.ip
 app.set('trust proxy', 1)
 
 initSocket(httpServer)
 
-app.use(helmet({ crossOriginResourcePolicy: false })) // Разрешаем загрузку картинок
-app.use(cors())
-app.use(express.json({ limit: '50mb' }))
+app.use(helmet({ crossOriginResourcePolicy: false }))
+const corsOrigins = process.env.CORS_ORIGINS?.split(',') ?? []
+app.use(cors(corsOrigins.length > 0 ? { origin: corsOrigins } : {}))
+app.use(express.json({ limit: '1mb' }))
+
+app.use(
+  rateLimit({
+    windowMs: 60_000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Слишком много запросов', code: 'RATE_LIMITED' },
+    validate: { xForwardedForHeader: false },
+  })
+)
 
 app.use('/uploads', mediaRouter)
 
