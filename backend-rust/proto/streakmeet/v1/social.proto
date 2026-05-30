@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package streakmeet.v1;
+
+import "streakmeet/v1/sync.proto";
+
+message RequestFriendRequest {
+  string friend_id = 1;
+}
+
+message AcceptFriendRequest {
+  string friendship_id = 1;
+}
+
+message ListFriendsRequest {}
+
+message FriendshipRecord {
+  string id = 1;
+  string status = 2;
+  string user_a_id = 3;
+  string user_b_id = 4;
+}
+
+message ListFriendsResponse {
+  repeated FriendListItem friends = 1;
+}
+
+service SocialService {
+  rpc RequestFriend(RequestFriendRequest) returns (FriendshipRecord);
+  rpc AcceptFriend(AcceptFriendRequest) returns (FriendshipRecord);
+  rpc ListFriends(ListFriendsRequest) returns (ListFriendsResponse);
+}
