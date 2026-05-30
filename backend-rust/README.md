@@ -53,9 +53,9 @@ cargo run -p worker-service   # streak warnings + burn + remote selfie expiry ev
 - [x] Transactional outbox (`sync_outbox`) + background retry worker
 - [x] Friends: request / accept / list (REST on api-gateway + gRPC social-service)
 - [x] Sync events: `friends.requested`, `friends.accepted` → both users
-- [x] sync-gateway: NATS `sync.user.>` → in-memory fan-out (multi-device)
+- [x] sync-gateway: JetStream durable consumer → in-memory fan-out (multi-device)
 - [x] Connect-compatible HTTP layer for browser (`application/connect+json`)
-- [x] CatchUp skeleton (reads from `sync_outbox` by `lastEventId`)
+- [x] CatchUp RPC: `sync_outbox` + JetStream supplement by `lastEventId`
 - [x] Frontend: `useSyncStream` + `applySyncEvent` patches `SWR_KEYS.friends`
 
 ## Phase 2 — Streaks + Worker
