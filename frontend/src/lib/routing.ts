@@ -22,14 +22,21 @@ export function isPublicNicknamePath(segment: string): boolean {
   return /^[a-z0-9_]{3,20}$/.test(segment) && !RESERVED_PATHS.has(segment.toLowerCase())
 }
 
+import { getNodeApiUrl } from './api/client'
+import { isSyncStreamEnabled } from './connect/syncMode'
+
 export function publicAppOrigin(): string {
   const configured = import.meta.env.VITE_API_URL
   if (configured) return configured.replace(/\/$/, '')
   return window.location.origin
 }
 
-/** URL для Socket.io — на Android в WebView origin = localhost, нужен реальный сервер. */
+/** URL для Socket.io — Node only; when Rust sync is on, point at the legacy backend. */
 export function getRealtimeServerUrl(): string {
+  if (isSyncStreamEnabled()) {
+    const node = getNodeApiUrl()
+    if (node) return node
+  }
   return publicAppOrigin()
 }
 

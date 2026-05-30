@@ -131,6 +131,9 @@ export function invalidateAfterNotification(type: string | undefined) {
     case 'remote_selfie_request':
     case 'remote_selfie_completed':
     case 'streak_remind':
+    case 'streak_1h':
+    case 'streak_30m':
+    case 'streak_burned':
       void invalidateCacheGroups('streaks', 'streakDetails')
       break
     default:

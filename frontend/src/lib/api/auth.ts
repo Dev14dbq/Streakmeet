@@ -5,42 +5,40 @@ import type {
   RestoreAccountPayload,
 } from '@streakmeet/api-spec'
 import { getDeviceTimezone } from '../timezone'
-import { api } from './client'
-import { isSyncStreamEnabled } from '../connect/client'
 import { migratedApi } from './migratedClient'
 
-export const checkEmail = (email: string) =>
-  api.post<{ exists: boolean }>('/api/auth/check-email', { email })
+const authApi = () => migratedApi()
 
-export const login = (email: string, password: string) => {
-  const client = isSyncStreamEnabled() ? migratedApi() : api
-  return client.post<AuthResponse>('/api/auth/login', {
+export const checkEmail = (email: string) =>
+  authApi().post<{ exists: boolean }>('/api/auth/check-email', { email })
+
+export const login = (email: string, password: string) =>
+  authApi().post<AuthResponse>('/api/auth/login', {
     email,
     password,
     timezone: getDeviceTimezone(),
   })
-}
 
 export const restoreAccount = (payload: RestoreAccountPayload) =>
-  api.post<AuthResponse>('/api/auth/restore-account', payload)
+  authApi().post<AuthResponse>('/api/auth/restore-account', payload)
 
 export const register = (data: RegisterPayload) =>
-  api.post<AuthResponse>('/api/auth/register', data)
+  authApi().post<AuthResponse>('/api/auth/register', data)
 
 export const resendVerificationEmail = () =>
-  api.post<{ success: true }>('/api/auth/resend-verification')
+  authApi().post<{ success: true }>('/api/auth/resend-verification')
 
 export const confirmEmailVerification = (token: string) =>
-  api.post<{ success: true }>('/api/auth/verify-email', { token })
+  authApi().post<{ success: true }>('/api/auth/verify-email', { token })
 
 export const forgotPassword = (email: string) =>
-  api.post<{ success: true }>('/api/auth/forgot-password', { email })
+  authApi().post<{ success: true }>('/api/auth/forgot-password', { email })
 
 export const resetPassword = (token: string, password: string) =>
-  api.post<{ success: true }>('/api/auth/reset-password', { token, password })
+  authApi().post<{ success: true }>('/api/auth/reset-password', { token, password })
 
 export const enrollFace = (photos: string[]) =>
-  api.post('/api/auth/enroll-face', { photos }, { timeout: 120_000 })
+  authApi().post('/api/auth/enroll-face', { photos }, { timeout: 120_000 })
 
 export function getDeletedAccountInfo(err: unknown): DeletedAccountInfo | null {
   const data = (err as { response?: { status?: number; data?: DeletedAccountInfo } })?.response

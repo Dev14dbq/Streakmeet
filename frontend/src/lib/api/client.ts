@@ -2,6 +2,21 @@ import axios, { isAxiosError } from 'axios'
 import i18n from '../../i18n'
 import { invalidateAfterMutation } from '../swrInvalidation'
 
+/**
+ * Node backend base URL. When Rust dev proxy is on, legal/memories/etc. must hit :3000 explicitly.
+ * Production: set VITE_NODE_API_URL or fall back to VITE_API_URL.
+ */
+export function getNodeApiUrl(): string {
+  const node = (import.meta.env.VITE_NODE_API_URL as string | undefined)?.trim()
+  if (node) return node.replace(/\/$/, '')
+  const legacy = (import.meta.env.VITE_API_URL as string | undefined)?.trim()
+  if (legacy) return legacy.replace(/\/$/, '')
+  if (import.meta.env.DEV) return 'http://127.0.0.1:3000'
+  return ''
+}
+
+export { getRustGatewayUrl } from '../connect/client'
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
   headers: { 'Content-Type': 'application/json' },
@@ -75,4 +90,3 @@ export function getApiErrorMessage(err: unknown, fallback?: string): string {
   return fb
 }
 
-export const fetcher = (url: string) => api.get(url).then((res) => res.data)

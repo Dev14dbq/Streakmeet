@@ -1,15 +1,13 @@
 import { mutate } from 'swr'
 import { isAxiosError } from 'axios'
 import {
-  api,
   getDeletedAccountInfo,
   isNetworkError,
+  migratedApi,
   syncDeviceTimezone,
   type AuthUser,
   type LegalConsentStatus,
 } from './api'
-import { isSyncStreamEnabled } from './connect/client'
-import { migratedApi } from './api/migratedClient'
 import { initGoogleAuth } from './googleAuth'
 import { pruneStaleImageCache } from './remoteImageCache'
 import { SWR_KEYS } from './swrKeys'
@@ -51,7 +49,7 @@ export async function bootstrapSession(): Promise<BootstrapSessionResult> {
   }
 
   try {
-    const dataApi = isSyncStreamEnabled() ? migratedApi() : api
+    const dataApi = migratedApi()
     const { data: user } = await dataApi.get<AuthUser>(SWR_KEYS.me)
     localStorage.setItem('user', JSON.stringify(user))
     void mutate(SWR_KEYS.me, user, { revalidate: false })
@@ -59,10 +57,10 @@ export async function bootstrapSession(): Promise<BootstrapSessionResult> {
     const [streaks, friends, legal, location, friendLocations, photos] = await Promise.allSettled([
       dataApi.get(SWR_KEYS.streaks),
       dataApi.get(SWR_KEYS.friends),
-      api.get(SWR_KEYS.legalStatus),
+      dataApi.get(SWR_KEYS.legalStatus),
       dataApi.get(SWR_KEYS.locationMe),
       dataApi.get(SWR_KEYS.friendLocations),
-      api.get(SWR_KEYS.photosPage(1)),
+      dataApi.get(SWR_KEYS.photosPage(1)),
     ])
 
     if (streaks.status === 'fulfilled') {

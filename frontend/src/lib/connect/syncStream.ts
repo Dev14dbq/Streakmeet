@@ -10,11 +10,15 @@ import type {
   FriendSyncPayload,
   LocationRemovedPayload,
   LocationUpdatedPayload,
+  PendingRemoteSelfieSync,
   ProfileUpdatedPayload,
+  RemoteSelfieClearedPayload,
+  RemoteSelfiePendingPayload,
   StreakBurnedPayload,
   StreakCreatedPayload,
   StreakEventPayload,
   StreakMeetPayload,
+  StreakPhotoAddedPayload,
   SyncNotificationPayload,
 } from '../applySyncEvent'
 
@@ -29,6 +33,9 @@ export type SyncEnvelopePayload =
   | { case: 'locationRemoved'; value: LocationRemovedPayload }
   | { case: 'profileUpdated'; value: ProfileUpdatedPayload }
   | { case: 'notification'; value: SyncNotificationPayload }
+  | { case: 'remoteSelfiePending'; value: RemoteSelfiePendingPayload }
+  | { case: 'remoteSelfieCleared'; value: RemoteSelfieClearedPayload }
+  | { case: 'streakPhotoAdded'; value: StreakPhotoAddedPayload }
   | { case: 'unknown'; raw: unknown }
 
 export interface SyncEnvelope {
@@ -61,6 +68,39 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
       { once: true }
     )
   })
+}
+
+function parsePendingRemoteSelfie(raw: unknown): PendingRemoteSelfieSync | null {
+  if (!raw || typeof raw !== 'object') return null
+  const p = raw as Record<string, unknown>
+  const id = typeof p.id === 'string' ? p.id : ''
+  const senderId = typeof p.senderId === 'string' ? p.senderId : typeof p.sender_id === 'string' ? p.sender_id : ''
+  const receiverId =
+    typeof p.receiverId === 'string'
+      ? p.receiverId
+      : typeof p.receiver_id === 'string'
+        ? p.receiver_id
+        : ''
+  const senderPhotoUrl =
+    typeof p.senderPhotoUrl === 'string'
+      ? p.senderPhotoUrl
+      : typeof p.sender_photo_url === 'string'
+        ? p.sender_photo_url
+        : ''
+  const senderNickname =
+    typeof p.senderNickname === 'string'
+      ? p.senderNickname
+      : typeof p.sender_nickname === 'string'
+        ? p.sender_nickname
+        : ''
+  const needsReply =
+    typeof p.needsReply === 'boolean'
+      ? p.needsReply
+      : typeof p.needs_reply === 'boolean'
+        ? p.needs_reply
+        : false
+  if (!id || !senderId || !senderPhotoUrl) return null
+  return { id, senderId, receiverId, senderPhotoUrl, needsReply, senderNickname }
 }
 
 function parseFriendEvent(raw: Record<string, unknown>): FriendSyncPayload | null {
@@ -362,6 +402,108 @@ function parseEnvelope(raw: unknown): SyncEnvelope | null {
                   ? p.avatar_url
                   : null,
           },
+        },
+      }
+    }
+  }
+
+  const streakPhotoRaw = obj.streakPhotoAdded ?? obj.streak_photo_added
+  if (streakPhotoRaw && typeof streakPhotoRaw === 'object') {
+    const sp = streakPhotoRaw as Record<string, unknown>
+    const streakId =
+      typeof sp.streakId === 'string'
+        ? sp.streakId
+        : typeof sp.streak_id === 'string'
+          ? sp.streak_id
+          : ''
+    const streakDayId =
+      typeof sp.streakDayId === 'string'
+        ? sp.streakDayId
+        : typeof sp.streak_day_id === 'string'
+          ? sp.streak_day_id
+          : ''
+    const photoUrl =
+      typeof sp.photoUrl === 'string'
+        ? sp.photoUrl
+        : typeof sp.photo_url === 'string'
+          ? sp.photo_url
+          : ''
+    if (streakId && photoUrl) {
+      return {
+        eventId,
+        sequence,
+        payload: {
+          case: 'streakPhotoAdded',
+          value: { streakId, streakDayId, photoUrl },
+        },
+      }
+    }
+  }
+
+  const remotePendingRaw = obj.remoteSelfiePending ?? obj.remote_selfie_pending
+  if (remotePendingRaw && typeof remotePendingRaw === 'object') {
+    const rp = remotePendingRaw as Record<string, unknown>
+    const streakId =
+      typeof rp.streakId === 'string'
+        ? rp.streakId
+        : typeof rp.streak_id === 'string'
+          ? rp.streak_id
+          : ''
+    const pending = parsePendingRemoteSelfie(rp.pendingRemoteSelfie ?? rp.pending_remote_selfie)
+    if (streakId && pending) {
+      return {
+        eventId,
+        sequence,
+        payload: { case: 'remoteSelfiePending', value: { streakId, pendingRemoteSelfie: pending } },
+      }
+    }
+  }
+
+  const remoteClearedRaw = obj.remoteSelfieCleared ?? obj.remote_selfie_cleared
+  if (remoteClearedRaw && typeof remoteClearedRaw === 'object') {
+    const rc = remoteClearedRaw as Record<string, unknown>
+    const streakId =
+      typeof rc.streakId === 'string'
+        ? rc.streakId
+        : typeof rc.streak_id === 'string'
+          ? rc.streak_id
+          : ''
+    if (streakId) {
+      const meetRaw = rc.meet
+      let meet: StreakMeetPayload | undefined
+      if (meetRaw && typeof meetRaw === 'object') {
+        const m = meetRaw as Record<string, unknown>
+        const meetStreakId =
+          typeof m.streakId === 'string'
+            ? m.streakId
+            : typeof m.streak_id === 'string'
+              ? m.streak_id
+              : streakId
+        const count = typeof m.count === 'number' ? m.count : 0
+        const lastMetDate =
+          typeof m.lastMetDate === 'string'
+            ? m.lastMetDate
+            : typeof m.last_met_date === 'string'
+              ? m.last_met_date
+              : null
+        const partnerRaw = m.partner
+        const partner =
+          partnerRaw && typeof partnerRaw === 'object'
+            ? parseStreakListItem({
+                id: meetStreakId,
+                count,
+                timezone: 'UTC',
+                partner: partnerRaw,
+              })?.partner
+            : undefined
+        meet = { streakId: meetStreakId, count, lastMetDate, partner }
+      }
+      return {
+        eventId,
+        sequence,
+        payload: {
+          case: 'remoteSelfieCleared',
+          value: { streakId, pendingRemoteSelfie: null, meet },
         },
       }
     }

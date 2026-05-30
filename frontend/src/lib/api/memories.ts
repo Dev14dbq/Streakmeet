@@ -1,4 +1,4 @@
-import { api } from './client'
+import { apiClientForPath } from './migratedClient'
 
 export type MemoryPartner = {
   id: string
@@ -42,7 +42,7 @@ export type MemoriesFeedResponse = {
 }
 
 export function getMemories(page = 1, limit = 20, streakId?: string) {
-  return api.get<MemoriesFeedResponse>('/api/memories', {
+  return apiClientForPath('/api/memories/').get<MemoriesFeedResponse>('/api/memories/', {
     params: { page, limit, streakId },
   })
 }

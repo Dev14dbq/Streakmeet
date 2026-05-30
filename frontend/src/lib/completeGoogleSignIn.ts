@@ -1,5 +1,5 @@
 import i18n from '../i18n'
-import { api, getDeletedAccountInfo, getApiErrorMessage, type AuthUser } from './api'
+import { getDeletedAccountInfo, getApiErrorMessage, migratedApi, type AuthUser } from './api'
 import { getDeviceTimezone } from './timezone'
 import type { GoogleSignInTokens } from './googleAuth'
 
@@ -16,7 +16,7 @@ export async function completeGoogleSignIn(
   }
 
   try {
-    const { data } = await api.post<{ accessToken: string; user: AuthUser }>('/api/auth/google', {
+    const { data } = await migratedApi().post<{ accessToken: string; user: AuthUser }>('/api/auth/google', {
       accessToken: tokens.accessToken,
       idToken: tokens.idToken,
       timezone: getDeviceTimezone(),

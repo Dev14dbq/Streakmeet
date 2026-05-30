@@ -4,6 +4,33 @@ import { SWR_KEYS } from './swrKeys'
 import type { SyncEnvelope } from './connect/syncStream'
 import { invalidateAfterNotification } from './swrInvalidation'
 
+/** Pending remote selfie on streak list (Connect + Node list shape). */
+export interface PendingRemoteSelfieSync {
+  id: string
+  senderId: string
+  receiverId: string
+  senderPhotoUrl: string
+  needsReply: boolean
+  senderNickname: string
+}
+
+export interface RemoteSelfiePendingPayload {
+  streakId: string
+  pendingRemoteSelfie: PendingRemoteSelfieSync | null
+}
+
+export interface RemoteSelfieClearedPayload {
+  streakId: string
+  pendingRemoteSelfie: null
+  meet?: StreakMeetPayload
+}
+
+export interface StreakPhotoAddedPayload {
+  streakId: string
+  streakDayId: string
+  photoUrl: string
+}
+
 export interface FriendSyncPayload {
   eventType: string
   friendship: FriendListItem
@@ -86,6 +113,15 @@ export function applySyncEvent(env: SyncEnvelope): void {
     case 'notification':
       applySyncNotification(env.payload.value)
       break
+    case 'remoteSelfiePending':
+      patchRemoteSelfiePending(env.payload.value)
+      break
+    case 'remoteSelfieCleared':
+      patchRemoteSelfieCleared(env.payload.value)
+      break
+    case 'streakPhotoAdded':
+      patchStreakPhotoAdded(env.payload.value)
+      break
     case 'heartbeat':
     case 'unknown':
       break
@@ -124,6 +160,86 @@ function patchStreakEvent(event: StreakEventPayload): void {
 
 function applySyncNotification(payload: SyncNotificationPayload): void {
   invalidateAfterNotification(payload.type)
+}
+
+function patchRemoteSelfiePending(update: RemoteSelfiePendingPayload): void {
+  const pending = update.pendingRemoteSelfie
+  if (!pending) return
+
+  void mutate<StreakListItem[]>(
+    SWR_KEYS.streaks,
+    (current = []) =>
+      current.map((s) =>
+        s.id === update.streakId
+          ? ({ ...s, pendingRemoteSelfie: pending } as StreakListItem & {
+              pendingRemoteSelfie: PendingRemoteSelfieSync
+            })
+          : s
+      ),
+    { revalidate: false }
+  )
+
+  patchStreakDetailRemoteSelfie(update.streakId, pending)
+}
+
+function patchRemoteSelfieCleared(update: RemoteSelfieClearedPayload): void {
+  void mutate<StreakListItem[]>(
+    SWR_KEYS.streaks,
+    (current = []) =>
+      current.map((s) =>
+        s.id === update.streakId
+          ? ({ ...s, pendingRemoteSelfie: null } as StreakListItem & { pendingRemoteSelfie: null })
+          : s
+      ),
+    { revalidate: false }
+  )
+
+  patchStreakDetailRemoteSelfie(update.streakId, null)
+  if (update.meet) patchStreaksCacheMeet(update.meet)
+  else revalidateStreakDetailKeys()
+}
+
+function patchStreakDetailRemoteSelfie(
+  streakId: string,
+  pending: PendingRemoteSelfieSync | null
+): void {
+  void mutate(
+    (key) => typeof key === 'string' && key.startsWith('/api/streaks/'),
+    (current: { id?: string; remoteSelfies?: unknown[] } | undefined) => {
+      if (!current || current.id !== streakId) return current
+      if (!pending) return { ...current, remoteSelfies: [] }
+      return {
+        ...current,
+        remoteSelfies: [
+          {
+            id: pending.id,
+            senderId: pending.senderId,
+            receiverId: pending.receiverId,
+            senderPhotoUrl: pending.senderPhotoUrl,
+            sender: { id: pending.senderId, nickname: pending.senderNickname },
+          },
+        ],
+      }
+    },
+    { revalidate: false }
+  )
+}
+
+function revalidateStreakDetailKeys(): void {
+  void mutate((key) => typeof key === 'string' && key.startsWith('/api/streaks/'), undefined, {
+    revalidate: true,
+  })
+}
+
+function patchStreakPhotoAdded(_update: StreakPhotoAddedPayload): void {
+  void invalidateAfterNotification('meet_photo_added')
+  revalidateStreakDetailKeys()
+  void mutate((key) => typeof key === 'string' && key.startsWith('/api/users/photos'), undefined, {
+    revalidate: true,
+  })
+  void mutate((key) => typeof key === 'string' && key.startsWith('/api/memories'), undefined, {
+    revalidate: true,
+  })
 }
 
 function patchFriendsCache(event: FriendSyncPayload): void {

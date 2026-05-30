@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Mail, LogOut } from 'lucide-react'
 import type { AuthUser } from '../../lib/api'
-import { api, resendVerificationEmail } from '../../lib/api'
+import { migratedApi, resendVerificationEmail } from '../../lib/api'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { toastError, toastSuccess } from '../../lib/toast'
 
@@ -24,7 +24,9 @@ export default function VerifyEmailPage({ user, onLogout, onUserUpdate }: Props)
 
   useEffect(() => {
     if (!verified) return
-    void api.get<AuthUser>(SWR_KEYS.me).then(({ data }) => {
+    void migratedApi()
+      .get<AuthUser>(SWR_KEYS.me)
+      .then(({ data }) => {
       onUserUpdate(data)
       localStorage.setItem('user', JSON.stringify(data))
     })

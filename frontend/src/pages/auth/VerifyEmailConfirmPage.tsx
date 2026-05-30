@@ -31,9 +31,9 @@ export default function VerifyEmailConfirmPage() {
         setStatus('success')
         if (localStorage.getItem('accessToken')) {
           try {
-            const { api } = await import('../../lib/api')
+            const { migratedApi } = await import('../../lib/api')
             const { SWR_KEYS } = await import('../../lib/swrKeys')
-            const { data } = await api.get(SWR_KEYS.me)
+            const { data } = await migratedApi().get(SWR_KEYS.me)
             localStorage.setItem('user', JSON.stringify(data))
           } catch {
             /* ignore */

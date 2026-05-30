@@ -17,11 +17,20 @@ export type {
 
 export {
   api,
-  fetcher,
   getApiErrorMessage,
+  getNodeApiUrl,
+  getRustGatewayUrl,
   isNetworkError,
   setUnauthorizedHandler,
 } from './api/client'
+
+export {
+  apiClientForPath,
+  fetcher,
+  isNodeOnlyApiPath,
+  migratedApi,
+  nodeApi,
+} from './api/migratedClient'
 
 export {
   findUserByScanTarget,

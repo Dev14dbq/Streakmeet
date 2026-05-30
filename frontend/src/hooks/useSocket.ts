@@ -20,7 +20,14 @@ function getOrCreateSocket(token: string): Socket {
 
 export function useSocket(enabled: boolean, onEvent: (socket: Socket) => (() => void) | void) {
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) {
+      if (sharedSocket) {
+        sharedSocket.disconnect()
+        sharedSocket = null
+        refCount = 0
+      }
+      return
+    }
     const token = getAccessToken()
     if (!token) return
 
