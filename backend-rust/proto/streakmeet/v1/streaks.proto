@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package streakmeet.v1;
+
+import "streakmeet/v1/sync.proto";
+
+message CreateStreakRequest {
+  string partner_id = 1;
+}
+
+message ListStreaksRequest {}
+
+message GetStreakDetailRequest {
+  string partner_nickname = 1;
+  int32 page = 2;
+  int32 limit = 3;
+}
+
+message StreakRecord {
+  string id = 1;
+  string user_a_id = 2;
+  string user_b_id = 3;
+  int32 count = 4;
+  string last_met_date = 5;
+  bool active = 6;
+  string timezone = 7;
+}
+
+message ListStreaksResponse {
+  repeated StreakListItem streaks = 1;
+}
+
+message StreakDetailDay {
+  string id = 1;
+  string date = 2;
+  string status = 3;
+}
+
+message StreakDetailResponse {
+  string id = 1;
+  int32 count = 2;
+  string last_met_date = 3;
+  string timezone = 4;
+  UserSummary user_a = 5;
+  UserSummary user_b = 6;
+  repeated StreakDetailDay streak_days = 7;
+}
+
+service StreaksService {
+  rpc ListStreaks(ListStreaksRequest) returns (ListStreaksResponse);
+  rpc CreateStreak(CreateStreakRequest) returns (StreakRecord);
+  rpc GetStreakDetail(GetStreakDetailRequest) returns (StreakDetailResponse);
+}

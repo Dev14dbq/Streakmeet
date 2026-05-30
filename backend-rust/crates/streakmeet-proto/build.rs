@@ -8,6 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 format!("{proto_root}/streakmeet/v1/sync.proto"),
                 format!("{proto_root}/streakmeet/v1/auth.proto"),
                 format!("{proto_root}/streakmeet/v1/social.proto"),
+                format!("{proto_root}/streakmeet/v1/streaks.proto"),
             ],
             &[proto_root],
         )?;

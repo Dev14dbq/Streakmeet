@@ -22,15 +22,33 @@ message FriendEvent {
   FriendListItem friendship = 2;
 }
 
-message StreakCreated {
-  string streak_id = 1;
+message StreakListItem {
+  string id = 1;
   int32 count = 2;
+  string last_met_date = 3;
+  string timezone = 4;
+  UserSummary partner = 5;
+}
+
+message StreakEvent {
+  string event_type = 1;
+  StreakListItem streak = 2;
+}
+
+message StreakCreated {
+  StreakListItem streak = 1;
 }
 
 message StreakMeetUpdated {
   string streak_id = 1;
   int32 count = 2;
   string last_met_date = 3;
+  UserSummary partner = 4;
+}
+
+message StreakBurned {
+  string streak_id = 1;
+  int32 count = 2;
 }
 
 message LocationUpdated {
@@ -63,6 +81,8 @@ message SyncEnvelope {
     FriendEvent friend_event = 10;
     StreakCreated streak_created = 11;
     StreakMeetUpdated streak_meet = 12;
+    StreakEvent streak_event = 15;
+    StreakBurned streak_burned = 17;
     LocationUpdated location = 13;
     LocationRemoved location_removed = 14;
     Notification notification = 16;

@@ -6,7 +6,10 @@ pub use outbox::{enqueue_outbox, publish_pending_outbox, run_outbox_worker, Outb
 
 use chrono::Utc;
 use prost_types::Timestamp;
-use streakmeet_proto::{FriendEvent, FriendListItem, SyncEnvelope, UserSummary};
+use streakmeet_proto::{
+    FriendEvent, FriendListItem, StreakBurned, StreakCreated, StreakListItem, SyncEnvelope,
+    UserSummary,
+};
 use uuid::Uuid;
 
 pub fn new_sync_envelope(actor_id: &str, payload: streakmeet_proto::streakmeet::v1::sync_envelope::Payload) -> SyncEnvelope {
@@ -32,6 +35,47 @@ pub fn friend_event_envelope(
         streakmeet_proto::streakmeet::v1::sync_envelope::Payload::FriendEvent(FriendEvent {
             event_type: event_type.to_string(),
             friendship: Some(item),
+        }),
+    )
+}
+
+pub fn streak_list_item_proto(
+    id: &str,
+    count: i32,
+    last_met_date: Option<&str>,
+    timezone: &str,
+    partner_id: &str,
+    nickname: &str,
+    avatar_url: Option<&str>,
+) -> StreakListItem {
+    StreakListItem {
+        id: id.to_string(),
+        count,
+        last_met_date: last_met_date.unwrap_or("").to_string(),
+        timezone: timezone.to_string(),
+        partner: Some(UserSummary {
+            id: partner_id.to_string(),
+            nickname: nickname.to_string(),
+            avatar_url: avatar_url.unwrap_or("").to_string(),
+        }),
+    }
+}
+
+pub fn streak_created_envelope(actor_id: &str, item: StreakListItem) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakCreated(StreakCreated {
+            streak: Some(item),
+        }),
+    )
+}
+
+pub fn streak_burned_envelope(actor_id: &str, streak_id: &str, count: i32) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakBurned(StreakBurned {
+            streak_id: streak_id.to_string(),
+            count,
         }),
     )
 }

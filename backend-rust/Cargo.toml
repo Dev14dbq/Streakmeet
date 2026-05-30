@@ -8,7 +8,10 @@ members = [
     "crates/streakmeet-nats",
     "crates/streakmeet-sync",
     "crates/streakmeet-social",
+    "crates/streakmeet-streaks",
     "services/api-gateway",
+    "services/streaks-service",
+    "services/worker-service",
     "services/sync-gateway",
     "services/auth-service",
     "services/social-service",
@@ -27,6 +30,7 @@ dashmap = "6"
 futures = "0.3"
 bcrypt = "0.16"
 chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
 dotenvy = "0.15"
 jsonwebtoken = "9"
 prost = "0.13"
@@ -39,6 +43,7 @@ streakmeet-db = { path = "crates/streakmeet-db" }
 streakmeet-nats = { path = "crates/streakmeet-nats" }
 streakmeet-proto = { path = "crates/streakmeet-proto" }
 streakmeet-social = { path = "crates/streakmeet-social" }
+streakmeet-streaks = { path = "crates/streakmeet-streaks" }
 streakmeet-sync = { path = "crates/streakmeet-sync" }
 streakmeet-types = { path = "crates/streakmeet-types" }
 thiserror = "2"

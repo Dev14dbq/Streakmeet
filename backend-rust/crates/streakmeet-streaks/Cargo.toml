@@ -1,0 +1,18 @@
+[package]
+name = "streakmeet-streaks"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
+prost = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+streakmeet-proto = { workspace = true }
+streakmeet-sync = { workspace = true }
+streakmeet-types = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }

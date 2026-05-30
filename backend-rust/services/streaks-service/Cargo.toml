@@ -1,28 +1,24 @@
 [package]
-name = "api-gateway"
+name = "streaks-service"
 version.workspace = true
 edition.workspace = true
 
 [[bin]]
-name = "api-gateway"
+name = "streaks-service"
 path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-axum = { workspace = true }
-chrono = { workspace = true }
 dotenvy = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-sqlx = { workspace = true }
 streakmeet-auth = { workspace = true }
 streakmeet-db = { workspace = true }
 streakmeet-nats = { workspace = true }
-streakmeet-social = { workspace = true }
+streakmeet-proto = { workspace = true }
 streakmeet-streaks = { workspace = true }
 streakmeet-sync = { workspace = true }
 streakmeet-types = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true }
-tower-http = { workspace = true }
+tonic = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

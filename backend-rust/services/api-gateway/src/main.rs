@@ -1,6 +1,7 @@
 mod auth;
 mod friends;
 mod routes;
+mod streaks;
 
 use axum::{
     routing::{get, post},
@@ -51,6 +52,14 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/friends/", get(friends::list_friends_handler))
         .route("/api/friends/request", post(friends::request_friend_handler))
         .route("/api/friends/accept", post(friends::accept_friend_handler))
+        .route("/api/friends/reject", post(friends::reject_friend_handler))
+        .route("/api/friends/cancel", post(friends::cancel_friend_handler))
+        .route("/api/streaks/", get(streaks::list_streaks_handler))
+        .route("/api/streaks/", post(streaks::create_streak_handler))
+        .route(
+            "/api/streaks/:partner_nickname",
+            get(streaks::get_streak_detail_handler),
+        )
         .with_state(state)
         .layer(cors);
 
