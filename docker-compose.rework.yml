@@ -1,0 +1,52 @@
+# StreakMeet rework stack — Rust services + existing infra.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.rework.yml up -d
+#
+# Node backend (backend/) remains available on port 3000 during migration.
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    container_name: streakmeet_nats
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    restart: unless-stopped
+
+  # Reuse postgres, redis, minio from docker-compose.yml (same project network).
+  # Rust services are built/run on the host for dev; uncomment for container deploy:
+
+  # api-gateway:
+  #   build:
+  #     context: ./backend-rust
+  #     dockerfile: services/api-gateway/Dockerfile
+  #   ports:
+  #     - "8080:8080"
+  #   env_file: ./backend-rust/.env
+  #   depends_on:
+  #     - db
+  #     - redis
+  #     - nats
+
+  # sync-gateway:
+  #   build:
+  #     context: ./backend-rust
+  #     dockerfile: services/sync-gateway/Dockerfile
+  #   ports:
+  #     - "8081:8081"
+  #   env_file: ./backend-rust/.env
+  #   depends_on:
+  #     - redis
+  #     - nats
+
+  # auth-service:
+  #   build:
+  #     context: ./backend-rust
+  #     dockerfile: services/auth-service/Dockerfile
+  #   env_file: ./backend-rust/.env
+  #   depends_on:
+  #     - db
+
+  face-service:
+    profiles: ["full"]
+    # Existing Python face-service — unchanged; enable with --profile full when image is built locally.
