@@ -14,7 +14,6 @@ use async_stream::stream;
 use chrono::Utc;
 use futures::StreamExt;
 use prost_types::Timestamp;
-use prost::Message;
 use serde::Deserialize;
 use streakmeet_auth::{config_from_env, verify_access_token};
 use streakmeet_proto::{Heartbeat, SyncEnvelope};
@@ -22,7 +21,7 @@ use streakmeet_types::codes;
 use tokio_stream::wrappers::IntervalStream;
 use uuid::Uuid;
 
-use crate::AppState;
+use crate::{catchup, AppState};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,10 +40,13 @@ pub async fn connect_subscribe(
 
     let mut rx = state.hub.subscribe(&user_id);
     let pool = state.pool.clone();
+    let nats = state.nats.clone();
     let user_for_catchup = user_id.clone();
+    let devices = state.hub.subscriber_count(&user_id) + 1;
+    tracing::debug!(user_id = %user_id, devices, "Subscribe stream opened (multi-device)");
 
     let event_stream = stream! {
-        if let Ok(rows) = load_catchup(&pool, &user_for_catchup, &last_event_id).await {
+        if let Ok(rows) = catchup::load_catchup(&pool, &nats, &user_for_catchup, &last_event_id).await {
             for envelope in rows {
                 if let Some(line) = envelope_to_connect_line(&envelope) {
                     yield Ok::<_, Infallible>(line);
@@ -96,11 +98,12 @@ pub async fn connect_catch_up(
 ) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
     let user_id = extract_bearer_user_id(&headers)?;
     let last_event_id = body.last_event_id.unwrap_or_default();
-    tracing::info!(user_id = %user_id, last_event_id = %last_event_id, "Connect CatchUp (skeleton)");
+    tracing::info!(user_id = %user_id, last_event_id = %last_event_id, "Connect CatchUp");
 
     let pool = state.pool.clone();
+    let nats = state.nats.clone();
     let stream = stream! {
-        if let Ok(rows) = load_catchup(&pool, &user_id, &last_event_id).await {
+        if let Ok(rows) = catchup::load_catchup(&pool, &nats, &user_id, &last_event_id).await {
             for envelope in rows {
                 if let Some(line) = envelope_to_connect_line(&envelope) {
                     yield Ok::<_, Infallible>(line);
@@ -307,6 +310,16 @@ pub fn envelope_to_connect_json(envelope: &SyncEnvelope) -> Option<String> {
                 }),
             );
         }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::Notification(n)) => {
+            root.insert(
+                "notification".into(),
+                serde_json::json!({
+                    "type": n.r#type,
+                    "params": n.params,
+                    "route": null_if_empty_str(&n.route),
+                }),
+            );
+        }
         Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::Heartbeat(hb)) => {
             root.insert("heartbeat".into(), serde_json::json!({ "message": hb.message }));
         }
@@ -349,46 +362,3 @@ fn null_if_empty(value: &str) -> serde_json::Value {
     }
 }
 
-async fn load_catchup(
-    pool: &streakmeet_db::PgPool,
-    user_id: &str,
-    last_event_id: &str,
-) -> Result<Vec<SyncEnvelope>, sqlx::Error> {
-    let rows: Vec<(Vec<u8>,)> = if last_event_id.is_empty() {
-        sqlx::query_as(
-            r#"
-            SELECT envelope_bytes
-            FROM sync_outbox
-            WHERE recipient_user_id = $1
-            ORDER BY created_at ASC
-            LIMIT 100
-            "#,
-        )
-        .bind(user_id)
-        .fetch_all(pool)
-        .await?
-    } else {
-        sqlx::query_as(
-            r#"
-            SELECT envelope_bytes
-            FROM sync_outbox
-            WHERE recipient_user_id = $1
-              AND created_at > COALESCE(
-                (SELECT created_at FROM sync_outbox WHERE event_id = $2 LIMIT 1),
-                '1970-01-01'::timestamptz
-              )
-            ORDER BY created_at ASC
-            LIMIT 100
-            "#,
-        )
-        .bind(user_id)
-        .bind(last_event_id)
-        .fetch_all(pool)
-        .await?
-    };
-
-    Ok(rows
-        .into_iter()
-        .filter_map(|(bytes,)| SyncEnvelope::decode(bytes.as_slice()).ok())
-        .collect())
-}

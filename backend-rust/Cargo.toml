@@ -12,6 +12,8 @@ members = [
     "crates/streakmeet-location",
     "crates/streakmeet-users",
     "crates/streakmeet-media",
+    "crates/streakmeet-memories",
+    "crates/streakmeet-legal",
     "crates/streakmeet-face",
     "services/api-gateway",
     "services/streaks-service",
@@ -54,6 +56,8 @@ streakmeet-streaks = { path = "crates/streakmeet-streaks" }
 streakmeet-location = { path = "crates/streakmeet-location" }
 streakmeet-users = { path = "crates/streakmeet-users" }
 streakmeet-media = { path = "crates/streakmeet-media" }
+streakmeet-memories = { path = "crates/streakmeet-memories" }
+streakmeet-legal = { path = "crates/streakmeet-legal" }
 streakmeet-face = { path = "crates/streakmeet-face" }
 streakmeet-sync = { path = "crates/streakmeet-sync" }
 streakmeet-types = { path = "crates/streakmeet-types" }
@@ -66,3 +70,4 @@ tower-http = { version = "0.6", features = ["cors", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 uuid = { version = "1", features = ["v4", "serde"] }
+s3 = { package = "rust-s3", version = "0.37", default-features = false, features = ["tokio-rustls-tls"] }

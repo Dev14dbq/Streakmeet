@@ -1,12 +1,17 @@
 mod auth;
 mod auth_routes;
 mod friends;
+mod idempotency;
+mod legal;
 mod location;
+mod media;
+mod memories;
 mod routes;
 mod streaks;
 mod users;
 
 use axum::{
+    middleware,
     routing::{delete, get, patch, post},
     Router,
 };
@@ -23,6 +28,7 @@ pub struct AppState {
     pub pool: streakmeet_db::PgPool,
     pub auth_config: streakmeet_auth::AuthConfig,
     pub outbox: OutboxPublisher,
+    pub idempotency: idempotency::IdempotencyStore,
 }
 
 #[tokio::main]
@@ -38,6 +44,25 @@ async fn main() -> anyhow::Result<()> {
     let outbox = OutboxPublisher::new(pool.clone(), nats.clone());
     run_outbox_worker(pool.clone(), nats);
 
+    if std::env::var("SEED_LEGAL_DOCUMENTS")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(true)
+    {
+        let pool_seed = pool.clone();
+        tokio::spawn(async move {
+            if let Err(err) = streakmeet_legal::ensure_legal_documents(&pool_seed).await {
+                tracing::error!(error = %err, "[legal] Failed to seed legal documents");
+            }
+        });
+    }
+
+    tokio::spawn(async {
+        if let Err(err) = streakmeet_media::ensure_bucket().await {
+            tracing::error!(error = %err, "[media] bucket check failed");
+        }
+    });
+    let idempotency = idempotency::IdempotencyStore::connect_from_env().await;
+
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
@@ -47,6 +72,7 @@ async fn main() -> anyhow::Result<()> {
         pool,
         auth_config,
         outbox,
+        idempotency,
     };
 
     let app = Router::new()
@@ -81,9 +107,23 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/location/update", post(location::update_location_handler))
         .route("/api/users/me", get(users::get_me_handler))
         .route("/api/users/me", patch(users::patch_me_handler))
+        .route("/api/users/settings", patch(users::patch_settings_handler))
+        .route("/api/users/preferences", patch(users::patch_preferences_handler))
+        .route("/api/users/email", patch(users::patch_email_handler))
+        .route("/api/users/password", patch(users::patch_password_handler))
         .route("/api/users/avatar", post(users::upload_avatar_handler))
+        .route("/api/users/photos", get(users::list_photos_handler))
         .route("/api/users/search", get(users::search_handler))
         .route("/api/public/users/{nickname}", get(users::public_profile_handler))
+        .route(
+            "/api/public/users/{nickname}/photos",
+            get(users::public_photos_handler),
+        )
+        .route("/api/memories/", get(memories::list_memories_handler))
+        .route("/api/legal/status/me", get(legal::legal_status_handler))
+        .route("/api/legal/accept", post(legal::legal_accept_handler))
+        .route("/api/legal/{slug}", get(legal::legal_document_handler))
+        .route("/uploads/{filename}", get(media::serve_upload_handler))
         .route("/api/streaks/meet", post(streaks::record_meet_handler))
         .route("/api/streaks/magic-meet", post(streaks::magic_meet_handler))
         .route("/api/streaks/", get(streaks::list_streaks_handler))
@@ -100,6 +140,10 @@ async fn main() -> anyhow::Result<()> {
             "/api/streaks/{partner_nickname}",
             get(streaks::get_streak_detail_handler),
         )
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            idempotency::idempotency_middleware,
+        ))
         .with_state(state)
         .layer(cors);
 

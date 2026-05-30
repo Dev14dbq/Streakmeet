@@ -14,35 +14,53 @@ services:
     restart: unless-stopped
 
   # Reuse postgres, redis, minio from docker-compose.yml (same project network).
-  # Rust services are built/run on the host for dev; uncomment for container deploy:
+  api-gateway:
+    build:
+      context: ./backend-rust
+      dockerfile: Dockerfile
+      args:
+        SERVICE: api-gateway
+    ports:
+      - "8080:8080"
+    env_file: ./backend-rust/.env
+    depends_on:
+      - db
+      - redis
+      - nats
+    restart: unless-stopped
 
-  # api-gateway:
-  #   build:
-  #     context: ./backend-rust
-  #     dockerfile: services/api-gateway/Dockerfile
-  #   ports:
-  #     - "8080:8080"
-  #   env_file: ./backend-rust/.env
-  #   depends_on:
-  #     - db
-  #     - redis
-  #     - nats
+  sync-gateway:
+    build:
+      context: ./backend-rust
+      dockerfile: Dockerfile
+      args:
+        SERVICE: sync-gateway
+    ports:
+      - "8081:8081"
+    env_file: ./backend-rust/.env
+    depends_on:
+      - redis
+      - nats
+    restart: unless-stopped
 
-  # sync-gateway:
-  #   build:
-  #     context: ./backend-rust
-  #     dockerfile: services/sync-gateway/Dockerfile
-  #   ports:
-  #     - "8081:8081"
-  #   env_file: ./backend-rust/.env
-  #   depends_on:
-  #     - redis
-  #     - nats
+  worker-service:
+    build:
+      context: ./backend-rust
+      dockerfile: Dockerfile
+      args:
+        SERVICE: worker-service
+    env_file: ./backend-rust/.env
+    depends_on:
+      - db
+      - nats
+    restart: unless-stopped
 
   # auth-service:
   #   build:
   #     context: ./backend-rust
-  #     dockerfile: services/auth-service/Dockerfile
+  #     dockerfile: Dockerfile
+  #     args:
+  #       SERVICE: auth-service
   #   env_file: ./backend-rust/.env
   #   depends_on:
   #     - db

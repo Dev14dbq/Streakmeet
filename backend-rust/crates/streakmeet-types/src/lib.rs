@@ -124,3 +124,22 @@ impl std::error::Error for ApiError {}
 pub fn new_cuid() -> Result<String, ApiError> {
     cuid::cuid().map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))
 }
+
+/// Pagination query parsing — parity with `backend/src/common/helpers.ts` `parsePagination`.
+pub fn parse_pagination(
+    page: Option<&str>,
+    limit: Option<&str>,
+    default_page: i32,
+    default_limit: i32,
+    max_limit: i32,
+) -> (i32, i32) {
+    let page = page
+        .and_then(|p| p.parse::<i32>().ok())
+        .unwrap_or(default_page)
+        .max(1);
+    let limit = limit
+        .and_then(|l| l.parse::<i32>().ok())
+        .unwrap_or(default_limit)
+        .clamp(1, max_limit);
+    (page, limit)
+}

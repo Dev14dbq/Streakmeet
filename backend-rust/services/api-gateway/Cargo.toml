@@ -11,7 +11,9 @@ path = "src/main.rs"
 anyhow = { workspace = true }
 axum = { workspace = true }
 chrono = { workspace = true }
+dashmap = { workspace = true }
 dotenvy = { workspace = true }
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }
@@ -22,6 +24,9 @@ streakmeet-social = { workspace = true }
 streakmeet-streaks = { workspace = true }
 streakmeet-location = { workspace = true }
 streakmeet-users = { workspace = true }
+streakmeet-memories = { workspace = true }
+streakmeet-legal = { workspace = true }
+streakmeet-media = { workspace = true }
 streakmeet-sync = { workspace = true }
 streakmeet-types = { workspace = true }
 tokio = { workspace = true }

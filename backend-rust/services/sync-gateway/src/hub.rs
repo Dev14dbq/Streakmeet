@@ -25,7 +25,14 @@ impl SyncHub {
 
     pub fn publish(&self, user_id: &str, envelope: SyncEnvelope) {
         if let Some(tx) = self.channels.get(user_id) {
-            let _ = tx.send(envelope);
+            match tx.send(envelope) {
+                Ok(n) => {
+                    tracing::trace!(user_id, receivers = n, "broadcast sync envelope");
+                }
+                Err(_) => {
+                    tracing::trace!(user_id, "sync publish with no active receivers");
+                }
+            }
         }
     }
 

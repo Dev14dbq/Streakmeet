@@ -1,5 +1,6 @@
 //! Sync gateway — Connect JSON streaming + NATS fan-out.
 
+mod catchup;
 mod connect;
 mod hub;
 mod nats;
@@ -21,6 +22,7 @@ use crate::hub::SyncHub;
 pub struct AppState {
     pub hub: Arc<SyncHub>,
     pub pool: streakmeet_db::PgPool,
+    pub nats: async_nats::Client,
 }
 
 #[tokio::main]
@@ -35,13 +37,18 @@ async fn main() -> anyhow::Result<()> {
     let hub = Arc::new(SyncHub::new());
 
     let hub_for_nats = hub.clone();
+    let nats_for_fanout = nats.clone();
     tokio::spawn(async move {
-        if let Err(err) = nats::run_nats_fanout(hub_for_nats, nats).await {
+        if let Err(err) = nats::run_nats_fanout(hub_for_nats, nats_for_fanout).await {
             tracing::error!(error = %err, "NATS fan-out task exited");
         }
     });
 
-    let state = AppState { hub, pool };
+    let state = AppState {
+        hub,
+        pool,
+        nats,
+    };
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -65,7 +72,7 @@ async fn main() -> anyhow::Result<()> {
         .parse()?;
     let addr = format!("0.0.0.0:{port}");
 
-    tracing::info!(%port, "sync-gateway listening (Connect JSON + NATS fan-out)");
+    tracing::info!(%port, "sync-gateway listening (Connect JSON + JetStream fan-out)");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
 

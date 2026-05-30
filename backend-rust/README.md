@@ -32,19 +32,19 @@ cargo run -p sync-gateway     # :8081 Connect JSON stream + NATS fan-out
 cargo run -p auth-service     # :50051 gRPC Login (optional; login also on gateway)
 cargo run -p social-service   # :50053 gRPC SocialService (optional)
 cargo run -p streaks-service  # :50054 gRPC StreaksService (optional)
-cargo run -p worker-service   # streak burn cron every 5 min
+cargo run -p worker-service   # streak warnings + burn + remote selfie expiry every 5 min
 ```
 
 ## Ports
 
 | Service         | Port  | Role                                                 |
 | --------------- | ----- | ---------------------------------------------------- |
-| api-gateway     | 8080  | REST `/api/auth`, `/api/friends/*`, `/api/streaks/*` |
+| api-gateway     | 8080  | REST `/api/auth`, `/api/friends/*`, `/api/streaks/*`, `/api/memories`, `/api/legal`, `/uploads/*` |
 | sync-gateway    | 8081  | Connect JSON `SyncService` stream                    |
 | auth-service    | 50051 | gRPC `AuthService.Login`                             |
 | social-service  | 50053 | gRPC `SocialService` friends RPC                     |
 | streaks-service | 50054 | gRPC `StreaksService` streak RPC                     |
-| worker-service  | —     | Cron: streak burn → `streaks.burned` sync            |
+| worker-service  | —     | Cron: 1h/30m warnings, burn, remote selfie expiry    |
 | Node backend    | 3000  | Legacy (unchanged)                                   |
 
 ## Phase 1 — Sync + Friends
@@ -63,8 +63,11 @@ cargo run -p worker-service   # streak burn cron every 5 min
 - [x] streaks-service + api-gateway REST: list, create, detail (by partner nickname)
 - [x] Business rules: ACCEPTED friends only, no duplicate active pair, generous timezone
 - [x] Sync: `streaks.created` → both users (`streakCreated` Connect JSON)
+- [x] worker-service: 1h/30m warnings at local 23:00 / 23:30 when not met today
+- [x] Sync: `notifications.streak_*` → `notification` Connect JSON (dedup via `streak_notification_logs`)
 - [x] worker-service: burn at local 00:05–00:10 when `lastMetDate != yesterday`
 - [x] Sync: `streaks.burned` → both users (`streakBurned` Connect JSON)
+- [x] worker-service: expire PENDING remote selfies after 24h → `remoteSelfieCleared`
 - [x] Frontend: patch `SWR_KEYS.streaks` + revalidate streak detail prefix
 - [x] Friends reject/cancel/unfriend + sync events
 - [x] meet stub + magic-meet + remote selfie (Rust; requires face-service on :8001)
@@ -74,8 +77,13 @@ cargo run -p worker-service   # streak burn cron every 5 min
 - [x] register, check-email, OAuth Google/Apple, verify-email, forgot/reset password
 - [x] enroll-face, restore-account, resend-verification
 - [x] magic-meet, remote selfie, streak meet sync events
-- [ ] memories, legal, full users settings — still on Node
-- [ ] production nginx cutover / disable Node PM2
+- [x] memories feed (`GET /api/memories`)
+- [x] legal consent + documents (`/api/legal/*`)
+- [x] users settings, preferences, email/password, photos
+- [x] media uploads serve (`GET /uploads/*`) — MinIO/S3 with local fallback
+- [x] `deploy/nginx-streakmeet-rust.conf` — Rust `/api/*` + `/connect/*`, Node socket.io fallback
+- [x] `deploy/ecosystem-rust.config.cjs` — PM2 for api/sync/worker + Node fallback
+- [x] `scripts/contract-parity.sh` — Node :3000 vs Rust :8080 friends/streaks parity
 
 ### Browser path
 
@@ -92,7 +100,7 @@ Default frontend mode is **`VITE_USE_SYNC_STREAM=auto`**: probes `http://127.0.0
 
 - Rust `api-gateway` (:8080) and `sync-gateway` (:8081) running
 - `JWT_SECRET` matches Node `backend/.env`
-- Optional: Node on :3000 for legal, memories, magic-meet, remote selfie
+- Optional: Node on :3000 only if Rust gateways are down
 
 ### Dev env (`frontend/.env.local`)
 
@@ -201,18 +209,41 @@ VITE_USE_SYNC_STREAM=auto
 
 Open two browser profiles → login as A and B → A creates streak → B sees card on Home without refetch.
 
+### CatchUp (offline replay)
+
+```bash
+TOKEN_B=...
+curl -N http://127.0.0.1:8081/connect/streakmeet.v1.SyncService/CatchUp \
+  -H "Authorization: Bearer $TOKEN_B" \
+  -H "Content-Type: application/connect+json" \
+  -H "Connect-Protocol-Version: 1" \
+  -d '{"lastEventId":"<last-seen-event-id>"}'
+```
+
+Returns missed events from `sync_outbox`, supplemented from JetStream when needed.
+
+### Idempotency (POST mutations)
+
+Send `Idempotency-Key: <uuid>` on friend request/accept/reject/cancel and streak create.
+Replays within 24h return the cached response (`X-Idempotency-Replayed: true`).
+Uses Redis when `REDIS_URL` is set; otherwise in-memory per process.
+
 ## Blockers / notes
 
 - SQLx uses runtime queries (no compile-time DB verification yet).
 - JWT must share `JWT_SECRET` with Node during transition.
 - **face-service** (Python :8001) required for magic-meet / enroll-face.
-- memories / legal / some user settings still on Node (:3000).
-- 1h/30m streak warnings not in worker (burn only).
+- Legal locale packs beyond en/ru use English fallback (Node has full `locales.extra.ts`).
+- `MEMORIES_DEV_MODE` placeholder feed not ported.
+- Contract parity script requires both backends; set `CONTRACT_EMAIL`/`CONTRACT_PASSWORD` for existing users.
 - Push notifications (FCM) not wired — sync events only.
 - MinIO may be down locally; media falls back to `/tmp/streakmeet-uploads`.
 
-## Phase 5 outline
+## Phase 5 — Sync hardening
 
-- memories + legal in Rust
-- JetStream durable CatchUp, contract tests
-- FCM background wake, nginx production cutover
+- [x] JetStream stream `SYNC_USER` (`sync.user.>`) with 7-day retention
+- [x] Durable pull consumer `sync-gateway-fanout` (ack + redelivery)
+- [x] CatchUp: outbox-first, JetStream supplement, dedupe by `eventId`
+- [x] Multi-device: `broadcast` channel per user room (256 capacity)
+- [x] Idempotency-Key on `POST /api/friends/*` mutations + `POST /api/streaks/`
+- [ ] contract tests, FCM background wake, nginx production cutover

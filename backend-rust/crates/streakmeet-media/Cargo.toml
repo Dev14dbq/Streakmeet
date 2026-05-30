@@ -12,3 +12,4 @@ sha2 = "0.10"
 base64 = "0.22"
 tokio = { workspace = true }
 tracing = { workspace = true }
+s3 = { workspace = true }

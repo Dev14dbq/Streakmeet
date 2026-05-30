@@ -40,14 +40,7 @@ pub async fn hash_image_file(relative_url: &str) -> Result<String> {
 }
 
 pub async fn get_object_buffer(relative_url: &str) -> Result<Vec<u8>> {
-    let key = super::storage::url_to_key(relative_url);
-    let dir = std::env::var("UPLOADS_DIR")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::path::PathBuf::from("/tmp/streakmeet-uploads"));
-    let file_path = dir.join(key.strip_prefix("uploads/").unwrap_or(&key));
-    tokio::fs::read(&file_path)
-        .await
-        .with_context(|| format!("read upload file {}", file_path.display()))
+    super::storage::get_object_buffer(relative_url).await
 }
 
 pub async fn combine_remote_selfie_images(

@@ -7,9 +7,9 @@ pub use outbox::{enqueue_outbox, publish_pending_outbox, run_outbox_worker, Outb
 use chrono::Utc;
 use prost_types::Timestamp;
 use streakmeet_proto::{
-    FriendEvent, FriendListItem, LocationRemoved, LocationUpdated, ProfileUpdated, RemoteSelfieCleared,
-    RemoteSelfiePending, RemoteSelfiePendingInfo, StreakBurned, StreakCreated, StreakListItem,
-    StreakMeetUpdated, StreakPhotoAdded, SyncEnvelope, UserSummary,
+    FriendEvent, FriendListItem, LocationRemoved, LocationUpdated, Notification, ProfileUpdated,
+    RemoteSelfieCleared, RemoteSelfiePending, RemoteSelfiePendingInfo, StreakBurned, StreakCreated,
+    StreakListItem, StreakMeetUpdated, StreakPhotoAdded, SyncEnvelope, UserSummary,
 };
 use uuid::Uuid;
 
@@ -67,6 +67,26 @@ pub fn streak_created_envelope(actor_id: &str, item: StreakListItem) -> SyncEnve
         actor_id,
         streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakCreated(StreakCreated {
             streak: Some(item),
+        }),
+    )
+}
+
+pub fn notification_envelope(
+    actor_id: &str,
+    notification_type: &str,
+    params: &[(&str, &str)],
+    route: &str,
+) -> SyncEnvelope {
+    let params_map: std::collections::HashMap<String, String> = params
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::Notification(Notification {
+            r#type: notification_type.to_string(),
+            params: params_map,
+            route: route.to_string(),
         }),
     )
 }

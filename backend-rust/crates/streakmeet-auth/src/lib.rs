@@ -13,7 +13,10 @@ pub use models::{
     AuthResponseJson, AuthUserJson, DeletedAccountBody, UserRow, ACCOUNT_RETENTION_DAYS,
 };
 pub use token::{build_auth_response, verify_auth_token, AuthTokenResult};
-pub use verification::{enroll_face, EnrollFaceResult};
+pub use verification::{
+    enroll_face, forgot_password, issue_email_verification, resend_verification, reset_password,
+    verify_email_and_get_redirect, verify_email_with_token, EnrollFaceResult,
+};
 
 use models::{deleted_account_error, is_retention_expired, AuthResponseJson as ResponseJson};
 use sqlx::PgPool;
@@ -123,7 +126,3 @@ pub fn config_from_env() -> AuthConfig {
 
 pub use credentials::{check_email, register, RegisterInput};
 pub use oauth::{apple_login, google_login, restore_account, RestoreAccountInput};
-pub use verification::{
-    forgot_password, resend_verification, reset_password, verify_email_and_get_redirect,
-    verify_email_with_token,
-};

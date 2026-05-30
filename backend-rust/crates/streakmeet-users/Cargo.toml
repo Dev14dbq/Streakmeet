@@ -15,5 +15,7 @@ streakmeet-streaks = { workspace = true }
 streakmeet-sync = { workspace = true }
 streakmeet-types = { workspace = true }
 streakmeet-media = { workspace = true }
+streakmeet-memories = { workspace = true }
+bcrypt = { workspace = true }
 tracing = { workspace = true }
 uuid = { workspace = true }

@@ -7,3 +7,4 @@ pub use images::{
     combine_remote_selfie_images, compute_photo_hash, get_object_buffer, hash_image_file,
     save_base64_image_as_avif,
 };
+pub use storage::{ensure_bucket, get_object_bytes, is_media_url, upload_avif};

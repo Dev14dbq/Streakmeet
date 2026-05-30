@@ -5,5 +5,6 @@ mod service;
 
 pub use models::{PublicProfileJson, SearchUserJson, UpdateProfileInput};
 pub use service::{
-    get_profile, get_public_profile, search_users, update_profile, upload_avatar,
+    get_profile, get_public_photos, get_public_profile, list_photos, search_users, update_email,
+    update_password, update_preferences, update_profile, update_settings, upload_avatar,
 };

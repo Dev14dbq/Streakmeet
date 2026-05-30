@@ -369,3 +369,243 @@ pub async fn get_public_profile(
         friendship,
     })
 }
+
+pub async fn update_settings(
+    pool: &PgPool,
+    user_id: &str,
+    timezone: Option<&str>,
+) -> Result<UserProfileJson, ApiError> {
+    let Some(timezone) = timezone.filter(|s| !s.is_empty()) else {
+        return Err(ApiError::new(400, codes::MISSING_FIELD, None));
+    };
+    if !is_valid_timezone(timezone) {
+        return Err(ApiError::new(400, codes::INVALID_TIMEZONE, None));
+    }
+
+    let user = sqlx::query_as::<_, UserRow>(
+        r#"
+        UPDATE users SET timezone = $2 WHERE id = $1
+        RETURNING
+            id, email, "passwordHash", nickname, "qrCodeId", "gemsBalance",
+            "faceEnrolled", "emailVerifiedAt", "avatarUrl", timezone,
+            "isPublic", "notifyFriends", "notifyMeet", "geoOnPhotos", "deletedAt"
+        "#,
+    )
+    .bind(user_id)
+    .bind(timezone)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+    .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
+
+    reconcile_streak_timezones(pool, user_id).await?;
+    Ok(to_profile_json(&user))
+}
+
+pub async fn update_preferences(
+    pool: &PgPool,
+    user_id: &str,
+    notify_friends: Option<bool>,
+    notify_meet: Option<bool>,
+    geo_on_photos: Option<bool>,
+) -> Result<UserProfileJson, ApiError> {
+    let mut user = load_user_row(pool, user_id).await?;
+    let mut changed = false;
+
+    if let Some(v) = notify_friends {
+        user.notify_friends = v;
+        changed = true;
+    }
+    if let Some(v) = notify_meet {
+        user.notify_meet = v;
+        changed = true;
+    }
+    if let Some(v) = geo_on_photos {
+        user.geo_on_photos = v;
+        changed = true;
+    }
+
+    if !changed {
+        return Err(ApiError::new(400, codes::MISSING_FIELD, None));
+    }
+
+    let user = sqlx::query_as::<_, UserRow>(
+        r#"
+        UPDATE users SET
+            "notifyFriends" = $2,
+            "notifyMeet" = $3,
+            "geoOnPhotos" = $4
+        WHERE id = $1
+        RETURNING
+            id, email, "passwordHash", nickname, "qrCodeId", "gemsBalance",
+            "faceEnrolled", "emailVerifiedAt", "avatarUrl", timezone,
+            "isPublic", "notifyFriends", "notifyMeet", "geoOnPhotos", "deletedAt"
+        "#,
+    )
+    .bind(user_id)
+    .bind(user.notify_friends)
+    .bind(user.notify_meet)
+    .bind(user.geo_on_photos)
+    .fetch_one(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    Ok(to_profile_json(&user))
+}
+
+pub async fn update_email(
+    pool: &PgPool,
+    user_id: &str,
+    email: Option<&str>,
+    current_password: Option<&str>,
+) -> Result<UserProfileJson, ApiError> {
+    let Some(email) = email.filter(|e| e.contains('@')) else {
+        return Err(ApiError::new(400, codes::INVALID_EMAIL, None));
+    };
+    let Some(current_password) = current_password.filter(|s| !s.is_empty()) else {
+        return Err(ApiError::new(400, codes::MISSING_FIELD, None));
+    };
+
+    let normalized_email = email.to_lowercase().trim().to_string();
+
+    if let Some(existing) = streakmeet_auth::find_user_by_email(pool, &normalized_email).await? {
+        if existing.id != user_id {
+            return Err(ApiError::new(409, codes::EMAIL_ALREADY_IN_USE, None));
+        }
+    }
+
+    let current = sqlx::query_as::<_, (String,)>(
+        r#"SELECT "passwordHash" FROM users WHERE id = $1"#,
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+    .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
+
+    if current.0.is_empty() {
+        return Err(ApiError::new(400, codes::OAUTH_ACCOUNT_NO_PASSWORD, None));
+    }
+
+    let valid = bcrypt::verify(current_password, &current.0)
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    if !valid {
+        return Err(ApiError::new(401, codes::INVALID_CREDENTIALS, None));
+    }
+
+    let user = sqlx::query_as::<_, UserRow>(
+        r#"
+        UPDATE users SET
+            email = $2,
+            "emailVerifiedAt" = NULL,
+            "emailVerifyToken" = NULL
+        WHERE id = $1
+        RETURNING
+            id, email, "passwordHash", nickname, "qrCodeId", "gemsBalance",
+            "faceEnrolled", "emailVerifiedAt", "avatarUrl", timezone,
+            "isPublic", "notifyFriends", "notifyMeet", "geoOnPhotos", "deletedAt"
+        "#,
+    )
+    .bind(user_id)
+    .bind(&normalized_email)
+    .fetch_one(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    if let Err(err) =
+        streakmeet_auth::issue_email_verification(pool, user_id, &normalized_email).await
+    {
+        tracing::warn!(error = %err, "[users/email] verification send failed");
+    }
+
+    Ok(to_profile_json(&user))
+}
+
+pub async fn update_password(
+    pool: &PgPool,
+    user_id: &str,
+    current_password: Option<&str>,
+    new_password: Option<&str>,
+) -> Result<serde_json::Value, ApiError> {
+    let Some(current_password) = current_password.filter(|s| !s.is_empty()) else {
+        return Err(ApiError::new(400, codes::MISSING_FIELD, None));
+    };
+    let Some(new_password) = new_password.filter(|s| !s.is_empty()) else {
+        return Err(ApiError::new(400, codes::MISSING_FIELD, None));
+    };
+    if new_password.len() < 8 {
+        return Err(ApiError::new(400, codes::PASSWORD_TOO_SHORT, None));
+    }
+
+    let current = sqlx::query_as::<_, (String,)>(
+        r#"SELECT "passwordHash" FROM users WHERE id = $1"#,
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+    .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
+
+    if current.0.is_empty() {
+        return Err(ApiError::new(400, codes::OAUTH_ACCOUNT_NO_PASSWORD, None));
+    }
+
+    let valid = bcrypt::verify(current_password, &current.0)
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    if !valid {
+        return Err(ApiError::new(401, codes::INVALID_CREDENTIALS, None));
+    }
+
+    let password_hash = bcrypt::hash(new_password, 12)
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    sqlx::query(r#"UPDATE users SET "passwordHash" = $2 WHERE id = $1"#)
+        .bind(user_id)
+        .bind(&password_hash)
+        .execute(pool)
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    Ok(serde_json::json!({ "success": true }))
+}
+
+pub async fn list_photos(
+    pool: &PgPool,
+    user_id: &str,
+    page: i32,
+    limit: i32,
+) -> Result<Vec<serde_json::Value>, ApiError> {
+    streakmeet_memories::list_for_user(pool, user_id, page, limit, None).await
+}
+
+pub async fn get_public_photos(
+    pool: &PgPool,
+    viewer_id: Option<&str>,
+    nickname: &str,
+    page: i32,
+    limit: i32,
+) -> Result<Vec<serde_json::Value>, ApiError> {
+    let profile = get_public_profile(pool, viewer_id, nickname).await?;
+    let user = &profile.user;
+
+    let is_friend_or_self = profile
+        .friendship
+        .as_ref()
+        .map(|f| f.status == "ACCEPTED" || f.status == "SELF")
+        .unwrap_or(false);
+
+    if !user.is_public && !is_friend_or_self {
+        return Err(ApiError::new(403, codes::PRIVATE_PROFILE, None));
+    }
+
+    let mutual_with = if !user.is_public
+        && is_friend_or_self
+        && viewer_id != Some(user.id.as_str())
+    {
+        viewer_id
+    } else {
+        None
+    };
+
+    streakmeet_memories::list_for_user(pool, &user.id, page, limit, mutual_with).await
+}
