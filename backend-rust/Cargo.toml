@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     "crates/streakmeet-types",
     "crates/streakmeet-db",
+    "crates/streakmeet-proto",
+    "services/sync-gateway",
 ]
 
 [workspace.package]

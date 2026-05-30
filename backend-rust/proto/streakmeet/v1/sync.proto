@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package streakmeet.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Shared sync payload types (Phase 0 skeleton).
+
+message FriendsUpdated {
+  string friendship_id = 1;
+  string status = 2;
+}
+
+message StreakCreated {
+  string streak_id = 1;
+  int32 count = 2;
+}
+
+message StreakMeetUpdated {
+  string streak_id = 1;
+  int32 count = 2;
+  string last_met_date = 3;
+}
+
+message LocationUpdated {
+  string user_id = 1;
+  double lat = 2;
+  double lng = 3;
+}
+
+message LocationRemoved {
+  string user_id = 1;
+}
+
+message Notification {
+  string type = 1;
+  map<string, string> params = 2;
+  string route = 3;
+}
+
+message Heartbeat {
+  string message = 1;
+}
+
+message SyncEnvelope {
+  string event_id = 1;
+  int64 sequence = 2;
+  google.protobuf.Timestamp at = 3;
+  string actor_id = 4;
+
+  oneof payload {
+    FriendsUpdated friends = 10;
+    StreakCreated streak_created = 11;
+    StreakMeetUpdated streak_meet = 12;
+    LocationUpdated location = 13;
+    LocationRemoved location_removed = 14;
+    Notification notification = 16;
+    Heartbeat heartbeat = 99;
+  }
+}
+
+message SubscribeRequest {
+  string last_event_id = 1;
+}
+
+message CatchUpRequest {
+  string last_event_id = 1;
+}
+
+message AckRequest {
+  string event_id = 1;
+}
+
+message AckResponse {
+  bool ok = 1;
+}
+
+service SyncService {
+  rpc Subscribe(SubscribeRequest) returns (stream SyncEnvelope);
+  rpc CatchUp(CatchUpRequest) returns (stream SyncEnvelope);
+  rpc Ack(AckRequest) returns (AckResponse);
+}

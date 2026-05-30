@@ -1,0 +1,21 @@
+[package]
+name = "sync-gateway"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "sync-gateway"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+chrono = { workspace = true }
+dotenvy = { workspace = true }
+prost-types = { workspace = true }
+streakmeet-proto = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tonic = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { workspace = true }

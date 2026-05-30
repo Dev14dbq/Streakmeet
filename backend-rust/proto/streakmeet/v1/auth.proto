@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package streakmeet.v1;
+
+message LoginRequest {
+  string email = 1;
+  string password = 2;
+  string timezone = 3;
+}
+
+message AuthUser {
+  string id = 1;
+  string email = 2;
+  string nickname = 3;
+  string qr_code_id = 4;
+  int32 gems_balance = 5;
+  bool face_enrolled = 6;
+  bool email_verified = 7;
+  string avatar_url = 8;
+  string timezone = 9;
+  bool is_public = 10;
+  bool notify_friends = 11;
+  bool notify_meet = 12;
+  bool geo_on_photos = 13;
+}
+
+message LoginResponse {
+  string access_token = 1;
+  AuthUser user = 2;
+}
+
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+}
