@@ -1,0 +1,12 @@
+[package]
+name = "streakmeet-nats"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+async-nats = { workspace = true }
+futures = { workspace = true }
+prost = { workspace = true }
+streakmeet-proto = { workspace = true }
+tracing = { workspace = true }

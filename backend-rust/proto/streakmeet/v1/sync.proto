@@ -4,11 +4,22 @@ package streakmeet.v1;
 
 import "google/protobuf/timestamp.proto";
 
-// Shared sync payload types (Phase 0 skeleton).
+message UserSummary {
+  string id = 1;
+  string nickname = 2;
+  string avatar_url = 3;
+}
 
-message FriendsUpdated {
-  string friendship_id = 1;
+message FriendListItem {
+  string id = 1;
   string status = 2;
+  bool is_incoming_request = 3;
+  UserSummary friend = 4;
+}
+
+message FriendEvent {
+  string event_type = 1;
+  FriendListItem friendship = 2;
 }
 
 message StreakCreated {
@@ -49,7 +60,7 @@ message SyncEnvelope {
   string actor_id = 4;
 
   oneof payload {
-    FriendsUpdated friends = 10;
+    FriendEvent friend_event = 10;
     StreakCreated streak_created = 11;
     StreakMeetUpdated streak_meet = 12;
     LocationUpdated location = 13;
