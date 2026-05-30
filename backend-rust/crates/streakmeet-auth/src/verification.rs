@@ -114,7 +114,7 @@ pub async fn resend_verification(pool: &PgPool, user_id: &str) -> Result<serde_j
     #[derive(sqlx::FromRow)]
     struct Row {
         email: String,
-        email_verified_at: Option<chrono::DateTime<Utc>>,
+        email_verified_at: Option<chrono::NaiveDateTime>,
         password_hash: String,
     }
 

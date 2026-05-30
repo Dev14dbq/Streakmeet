@@ -16,7 +16,7 @@ struct UserLocationRow {
     sharing_location: bool,
     last_latitude: Option<f64>,
     last_longitude: Option<f64>,
-    last_location_at: Option<chrono::DateTime<Utc>>,
+    last_location_at: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -24,12 +24,16 @@ struct FriendIdRow {
     partner_id: String,
 }
 
+fn fmt_ts(ts: chrono::NaiveDateTime) -> String {
+    ts.and_utc().to_rfc3339()
+}
+
 fn me_payload(user: &UserLocationRow) -> MyLocationJson {
     MyLocationJson {
         sharing_location: user.sharing_location,
         latitude: user.last_latitude,
         longitude: user.last_longitude,
-        updated_at: user.last_location_at.map(|t| t.to_rfc3339()),
+        updated_at: user.last_location_at.map(fmt_ts),
     }
 }
 
@@ -93,7 +97,7 @@ fn location_envelope_from_user(user: &UserLocationRow, actor_id: &str) -> streak
         user.last_longitude.unwrap_or(0.0),
         &user.nickname,
         user.avatar_url.as_deref(),
-        &user.last_location_at.map(|t| t.to_rfc3339()).unwrap_or_default(),
+        &user.last_location_at.map(fmt_ts).unwrap_or_default(),
     )
 }
 
@@ -158,7 +162,7 @@ pub async fn get_friends_locations(
                 avatar_url: f.avatar_url,
                 latitude: f.last_latitude?,
                 longitude: f.last_longitude?,
-                updated_at: f.last_location_at?.to_rfc3339(),
+                updated_at: fmt_ts(f.last_location_at?),
             })
         })
         .collect())
@@ -306,6 +310,6 @@ pub async fn update_location(
         "avatarUrl": user.avatar_url,
         "latitude": user.last_latitude,
         "longitude": user.last_longitude,
-        "updatedAt": user.last_location_at.map(|t| t.to_rfc3339()),
+        "updatedAt": user.last_location_at.map(fmt_ts),
     }))
 }

@@ -19,3 +19,7 @@ streakmeet-types = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+dotenvy = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

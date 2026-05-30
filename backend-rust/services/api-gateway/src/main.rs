@@ -107,6 +107,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/location/update", post(location::update_location_handler))
         .route("/api/users/me", get(users::get_me_handler))
         .route("/api/users/me", patch(users::patch_me_handler))
+        .route("/api/users/me", delete(users::delete_me_handler))
         .route("/api/users/settings", patch(users::patch_settings_handler))
         .route("/api/users/preferences", patch(users::patch_preferences_handler))
         .route("/api/users/email", patch(users::patch_email_handler))
@@ -135,6 +136,10 @@ async fn main() -> anyhow::Result<()> {
         .route(
             "/api/streaks/{streak_id}/remote-selfie/reply/{request_id}",
             post(streaks::reply_remote_selfie_handler),
+        )
+        .route(
+            "/api/streaks/{partner_nickname}/remind",
+            post(streaks::remind_partner_handler),
         )
         .route(
             "/api/streaks/{partner_nickname}",

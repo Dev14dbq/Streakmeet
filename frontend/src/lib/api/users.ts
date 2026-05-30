@@ -1,10 +1,10 @@
 import type { AuthUser } from '@streakmeet/api-spec'
 import { getDeviceTimezone } from '../timezone'
-import { migratedApi, nodeApi } from './migratedClient'
+import { migratedApi } from './migratedClient'
 
 const usersApi = () => migratedApi()
 
-export const deleteAccount = () => nodeApi().delete<{ success: boolean }>('/api/users/me')
+export const deleteAccount = () => migratedApi().delete<{ success: boolean }>('/api/users/me')
 
 export const updatePreferences = (prefs: {
   notifyFriends?: boolean

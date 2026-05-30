@@ -2,10 +2,13 @@ use chrono::Utc;
 use prost::Message;
 use sqlx::PgPool;
 use streakmeet_proto::{ListStreaksResponse, StreakListItem, StreakRecord};
-use streakmeet_sync::{enqueue_outbox, streak_created_envelope, streak_list_item_proto, OutboxPublisher};
+use streakmeet_sync::{
+    enqueue_outbox, notification_envelope, streak_created_envelope, streak_list_item_proto,
+    OutboxPublisher,
+};
 use streakmeet_types::{codes, ApiError};
 
-use crate::calendar::generous_streak_timezone;
+use crate::calendar::{generous_streak_timezone, get_local_date_string, normalize_timezone};
 use crate::helpers::partner_of;
 use crate::models::{
     StreakDetailDayJson, StreakDetailJson, StreakListItemJson, StreakPartnerJson, StreakRecordJson,
@@ -38,6 +41,18 @@ struct UserIdRow {
 #[derive(Debug, sqlx::FromRow)]
 struct TimezoneRow {
     timezone: Option<String>,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct StreakRemindRow {
+    id: String,
+    last_met_date: Option<String>,
+    timezone: String,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct NicknameRow {
+    nickname: String,
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -415,6 +430,94 @@ pub struct StreakForUserRow {
     pub user_a_avatar_url: Option<String>,
     pub user_b_nickname: String,
     pub user_b_avatar_url: Option<String>,
+}
+
+pub async fn remind_partner(
+    pool: &PgPool,
+    publisher: &OutboxPublisher,
+    user_id: &str,
+    partner_nickname: &str,
+) -> Result<serde_json::Value, ApiError> {
+    let nickname = partner_nickname.to_lowercase();
+    let partner = sqlx::query_as::<_, UserIdRow>(
+        r#"SELECT id FROM users WHERE nickname = $1 AND "deletedAt" IS NULL LIMIT 1"#,
+    )
+    .bind(&nickname)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+    .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
+
+    let streak = sqlx::query_as::<_, StreakRemindRow>(
+        r#"
+        SELECT s.id, s."lastMetDate" AS last_met_date, s.timezone
+        FROM streaks s
+        WHERE s.active = true
+          AND (
+            (s."userAId" = $1 AND s."userBId" = $2)
+            OR (s."userAId" = $2 AND s."userBId" = $1)
+          )
+        LIMIT 1
+        "#,
+    )
+    .bind(user_id)
+    .bind(&partner.id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+    .ok_or_else(|| ApiError::new(404, codes::STREAK_NOT_FOUND, None))?;
+
+    let sender = sqlx::query_as::<_, NicknameRow>(
+        r#"SELECT nickname FROM users WHERE id = $1"#,
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+    .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
+
+    let tz = normalize_timezone(Some(&streak.timezone), "UTC");
+    let today = get_local_date_string(&tz, Utc::now());
+    if streak.last_met_date.as_deref() == Some(today.as_str()) {
+        return Err(ApiError::new(400, codes::STREAK_ALREADY_MET_TODAY, None));
+    }
+
+    let variant = (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() % 5)
+        .unwrap_or(0)) as i32;
+    let route = format!("/streaks/{}", sender.nickname);
+    let envelope = notification_envelope(
+        user_id,
+        "streak_remind",
+        &[
+            ("nickname", sender.nickname.as_str()),
+            ("variant", &variant.to_string()),
+        ],
+        &route,
+    );
+    let bytes = streakmeet_proto::SyncEnvelope::encode_to_vec(&envelope);
+
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    enqueue_outbox(
+        &mut tx,
+        &partner.id,
+        "notifications.streak_remind",
+        &envelope.event_id,
+        &bytes,
+    )
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    let _ = publisher.publish_inline(&partner.id, &envelope).await;
+
+    Ok(serde_json::json!({ "ok": true }))
 }
 
 /// Loads an active streak and returns 404 if the user is not a participant.

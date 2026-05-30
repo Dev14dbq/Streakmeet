@@ -5,6 +5,7 @@ set -euo pipefail
 
 NODE_API="${NODE_API:-http://127.0.0.1:3000}"
 RUST_API="${RUST_API:-http://127.0.0.1:8080}"
+DATABASE_URL="${DATABASE_URL:-}"
 EMAIL="${CONTRACT_EMAIL:-}"
 PASSWORD="${CONTRACT_PASSWORD:-contract123}"
 
@@ -15,6 +16,19 @@ if [ -z "$EMAIL" ]; then
   curl -sS -f -X POST "$RUST_API/api/auth/register" \
     -H 'Content-Type: application/json' \
     -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\",\"username\":\"$NICK\"}" >/dev/null
+
+  if [ -z "$DATABASE_URL" ] && [ -f /home/streakmeet/backend-rust/.env ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source /home/streakmeet/backend-rust/.env
+    set +a
+  fi
+  if [ -n "$DATABASE_URL" ]; then
+    echo "=== verify email for contract test user ==="
+    psql "$DATABASE_URL" -c "UPDATE users SET \"emailVerifiedAt\" = NOW() WHERE email = '$EMAIL';" >/dev/null
+  else
+    echo "WARN: DATABASE_URL unset — protected routes may return 403"
+  fi
 fi
 
 echo "=== login Rust ==="

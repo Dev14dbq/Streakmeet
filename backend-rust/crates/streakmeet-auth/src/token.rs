@@ -1,6 +1,6 @@
 //! JWT verification with DB check — parity with `backend/src/auth/token.ts`.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::PgPool;
 
 use crate::jwt;
@@ -21,9 +21,9 @@ pub enum AuthTokenResult {
 
 #[derive(Debug, sqlx::FromRow)]
 struct AuthCheckRow {
-    deleted_at: Option<DateTime<Utc>>,
+    deleted_at: Option<NaiveDateTime>,
     email: String,
-    email_verified_at: Option<DateTime<Utc>>,
+    email_verified_at: Option<NaiveDateTime>,
     password_hash: String,
 }
 
@@ -61,7 +61,7 @@ pub async fn verify_auth_token(
     if let Some(deleted_at) = row.deleted_at {
         return AuthTokenResult::Deleted {
             email: row.email,
-            deleted_at,
+            deleted_at: deleted_at.and_utc(),
         };
     }
 

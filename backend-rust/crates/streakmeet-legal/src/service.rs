@@ -1,6 +1,6 @@
 //! Legal document fetch — parity with `backend/src/legal/service.ts`.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::PgPool;
 use streakmeet_types::{codes, ApiError};
 
@@ -21,7 +21,7 @@ pub async fn get_legal_document(
     slug: LegalSlug,
     raw_locale: Option<&str>,
 ) -> Result<LegalDocumentJson, ApiError> {
-    let doc = sqlx::query_as::<_, (String, i32, String, DateTime<Utc>)>(
+    let doc = sqlx::query_as::<_, (String, i32, String, NaiveDateTime)>(
         r#"
         SELECT slug::text, version, content, "updatedAt"
         FROM legal_documents
@@ -42,6 +42,6 @@ pub async fn get_legal_document(
         title,
         version: doc.1,
         content,
-        updated_at: doc.3.to_rfc3339(),
+        updated_at: doc.3.and_utc().to_rfc3339(),
     })
 }

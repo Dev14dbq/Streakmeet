@@ -61,3 +61,19 @@ mod tests {
         assert_eq!(parse_duration_secs("7d"), 604_800);
     }
 }
+
+#[cfg(test)]
+mod bcrypt_tests {
+    #[test]
+    fn verify_roundtrip() {
+        let h = bcrypt::hash("test123456", 12).unwrap();
+        assert!(bcrypt::verify("test123456", &h).unwrap());
+        assert!(!bcrypt::verify("wrong", &h).unwrap());
+    }
+
+    #[test]
+    fn verify_stored_hash() {
+        let h = "$2b$12$7ktA4WRDlYuy/H6nUucYmeFoyKrtfN4sVVDwbhO6ubeRunM3LuI2i";
+        assert!(bcrypt::verify("test123456", h).unwrap());
+    }
+}

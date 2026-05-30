@@ -126,3 +126,28 @@ pub fn config_from_env() -> AuthConfig {
 
 pub use credentials::{check_email, register, RegisterInput};
 pub use oauth::{apple_login, google_login, restore_account, RestoreAccountInput};
+
+#[cfg(test)]
+mod login_db_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn load_verified_user_row() {
+        dotenvy::dotenv().ok();
+        let pool = streakmeet_db::connect_from_env().await.expect("db");
+        let user = find_user_by_email(&pool, "t31780184815@test.local")
+            .await
+            .expect("query")
+            .expect("user");
+        eprintln!(
+            "deleted_at={:?} verified={:?} ph_len={} ph_prefix={}",
+            user.deleted_at,
+            user.email_verified_at,
+            user.password_hash.len(),
+            &user.password_hash[..10.min(user.password_hash.len())]
+        );
+        assert!(user.email_verified_at.is_some());
+        assert!(user.deleted_at.is_none());
+        assert!(bcrypt::verify("test123456", &user.password_hash).unwrap());
+    }
+}

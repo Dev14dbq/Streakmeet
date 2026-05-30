@@ -1,6 +1,6 @@
 //! Legal document seeding — parity with `backend/src/legal/documents.ts`.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::PgPool;
 use streakmeet_types::{codes, ApiError};
 
@@ -51,7 +51,7 @@ pub async fn ensure_legal_documents(pool: &PgPool) -> Result<(), ApiError> {
             sqlx::query(
                 r#"
                 UPDATE legal_documents
-                SET content = $1, version = version + 1
+                SET content = $1, version = version + 1, "updatedAt" = NOW()
                 WHERE slug = $2::"LegalDocSlug"
                 "#,
             )
@@ -149,7 +149,7 @@ pub async fn get_legal_status_for_user(
         return Ok(None);
     };
 
-    let docs = sqlx::query_as::<_, (String, i32, DateTime<Utc>)>(
+    let docs = sqlx::query_as::<_, (String, i32, NaiveDateTime)>(
         r#"SELECT slug::text, version, "updatedAt" FROM legal_documents"#,
     )
     .fetch_all(pool)
@@ -169,12 +169,12 @@ pub async fn get_legal_status_for_user(
         terms: LegalDocStatus {
             version: terms_version,
             accepted: terms_accepted,
-            updated_at: terms_doc.map(|(_, _, t)| *t),
+            updated_at: terms_doc.map(|(_, _, t)| t.and_utc()),
         },
         privacy: LegalDocStatus {
             version: privacy_version,
             accepted: privacy_accepted,
-            updated_at: privacy_doc.map(|(_, _, t)| *t),
+            updated_at: privacy_doc.map(|(_, _, t)| t.and_utc()),
         },
     }))
 }

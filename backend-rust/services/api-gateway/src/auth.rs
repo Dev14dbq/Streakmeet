@@ -55,7 +55,7 @@ impl FromRequestParts<AppState> for AuthUser {
 
 #[derive(Debug, sqlx::FromRow)]
 struct EmailVerifiedRow {
-    email_verified_at: Option<chrono::DateTime<chrono::Utc>>,
+    email_verified_at: Option<chrono::NaiveDateTime>,
     password_hash: String,
 }
 

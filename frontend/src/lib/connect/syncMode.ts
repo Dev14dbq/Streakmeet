@@ -45,14 +45,14 @@ function rustApiHealthUrl(): string | null {
   const gateway = import.meta.env.VITE_RUST_GATEWAY_URL as string | undefined
   if (gateway?.trim()) return `${gateway.replace(/\/$/, '')}/health`
   if (import.meta.env.DEV) return 'http://127.0.0.1:8080/health'
-  return null
+  return '/health'
 }
 
 function syncGatewayHealthUrl(): string | null {
   const connect = import.meta.env.VITE_CONNECT_URL as string | undefined
   if (connect?.startsWith('http')) return `${connect.replace(/\/$/, '')}/health`
   if (import.meta.env.DEV) return 'http://127.0.0.1:8081/health'
-  return null
+  return '/connect-health'
 }
 
 async function probeUrl(url: string, ms: number): Promise<boolean> {

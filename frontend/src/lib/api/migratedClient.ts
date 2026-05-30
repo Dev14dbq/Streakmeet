@@ -9,14 +9,12 @@ let nodeApiClient: AxiosInstance | null = null
 let onUnauthorized: (() => void) | null = null
 let sessionClearInProgress = false
 
-/** Paths still on Node when Rust stack is active (see backend-rust/services/api-gateway). */
+/** Paths still on Node when Rust stack is active — empty after full cutover. */
 const NODE_ONLY_PREFIXES: readonly string[] = []
 
 export function isNodeOnlyApiPath(path: string): boolean {
   const p = (path.startsWith('/') ? path : `/${path}`).split('?')[0] ?? path
-  if (NODE_ONLY_PREFIXES.some((prefix) => p.startsWith(prefix))) return true
-  if (p.includes('/remind')) return true
-  return false
+  return NODE_ONLY_PREFIXES.some((prefix) => p.startsWith(prefix))
 }
 
 function attachAuthInterceptors(client: AxiosInstance): void {

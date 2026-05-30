@@ -219,3 +219,13 @@ pub async fn public_photos_handler(
     .map(Json)
     .map_err(api_error_response)
 }
+
+pub async fn delete_me_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    streakmeet_users::delete_account(&state.pool, &auth.user_id)
+        .await
+        .map(Json)
+        .map_err(api_error_response)
+}

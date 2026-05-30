@@ -23,5 +23,5 @@ pub use remote_selfie::{
 };
 pub use service::{
     create_streak, find_streak_for_user, get_streak_detail, list_streaks, list_streaks_proto,
-    streak_record_proto,
+    remind_partner, streak_record_proto,
 };

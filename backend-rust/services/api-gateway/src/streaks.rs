@@ -5,7 +5,7 @@ use axum::{
 use serde::Deserialize;
 use streakmeet_streaks::{
     create_streak, get_streak_detail, init_remote_selfie, list_streaks, process_magic_meet,
-    record_meet_upload, reply_remote_selfie, MagicMeetInput,
+    record_meet_upload, remind_partner, reply_remote_selfie, MagicMeetInput,
 };
 
 use crate::auth::{require_email_verified, AuthUser};
@@ -168,4 +168,21 @@ pub async fn get_streak_detail_handler(
         .await
         .map(Json)
         .map_err(api_error_response)
+}
+
+pub async fn remind_partner_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(partner_nickname): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    let auth = require_email_verified(State(state.clone()), auth).await?;
+    remind_partner(
+        &state.pool,
+        &state.outbox,
+        &auth.user_id,
+        &partner_nickname.to_lowercase(),
+    )
+    .await
+    .map(Json)
+    .map_err(api_error_response)
 }

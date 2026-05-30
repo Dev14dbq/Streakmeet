@@ -1,12 +1,10 @@
-/** PM2: Rust microservices + optional Node for legal/memories/uploads.
- *  Run: pm2 start /home/streakmeet/deploy/ecosystem-rust.config.cjs
- */
+/** PM2: Rust microservices + face-service (Node backend retired). */
 module.exports = {
   apps: [
     {
       name: 'streakmeet-api-rust',
       cwd: '/home/streakmeet/backend-rust',
-      script: 'target/release/api-gateway',
+      script: 'target/debug/api-gateway',
       env: {
         RUST_LOG: 'info,streakmeet=debug',
       },
@@ -14,7 +12,7 @@ module.exports = {
     {
       name: 'streakmeet-sync-rust',
       cwd: '/home/streakmeet/backend-rust',
-      script: 'target/release/sync-gateway',
+      script: 'target/debug/sync-gateway',
       env: {
         RUST_LOG: 'info,streakmeet=debug',
       },
@@ -22,17 +20,9 @@ module.exports = {
     {
       name: 'streakmeet-worker-rust',
       cwd: '/home/streakmeet/backend-rust',
-      script: 'target/release/worker-service',
+      script: 'target/debug/worker-service',
       env: {
         RUST_LOG: 'info,streakmeet=debug',
-      },
-    },
-    {
-      name: 'streakmeet-api-node',
-      cwd: '/home/streakmeet/backend',
-      script: 'dist/index.js',
-      env: {
-        NODE_ENV: 'production',
       },
     },
     {

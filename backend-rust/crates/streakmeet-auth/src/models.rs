@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::Serialize;
 use sqlx::FromRow;
 use streakmeet_proto::AuthUser;
@@ -20,7 +20,7 @@ pub struct UserRow {
     #[sqlx(rename = "faceEnrolled")]
     pub face_enrolled: bool,
     #[sqlx(rename = "emailVerifiedAt")]
-    pub email_verified_at: Option<DateTime<Utc>>,
+    pub email_verified_at: Option<NaiveDateTime>,
     #[sqlx(rename = "avatarUrl")]
     pub avatar_url: Option<String>,
     pub timezone: String,
@@ -33,7 +33,7 @@ pub struct UserRow {
     #[sqlx(rename = "geoOnPhotos")]
     pub geo_on_photos: bool,
     #[sqlx(rename = "deletedAt")]
-    pub deleted_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 #[derive(Debug, Serialize)]
@@ -114,12 +114,14 @@ pub fn is_email_verified(user: &UserRow) -> bool {
     user.email_verified_at.is_some()
 }
 
-pub fn is_retention_expired(deleted_at: DateTime<Utc>) -> bool {
+pub fn is_retention_expired(deleted_at: NaiveDateTime) -> bool {
+    let deleted_at = deleted_at.and_utc();
     let retention_ms = ACCOUNT_RETENTION_DAYS * 86_400;
     (Utc::now() - deleted_at).num_seconds() > retention_ms
 }
 
-pub fn days_remaining(deleted_at: DateTime<Utc>) -> i32 {
+pub fn days_remaining(deleted_at: NaiveDateTime) -> i32 {
+    let deleted_at = deleted_at.and_utc();
     let retention_secs = ACCOUNT_RETENTION_DAYS * 86_400;
     let elapsed = (Utc::now() - deleted_at).num_seconds();
     ((retention_secs - elapsed).max(0) / 86_400) as i32
@@ -142,7 +144,7 @@ impl DeletedAccountBody {
             error: "Аккаунт удалён — войдите, чтобы восстановить".into(),
             code: codes::ACCOUNT_DELETED.into(),
             email: user.email.clone(),
-            deleted_at: deleted_at.to_rfc3339(),
+            deleted_at: deleted_at.and_utc().to_rfc3339(),
             days_remaining: days_remaining(deleted_at),
         }
     }

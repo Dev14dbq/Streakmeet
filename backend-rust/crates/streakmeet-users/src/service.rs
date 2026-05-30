@@ -578,6 +578,22 @@ pub async fn list_photos(
     streakmeet_memories::list_for_user(pool, user_id, page, limit, None).await
 }
 
+pub async fn delete_account(pool: &PgPool, user_id: &str) -> Result<serde_json::Value, ApiError> {
+    let result = sqlx::query(
+        r#"UPDATE users SET "deletedAt" = NOW() WHERE id = $1 AND "deletedAt" IS NULL"#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    if result.rows_affected() == 0 {
+        return Err(ApiError::new(404, codes::USER_NOT_FOUND, None));
+    }
+
+    Ok(serde_json::json!({ "success": true }))
+}
+
 pub async fn get_public_photos(
     pool: &PgPool,
     viewer_id: Option<&str>,
