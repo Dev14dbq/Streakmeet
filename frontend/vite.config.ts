@@ -18,6 +18,11 @@ export default defineConfig({
         changeOrigin: true,
         timeout: 180_000,
       },
+      '/connect': {
+        target: 'http://127.0.0.1:8081',
+        changeOrigin: true,
+        // Connect/gRPC streaming to Rust sync-gateway
+      },
       '/uploads': {
         target: 'http://127.0.0.1:3000',
         changeOrigin: true,

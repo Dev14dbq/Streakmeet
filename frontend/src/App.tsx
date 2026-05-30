@@ -35,6 +35,7 @@ import ProtectedLayout, {
 } from './routes/ProtectedLayout'
 import { useLegalConsent } from './hooks/useLegalConsent'
 import { useRealtimeSocket } from './hooks/useRealtimeSocket'
+import { useSyncStream } from './hooks/useSyncStream'
 import { useAppLifecycle } from './hooks/useAppLifecycle'
 
 import StreakDetailsPage from './pages/home/StreakDetailsPage'
@@ -65,6 +66,7 @@ export default function App() {
     useLegalConsent(user, isLoggedIn)
 
   const appActiveRef = useRealtimeSocket(user, bootstrapPhase, navigate)
+  useSyncStream(user, bootstrapPhase)
   useAppLifecycle(user, appActiveRef)
 
   useEffect(() => {

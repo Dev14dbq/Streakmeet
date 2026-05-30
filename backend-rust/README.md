@@ -73,3 +73,5 @@ backend-rust/
 - SQLx uses runtime queries (no compile-time DB verification yet).
 - Connect browser client targets sync-gateway via Vite proxy `/connect/`.
 - JWT must share `JWT_SECRET` with Node during transition.
+- **protoc** required to build (`apt install protobuf-compiler` or newer from GitHub releases).
+- sync-gateway speaks **tonic gRPC**; browser Connect JSON requires a Connect adapter or grpc-web proxy (Phase 1).
