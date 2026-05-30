@@ -1,21 +1,16 @@
 /**
- * Phase 0 skeleton — raw Connect streaming fetch until TS proto codegen lands.
- * Target: streakmeet.v1.SyncService/Subscribe on sync-gateway (:8081).
- *
- * Note: sync-gateway currently speaks gRPC (tonic). Browser needs Connect-compatible
- * framing or grpc-web proxy (see backend-rust/README.md). This module wires auth,
- * reconnect backoff, and lastEventId persistence for Phase 1.
+ * Connect server-stream sync — JSON framing for sync-gateway (:8081).
+ * Browser uses Connect protocol (`application/connect+json`); sync-gateway implements
+ * a Connect-compatible HTTP layer (not raw tonic gRPC).
  */
 
-import {
-  getConnectBaseUrl,
-  persistLastEventId,
-  readLastEventId,
-} from './client'
+import { getConnectBaseUrl, persistLastEventId, readLastEventId } from './client'
 import { getAccessToken } from '../../context/AuthContext'
+import type { FriendSyncPayload } from '../applySyncEvent'
 
 export type SyncEnvelopePayload =
   | { case: 'heartbeat'; message: string }
+  | { case: 'friendEvent'; value: FriendSyncPayload }
   | { case: 'unknown'; raw: unknown }
 
 export interface SyncEnvelope {
@@ -50,19 +45,81 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
   })
 }
 
-/** Minimal JSON envelope parser for dev heartbeat events. */
+function parseFriendEvent(raw: Record<string, unknown>): FriendSyncPayload | null {
+  const eventType =
+    typeof raw.eventType === 'string'
+      ? raw.eventType
+      : typeof raw.event_type === 'string'
+        ? raw.event_type
+        : null
+  const friendshipRaw = raw.friendship
+  if (!eventType || !friendshipRaw || typeof friendshipRaw !== 'object') return null
+
+  const f = friendshipRaw as Record<string, unknown>
+  const friendRaw = f.friend
+  if (!friendRaw || typeof friendRaw !== 'object') return null
+  const friend = friendRaw as Record<string, unknown>
+
+  const id = typeof f.id === 'string' ? f.id : ''
+  const status = typeof f.status === 'string' ? f.status : 'PENDING'
+  const isIncomingRequest =
+    typeof f.isIncomingRequest === 'boolean'
+      ? f.isIncomingRequest
+      : typeof f.is_incoming_request === 'boolean'
+        ? f.is_incoming_request
+        : false
+
+  if (!id || typeof friend.id !== 'string' || typeof friend.nickname !== 'string') return null
+
+  return {
+    eventType,
+    friendship: {
+      id,
+      status: status as FriendSyncPayload['friendship']['status'],
+      isIncomingRequest,
+      friend: {
+        id: friend.id,
+        nickname: friend.nickname,
+        avatarUrl:
+          typeof friend.avatarUrl === 'string'
+            ? friend.avatarUrl
+            : typeof friend.avatar_url === 'string'
+              ? friend.avatar_url
+              : null,
+      },
+    },
+  }
+}
+
+/** Parse Connect JSON SyncEnvelope lines from sync-gateway. */
 function parseEnvelope(raw: unknown): SyncEnvelope | null {
   if (!raw || typeof raw !== 'object') return null
   const obj = raw as Record<string, unknown>
-  const eventId = typeof obj.eventId === 'string' ? obj.eventId : typeof obj.event_id === 'string' ? obj.event_id : ''
+  const eventId =
+    typeof obj.eventId === 'string'
+      ? obj.eventId
+      : typeof obj.event_id === 'string'
+        ? obj.event_id
+        : ''
   const sequence = typeof obj.sequence === 'number' ? obj.sequence : 0
 
-  const heartbeat = (obj.heartbeat ?? obj.payload) as Record<string, unknown> | undefined
-  if (heartbeat && typeof heartbeat.message === 'string') {
-    return {
-      eventId,
-      sequence,
-      payload: { case: 'heartbeat', message: heartbeat.message },
+  const friendEventRaw = obj.friendEvent ?? obj.friend_event
+  if (friendEventRaw && typeof friendEventRaw === 'object') {
+    const parsed = parseFriendEvent(friendEventRaw as Record<string, unknown>)
+    if (parsed) {
+      return { eventId, sequence, payload: { case: 'friendEvent', value: parsed } }
+    }
+  }
+
+  const heartbeat = obj.heartbeat
+  if (heartbeat && typeof heartbeat === 'object') {
+    const hb = heartbeat as Record<string, unknown>
+    if (typeof hb.message === 'string') {
+      return {
+        eventId,
+        sequence,
+        payload: { case: 'heartbeat', message: hb.message },
+      }
     }
   }
 
@@ -97,7 +154,7 @@ async function readConnectJsonStream(
             handlers.onEnvelope(parsed)
           }
         } catch {
-          // ignore partial / non-json frames during Phase 0
+          // ignore partial / non-json frames
         }
       }
       newline = buffer.indexOf('\n')
@@ -105,10 +162,7 @@ async function readConnectJsonStream(
   }
 }
 
-async function openSubscribeOnce(
-  handlers: SyncStreamHandlers,
-  signal: AbortSignal
-): Promise<void> {
+async function openSubscribeOnce(handlers: SyncStreamHandlers, signal: AbortSignal): Promise<void> {
   const token = getAccessToken()
   if (!token) throw new Error('sync stream: missing access token')
 

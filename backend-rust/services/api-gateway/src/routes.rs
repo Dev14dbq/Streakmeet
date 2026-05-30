@@ -31,7 +31,7 @@ pub async fn login(
         .map_err(api_error_response)
 }
 
-fn api_error_response(err: ApiError) -> (StatusCode, Json<serde_json::Value>) {
+pub fn api_error_response(err: ApiError) -> (StatusCode, Json<serde_json::Value>) {
     let status =
         StatusCode::from_u16(err.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
     let body = if let Some(extra) = err.body.extra {

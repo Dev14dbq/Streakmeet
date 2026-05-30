@@ -4,3 +4,4 @@ build
 *.gen.ts
 frontend/ios
 frontend/android
+backend-rust/target

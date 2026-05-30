@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import type { AuthUser } from '../lib/api'
 import type { BootstrapPhase } from '../context/AuthContext'
+import { applySyncEvent } from '../lib/applySyncEvent'
 import { isSyncStreamEnabled } from '../lib/connect/client'
 import { runSyncStream, type SyncEnvelope } from '../lib/connect/syncStream'
 
 /**
  * Connect server-stream sync (replaces socket.io gradually).
- * Disabled by default — set VITE_USE_SYNC_STREAM=true to enable alongside legacy socket.
+ * Enabled when VITE_USE_SYNC_STREAM=true — patches SWR caches from sync events.
  */
 export function useSyncStream(user: AuthUser | null, bootstrapPhase: BootstrapPhase) {
   const enabled = user !== null && bootstrapPhase !== 'loading' && isSyncStreamEnabled()
@@ -18,8 +19,12 @@ export function useSyncStream(user: AuthUser | null, bootstrapPhase: BootstrapPh
         console.debug('[sync] heartbeat', env.payload.message, env.eventId)
         return
       }
+      if (env.payload.case === 'friendEvent') {
+        console.debug('[sync] friendEvent', env.payload.value.eventType, env.eventId)
+        applySyncEvent(env)
+        return
+      }
       console.debug('[sync] envelope', env)
-      // Phase 1: applySyncEvent(env) — patch SWR caches
     }
   })
 
