@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom'
 import type { AuthUser } from '../lib/api'
 import { setUnauthorizedHandler } from '../lib/api'
 import { bootstrapSession } from '../lib/bootstrapApp'
+import { clearFaceEnrollmentDefer, isFaceEnrollmentDeferred } from '../lib/faceEnrollmentDefer'
 import { stopLocationSharing } from '../lib/locationSharing'
 
 export type BootstrapPhase = 'hidden' | 'loading' | 'leaving'
@@ -47,7 +48,7 @@ export function getAuthenticatedHomePath(
 ): string {
   if (!isLoggedIn) return '/login'
   if (needsEmailVerification) return '/verify-email'
-  if (needsFaceEnrollment) return '/face-enrollment'
+  if (needsFaceEnrollment && !isFaceEnrollmentDeferred()) return '/face-enrollment'
   return '/'
 }
 
@@ -71,36 +72,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigateRef = useRef(navigate)
   navigateRef.current = navigate
   const pendingNavRef = useRef<PendingNavigation | null>(null)
+  const logoutInFlightRef = useRef(false)
   const [bootstrapVersion, setBootstrapVersion] = useState(0)
   const [bootstrapPhase, setBootstrapPhase] = useState<BootstrapPhase>(initialBootstrapPhase)
   const [user, setUser] = useState<AuthUser | null>(getStoredUser)
 
-  const applyPendingNavigation = useCallback((pending: PendingNavigation, authUser: AuthUser) => {
-    if (!authUser.emailVerified) {
-      navigate('/verify-email', { replace: true })
-      return
-    }
-    if (pending.returnTo && authUser.faceEnrolled) {
-      navigate(pending.returnTo, { replace: true })
-      return
-    }
-    if (authUser.faceEnrolled) {
-      navigate('/', { replace: true })
-    } else {
-      navigate('/face-enrollment', {
-        replace: true,
-        state: pending.fromSignup ? { autoStart: true } : undefined,
-      })
-    }
-  }, [navigate])
+  const applyPendingNavigation = useCallback(
+    (pending: PendingNavigation, authUser: AuthUser) => {
+      if (!authUser.emailVerified) {
+        navigate('/verify-email', { replace: true })
+        return
+      }
+      if (pending.returnTo && authUser.faceEnrolled) {
+        navigate(pending.returnTo, { replace: true })
+        return
+      }
+      if (authUser.faceEnrolled) {
+        navigate('/', { replace: true })
+      } else {
+        navigate('/face-enrollment', {
+          replace: true,
+          state: pending.fromSignup ? { autoStart: true } : undefined,
+        })
+      }
+    },
+    [navigate]
+  )
 
   const handleLogout = useCallback(async () => {
-    await stopLocationSharing().catch(() => {})
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('user')
-    setUser(null)
-    setBootstrapPhase('hidden')
-    navigate('/login', { replace: true })
+    if (logoutInFlightRef.current) return
+    logoutInFlightRef.current = true
+    try {
+      await stopLocationSharing().catch(() => {})
+      clearFaceEnrollmentDefer()
+      localStorage.removeItem('accessToken')
+      localStorage.removeItem('user')
+      setUser(null)
+      setBootstrapPhase('hidden')
+      navigate('/login', { replace: true })
+    } finally {
+      logoutInFlightRef.current = false
+    }
   }, [navigate])
 
   const handleAuth = useCallback(
@@ -176,7 +188,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isLoggedIn = !!user
   const needsEmailVerification = isLoggedIn && user!.emailVerified === false
   const needsFaceEnrollment =
-    isLoggedIn && user!.emailVerified !== false && !user!.faceEnrolled
+    isLoggedIn &&
+    user!.emailVerified !== false &&
+    !user!.faceEnrolled &&
+    !isFaceEnrollmentDeferred()
   const showApp = bootstrapPhase !== 'loading'
 
   const value = useMemo<AuthContextValue>(

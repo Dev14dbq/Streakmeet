@@ -206,7 +206,9 @@
     "shareExplainAlways": "Na próxima etapa, escolha «Permitir o tempo todo» — caso contrário, o compartilhamento não funcionará quando o aplicativo estiver em segundo plano.",
     "shareExplainContinue": "Continuar",
     "locateMe": "A minha localização",
-    "locateFailed": "Não foi possível obter a sua localização"
+    "locateFailed": "Não foi possível obter a sua localização",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "Abra Ajustes → StreakMeet → Localização e escolha «Sempre» para que os amigos vejam você no mapa em segundo plano."
   },
   "profile": {
     "avatarUploadFailed": "Falha no upload do avatar",

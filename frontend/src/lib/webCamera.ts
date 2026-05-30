@@ -4,11 +4,12 @@ import { Camera } from '@capacitor/camera'
 /** Native + browser: ensure OS/WebView camera permission before react-webcam mounts. */
 export async function ensureCameraAccess(): Promise<boolean> {
   if (Capacitor.isNativePlatform()) {
-    const current = await Camera.checkPermissions()
-    if (current.camera !== 'granted') {
-      const requested = await Camera.requestPermissions({ permissions: ['camera'] })
-      if (requested.camera !== 'granted') return false
-    }
+    // Always call requestPermissions on iOS even if already granted —
+    // this refreshes the WKWebView renderer sandbox extension which can expire.
+    const requested = await Camera.requestPermissions({ permissions: ['camera'] })
+    if (requested.camera !== 'granted') return false
+    // Brief delay for the sandbox extension to propagate to the renderer process.
+    await new Promise<void>((resolve) => setTimeout(resolve, 150))
   }
 
   if (!navigator.mediaDevices?.getUserMedia) return false

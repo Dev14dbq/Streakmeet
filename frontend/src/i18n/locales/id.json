@@ -206,7 +206,9 @@
     "shareExplainAlways": "Pada langkah berikutnya pilih «Izinkan sepanjang waktu» — jika tidak, berbagi di latar belakang tidak berfungsi.",
     "shareExplainContinue": "Lanjutkan",
     "locateMe": "Lokasi saya",
-    "locateFailed": "Tidak dapat mendapatkan lokasi Anda"
+    "locateFailed": "Tidak dapat mendapatkan lokasi Anda",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "Buka Pengaturan → StreakMeet → Lokasi dan pilih «Selalu» agar teman melihatmu di peta saat aplikasi di latar belakang."
   },
   "profile": {
     "avatarUploadFailed": "Unggah avatar gagal",

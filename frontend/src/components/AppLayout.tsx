@@ -13,7 +13,18 @@ export default function AppLayout({ children }: Props) {
         "On larger devices, content is capped at a 600px max-width"
       */}
       <div className="w-full max-w-[600px] relative flex flex-col min-h-screen bg-[var(--color-background)]">
-        <main className="flex-1 pb-[140px] overflow-y-auto">{children}</main>
+        <main
+          className="flex-1 pb-[140px] overflow-y-auto"
+          style={{
+            // Native iOS momentum scroll with elastic bounce at edges.
+            // This provides the rubber-band effect within <main> only,
+            // without making the whole WebView fly up.
+            WebkitOverflowScrolling: 'touch' as const,
+            overscrollBehaviorY: 'contain',
+          }}
+        >
+          {children}
+        </main>
         <BottomNav />
       </div>
     </div>

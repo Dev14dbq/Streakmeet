@@ -1,14 +1,12 @@
 import { useEffect, type MutableRefObject } from 'react'
 import { App as CapApp } from '@capacitor/app'
 import type { AuthUser } from '../lib/api'
+import { hasAuthSession } from '../lib/api/client'
 import { promptEssentialPermissionsOnFirstLaunch } from '../lib/nativePermissions'
 import { scheduleStreakNotifications } from '../lib/streakNotifications'
 import { resumeLocationSharingIfNeeded } from '../lib/locationSharing'
 
-export function useAppLifecycle(
-  user: AuthUser | null,
-  appActiveRef?: MutableRefObject<boolean>
-) {
+export function useAppLifecycle(user: AuthUser | null, appActiveRef?: MutableRefObject<boolean>) {
   useEffect(() => {
     if (!user) return
     void promptEssentialPermissionsOnFirstLaunch().then(() => {
@@ -17,7 +15,7 @@ export function useAppLifecycle(
   }, [user?.id, user?.faceEnrolled])
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !hasAuthSession()) return
     void resumeLocationSharingIfNeeded()
   }, [user?.id])
 

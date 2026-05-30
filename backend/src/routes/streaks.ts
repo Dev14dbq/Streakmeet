@@ -12,10 +12,7 @@ import {
   remindPartner,
 } from '../services/streakService.js'
 import { processMagicMeet } from '../services/magicMeetService.js'
-import {
-  initRemoteSelfie,
-  replyRemoteSelfie,
-} from '../services/remoteSelfieService.js'
+import { initRemoteSelfie, replyRemoteSelfie } from '../services/remoteSelfieService.js'
 
 const router = Router()
 router.use(requireAuth, requireEmailVerified)

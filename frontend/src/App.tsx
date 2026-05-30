@@ -61,13 +61,8 @@ export default function App() {
     handleLogout,
   } = useAuth()
 
-  const {
-    legalStatus,
-    legalFetchFailed,
-    needsLegalConsent,
-    retryLegalCheck,
-    onLegalAccepted,
-  } = useLegalConsent(user, isLoggedIn)
+  const { legalStatus, legalFetchFailed, needsLegalConsent, retryLegalCheck, onLegalAccepted } =
+    useLegalConsent(user, isLoggedIn)
 
   const appActiveRef = useRealtimeSocket(user, bootstrapPhase, navigate)
   useAppLifecycle(user, appActiveRef)
@@ -99,11 +94,7 @@ export default function App() {
         {legalFetchFailed && (
           <div className="fixed top-0 inset-x-0 z-[199] bg-[var(--color-error-container)] px-4 py-3 text-center text-sm text-[var(--color-on-error-container)]">
             {t('app.legalCheckFailed')}{' '}
-            <button
-              type="button"
-              className="underline font-semibold"
-              onClick={retryLegalCheck}
-            >
+            <button type="button" className="underline font-semibold" onClick={retryLegalCheck}>
               {t('app.retry')}
             </button>
           </div>
@@ -150,7 +141,10 @@ export default function App() {
             <Route path="/map" element={<MapPage />} />
             <Route path="/memories" element={<MemoriesPage />} />
             <Route path="/profile" element={<ProfilePage user={user!} />} />
-            <Route path="/settings" element={<SettingsPage user={user!} onUserUpdate={setUser} />} />
+            <Route
+              path="/settings"
+              element={<SettingsPage user={user!} onUserUpdate={setUser} />}
+            />
             <Route path="/settings/appearance" element={<AppearanceSettingsPage />} />
             <Route path="/settings/language" element={<LanguageSettingsPage />} />
             <Route

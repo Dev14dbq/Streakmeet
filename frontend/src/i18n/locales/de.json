@@ -206,7 +206,9 @@
     "shareExplainAlways": "Wähle im nächsten Schritt „Immer zulassen“ aus — andernfalls funktioniert die Freigabe nicht, wenn sich die App im Hintergrund befindet.",
     "shareExplainContinue": "Weiter",
     "locateMe": "Mein Standort",
-    "locateFailed": "Dein Standort konnte nicht abgerufen werden"
+    "locateFailed": "Dein Standort konnte nicht abgerufen werden",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "Öffne Einstellungen → StreakMeet → Ort und wähle «Immer», damit Freunde dich im Hintergrund auf der Karte sehen."
   },
   "profile": {
     "avatarUploadFailed": "Avatar-Upload fehlgeschlagen",

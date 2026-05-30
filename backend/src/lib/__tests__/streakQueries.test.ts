@@ -5,10 +5,7 @@ describe('pendingRemoteSelfiesInclude', () => {
   it('scopes pending requests to the user as sender or receiver', () => {
     const include = pendingRemoteSelfiesInclude('viewer')
     expect(include.where.status).toBe('PENDING')
-    expect(include.where.OR).toEqual([
-      { receiverId: 'viewer' },
-      { senderId: 'viewer' },
-    ])
+    expect(include.where.OR).toEqual([{ receiverId: 'viewer' }, { senderId: 'viewer' }])
     expect(include.take).toBe(1)
   })
 })

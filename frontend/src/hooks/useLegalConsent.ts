@@ -10,11 +10,13 @@ const legalFetcher = () => getLegalConsentStatus().then((r) => r.data)
 export function useLegalConsent(user: AuthUser | null, isLoggedIn: boolean) {
   const location = useLocation()
 
-  const { data: legalStatus, error, mutate } = useSWR<LegalConsentStatus>(
-    user ? SWR_KEYS.legalStatus : null,
-    legalFetcher,
-    { revalidateOnFocus: false }
-  )
+  const {
+    data: legalStatus,
+    error,
+    mutate,
+  } = useSWR<LegalConsentStatus>(user ? SWR_KEYS.legalStatus : null, legalFetcher, {
+    revalidateOnFocus: false,
+  })
 
   const legalChecked = legalStatus !== undefined || error !== undefined
   const legalFetchFailed = !!error && !legalStatus
@@ -27,7 +29,12 @@ export function useLegalConsent(user: AuthUser | null, isLoggedIn: boolean) {
     mutate(
       (prev) =>
         prev
-          ? { ...prev, needsAcceptance: false, terms: { ...prev.terms, accepted: true }, privacy: { ...prev.privacy, accepted: true } }
+          ? {
+              ...prev,
+              needsAcceptance: false,
+              terms: { ...prev.terms, accepted: true },
+              privacy: { ...prev.privacy, accepted: true },
+            }
           : prev,
       { revalidate: false }
     )

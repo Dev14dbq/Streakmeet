@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { X, MoreVertical, Download, Share, Info } from 'lucide-react'
 import { Capacitor } from '@capacitor/core'
@@ -124,7 +125,7 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
   const uploaderNickname = photo.uploadedBy?.nickname || t('common.unknown')
   const dateStr = photo.createdAt ? formatDateTime(photo.createdAt) : t('common.unknown')
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="flex items-center justify-between px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] relative z-10 shrink-0">
         <button
@@ -199,6 +200,7 @@ export default function PhotoViewerModal({ photo, onClose }: Props) {
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   )
 }

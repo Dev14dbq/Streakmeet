@@ -1,16 +1,19 @@
 import Foundation
 import Capacitor
 import CoreLocation
+import UIKit
 
 @objc(StreakLocationPermissionPlugin)
 public class StreakLocationPermissionPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDelegate {
-    public let identifier = "StreakLocationPermission"
+
+    public let identifier = "StreakLocationPermissionPlugin"
     public let jsName = "StreakLocationPermission"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "checkAlways", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAlways", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openExternalUrl", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "showAlwaysPrompt", returnType: CAPPluginReturnPromise),
     ]
 
     private let manager = CLLocationManager()
@@ -19,26 +22,33 @@ public class StreakLocationPermissionPlugin: CAPPlugin, CAPBridgedPlugin, CLLoca
     @objc func checkAlways(_ call: CAPPluginCall) {
         let status = authorizationStatus()
         call.resolve([
-            "granted": status == .authorizedAlways,
+            "granted":    status == .authorizedAlways,
             "foreground": status == .authorizedAlways || status == .authorizedWhenInUse,
             "background": status == .authorizedAlways,
+            "denied":     status == .denied || status == .restricted,
         ])
     }
 
     @objc func requestAlways(_ call: CAPPluginCall) {
-        pendingCall = call
-        manager.delegate = self
+        DispatchQueue.main.async { [weak self] in
+            guard let self else {
+                call.reject("Plugin deallocated", "INTERNAL")
+                return
+            }
+            self.pendingCall = call
+            self.manager.delegate = self
 
-        let status = authorizationStatus()
-        switch status {
-        case .authorizedAlways:
-            call.resolve(["granted": true])
-            pendingCall = nil
-        case .notDetermined, .authorizedWhenInUse:
-            manager.requestAlwaysAuthorization()
-        default:
-            call.reject("Location permission denied", "PERMISSION_DENIED")
-            pendingCall = nil
+            let status = self.authorizationStatus()
+            switch status {
+            case .authorizedAlways:
+                call.resolve(["granted": true])
+                self.pendingCall = nil
+            case .notDetermined, .authorizedWhenInUse:
+                self.manager.requestAlwaysAuthorization()
+            default:
+                call.reject("Location permission denied", "PERMISSION_DENIED")
+                self.pendingCall = nil
+            }
         }
     }
 
@@ -64,6 +74,51 @@ public class StreakLocationPermissionPlugin: CAPPlugin, CAPBridgedPlugin, CLLoca
             }
         }
     }
+
+    /// Native UIAlertController — JS passes localised strings.
+    /// Returns { action: "continue" | "settings" | "cancel" }.
+    /// When action == "settings" the Settings app is opened automatically.
+    @objc func showAlwaysPrompt(_ call: CAPPluginCall) {
+        let title       = call.getString("title")       ?? "Геолокация"
+        let message     = call.getString("message")     ?? ""
+        let cancelLabel = call.getString("cancelLabel") ?? "Не сейчас"
+        let actionLabel = call.getString("actionLabel") ?? "Настройки"
+        let actionType  = call.getString("actionType")  ?? "settings"
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else {
+                call.reject("Plugin deallocated", "INTERNAL")
+                return
+            }
+
+            let alert = UIAlertController(
+                title: title,
+                message: message,
+                preferredStyle: .alert
+            )
+
+            alert.addAction(UIAlertAction(title: cancelLabel, style: .cancel) { _ in
+                call.resolve(["action": "cancel"])
+            })
+
+            alert.addAction(UIAlertAction(title: actionLabel, style: .default) { _ in
+                if actionType == "settings" {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                call.resolve(["action": actionType])
+            })
+
+            guard let presenter = self.topViewController() else {
+                call.reject("No view controller to present alert", "UNAVAILABLE")
+                return
+            }
+            presenter.present(alert, animated: true)
+        }
+    }
+
+    // MARK: - CLLocationManagerDelegate
 
     public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         resolvePendingAuthorization()
@@ -91,9 +146,31 @@ public class StreakLocationPermissionPlugin: CAPPlugin, CAPBridgedPlugin, CLLoca
     }
 
     private func authorizationStatus() -> CLAuthorizationStatus {
-        if #available(iOS 14.0, *) {
-            return manager.authorizationStatus
+        manager.authorizationStatus
+    }
+
+    private func topViewController() -> UIViewController? {
+        var root = bridge?.viewController
+        if root == nil {
+            root = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap(\.windows)
+                .first(where: \.isKeyWindow)?
+                .rootViewController
         }
-        return CLLocationManager.authorizationStatus()
+        return Self.topmostViewController(from: root)
+    }
+
+    private static func topmostViewController(from root: UIViewController?) -> UIViewController? {
+        if let presented = root?.presentedViewController {
+            return topmostViewController(from: presented)
+        }
+        if let nav = root as? UINavigationController {
+            return topmostViewController(from: nav.visibleViewController)
+        }
+        if let tab = root as? UITabBarController {
+            return topmostViewController(from: tab.selectedViewController)
+        }
+        return root
     }
 }

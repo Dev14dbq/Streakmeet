@@ -131,11 +131,7 @@ export default function AuthPage({ onAuth }: Props) {
         <div className="relative mb-3 select-none">
           <div className="absolute inset-0 m-auto h-28 w-28 rounded-full bg-[var(--color-brand-primary)] opacity-20 blur-3xl" />
           <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-[var(--color-surface-container-high)] ring-1 ring-[var(--color-outline-variant)]/40 drop-shadow-[0_0_20px_rgba(255,26,79,0.5)]">
-            <Flame
-              size={44}
-              className="text-[var(--color-brand-primary)]"
-              fill="currentColor"
-            />
+            <Flame size={44} className="text-[var(--color-brand-primary)]" fill="currentColor" />
           </div>
         </div>
         <h1 className="text-4xl font-extrabold tracking-tight text-on-surface">StreakMeet</h1>

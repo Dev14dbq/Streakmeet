@@ -206,7 +206,9 @@
     "shareExplainAlways": "Al passo successivo scegli «Consenti sempre» — altrimenti la condivisione non funziona in background.",
     "shareExplainContinue": "Continua",
     "locateMe": "La mia posizione",
-    "locateFailed": "Impossibile ottenere la tua posizione"
+    "locateFailed": "Impossibile ottenere la tua posizione",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "Apri Impostazioni → StreakMeet → Posizione e scegli «Sempre» così gli amici ti vedono sulla mappa in background."
   },
   "profile": {
     "avatarUploadFailed": "Caricamento avatar non riuscito",

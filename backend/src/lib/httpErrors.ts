@@ -1,10 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from 'express'
-import {
-  ErrorCodes,
-  type ErrorCode,
-  prismaErrorCode,
-  sendError,
-} from './apiErrors.js'
+import { ErrorCodes, type ErrorCode, prismaErrorCode, sendError } from './apiErrors.js'
 import { deletedAccountPayload } from './accountDeletion.js'
 
 export class ApiHttpError extends Error {

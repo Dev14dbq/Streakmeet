@@ -206,7 +206,9 @@
     "shareExplainAlways": "次のステップでは、「常に許可する」を選択します。そうしないと、アプリがバックグラウンドにあるときに共有は機能しません。",
     "shareExplainContinue": "続行",
     "locateMe": "現在地",
-    "locateFailed": "現在地を取得できませんでした"
+    "locateFailed": "現在地を取得できませんでした",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "設定 → StreakMeet → 位置情報を開き、「常に」を選んで、バックグラウンドでも友達が地図であなたを見られるようにしてください。"
   },
   "profile": {
     "avatarUploadFailed": "アバターのアップロードに失敗しました",

@@ -24,7 +24,9 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   const result = await verifyAuthToken(token)
   if (!result.ok) {
     if (result.reason === 'deleted') {
-      res.status(403).json(deletedAccountPayload({ email: result.email, deletedAt: result.deletedAt }))
+      res
+        .status(403)
+        .json(deletedAccountPayload({ email: result.email, deletedAt: result.deletedAt }))
     } else {
       sendError(res, 401, ErrorCodes.INVALID_TOKEN)
     }

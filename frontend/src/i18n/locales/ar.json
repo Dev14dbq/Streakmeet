@@ -206,7 +206,9 @@
     "shareExplainAlways": "في الخطوة التالية اختر «السماح دائمًا» — وإلا لن يعمل المشاركة في الخلفية.",
     "shareExplainContinue": "متابعة",
     "locateMe": "موقعي",
-    "locateFailed": "تعذر الحصول على موقعك"
+    "locateFailed": "تعذر الحصول على موقعك",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "افتح الإعدادات → StreakMeet → الموقع واختر «دائمًا» ليراك الأصدقاء على الخريطة في الخلفية."
   },
   "profile": {
     "avatarUploadFailed": "فشل رفع الصورة الرمزية",

@@ -4,10 +4,7 @@ import { expireStaleRemoteSelfieRequests } from '../lib/remoteSelfie.js'
 import { getLocalDateString, normalizeTimezone } from '../lib/timezone.js'
 import { pairWhere, partnerOf, streakForUserWhere } from '../lib/relations.js'
 import { findActiveUserByNickname } from '../lib/accountDeletion.js'
-import {
-  mapPendingRemoteSelfie,
-  pendingRemoteSelfiesInclude,
-} from '../lib/streakQueries.js'
+import { mapPendingRemoteSelfie, pendingRemoteSelfiesInclude } from '../lib/streakQueries.js'
 import { ErrorCodes } from '../lib/apiErrors.js'
 import { ApiHttpError } from '../lib/httpErrors.js'
 import { notifyStreakRemind } from '../lib/notifications.js'
@@ -130,12 +127,7 @@ function streakDetailInclude(page: number, limit: number, userId: string) {
   }
 }
 
-export async function getStreakDetail(
-  userId: string,
-  param: string,
-  page: number,
-  limit: number
-) {
+export async function getStreakDetail(userId: string, param: string, page: number, limit: number) {
   const isLegacyId = /^c[a-z0-9]{20,}$/i.test(param)
   const include = streakDetailInclude(page, limit, userId)
 

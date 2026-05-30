@@ -66,7 +66,11 @@ export async function updatePreferences(
   return userProfilePayload(user)
 }
 
-export async function updateEmail(userId: string, email: string | undefined, currentPassword: string | undefined) {
+export async function updateEmail(
+  userId: string,
+  email: string | undefined,
+  currentPassword: string | undefined
+) {
   if (!email || !email.includes('@')) {
     throw new ApiHttpError(400, ErrorCodes.INVALID_EMAIL)
   }

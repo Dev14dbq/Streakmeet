@@ -206,7 +206,9 @@
     "shareExplainAlways": "À l'étape suivante, choisissez « Autoriser tout le temps », sinon le partage ne fonctionnera pas lorsque l'application est en arrière-plan.",
     "shareExplainContinue": "Continuer",
     "locateMe": "Ma localisation",
-    "locateFailed": "Impossible d'obtenir votre position"
+    "locateFailed": "Impossible d'obtenir votre position",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "Ouvre Réglages → StreakMeet → Localisation et choisis « Toujours » pour que tes amis te voient sur la carte en arrière-plan."
   },
   "profile": {
     "avatarUploadFailed": "Échec du téléversement de l'avatar",

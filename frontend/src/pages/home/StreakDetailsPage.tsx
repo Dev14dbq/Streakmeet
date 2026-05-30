@@ -280,10 +280,7 @@ export default function StreakDetailsPage() {
   const isMyRequest = pendingRemoteSelfie?.senderId === me.id
 
   return (
-    <div
-      ref={pageRef}
-      className="flex flex-col min-h-full pt-[calc(env(safe-area-inset-top)+1.25rem)]"
-    >
+    <div ref={pageRef} className="flex flex-col min-h-full pt-4">
       {/* Duo hero */}
       <section className="relative mx-4 mt-2 rounded-[28px] overflow-hidden border border-white/[0.06] shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
         <div className="absolute inset-0">

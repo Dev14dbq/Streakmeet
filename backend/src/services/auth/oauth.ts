@@ -96,7 +96,11 @@ async function runOAuthLogin({
   configEnvVar,
   timezone,
 }: {
-  resolveProfile: () => Promise<{ email: string; displayName?: string; provider: 'google' | 'apple' }>
+  resolveProfile: () => Promise<{
+    email: string
+    displayName?: string
+    provider: 'google' | 'apple'
+  }>
   configEnvVar: string | undefined
   timezone?: string
 }): Promise<AuthResponse> {
@@ -128,7 +132,10 @@ export async function googleLogin(input: {
     configEnvVar: process.env.GOOGLE_CLIENT_ID,
     timezone: input.timezone,
     resolveProfile: async () => {
-      const info = await resolveGoogleProfile({ accessToken: input.accessToken, idToken: input.idToken })
+      const info = await resolveGoogleProfile({
+        accessToken: input.accessToken,
+        idToken: input.idToken,
+      })
       return { email: info.email, displayName: info.name, provider: 'google' }
     },
   })

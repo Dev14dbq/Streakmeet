@@ -29,7 +29,7 @@ export default function LegalDocumentPage({ slug, fallbackTitle }: Props) {
     : null
 
   return (
-    <div className="flex flex-col px-6 pt-12 pb-8 min-h-screen bg-[var(--color-background)] text-on-surface">
+    <div className="flex flex-col px-6 pt-4 pb-8 min-h-screen bg-[var(--color-background)] text-on-surface">
       <div className="flex items-center gap-3 mb-8">
         <button
           type="button"

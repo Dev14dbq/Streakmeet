@@ -206,7 +206,9 @@
     "shareExplainAlways": "W następnym kroku wybierz «Zezwalaj cały czas» — inaczej udostępnianie w tle nie zadziała.",
     "shareExplainContinue": "Kontynuuj",
     "locateMe": "Moja lokalizacja",
-    "locateFailed": "Nie udało się uzyskać lokalizacji"
+    "locateFailed": "Nie udało się uzyskać lokalizacji",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "Otwórz Ustawienia → StreakMeet → Lokalizacja i wybierz «Zawsze», aby znajomi widzieli cię na mapie w tle."
   },
   "profile": {
     "avatarUploadFailed": "Nie udało się przesłać awatara",

@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "i18n:validate": "node scripts/validate-locales.mjs",
     "i18n:patch": "node scripts/apply-locale-patches.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ios:patch-spm": "bash ios/scripts/patch-spm-manifests.sh"
   },
   "dependencies": {
     "@capacitor-community/background-geolocation": "^1.2.26",

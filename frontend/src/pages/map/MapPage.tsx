@@ -22,10 +22,7 @@ import {
   startLocationSharing,
   stopLocationSharing,
 } from '../../lib/locationSharing'
-import {
-  checkAlwaysLocationPermission,
-  openAlwaysLocationSettings,
-} from '../../lib/alwaysLocationPermission'
+import { promptAlwaysLocationAccess } from '../../lib/alwaysLocationPermission'
 import {
   distanceMeters,
   formatCoords,
@@ -108,7 +105,6 @@ export default function MapPage() {
   const [friends, setFriends] = useState<FriendLocation[]>([])
   const [sharing, setSharing] = useState(false)
   const [sharingBusy, setSharingBusy] = useState(false)
-  const [shareExplainOpen, setShareExplainOpen] = useState(false)
   const [compactShareUi, setCompactShareUi] = useState(
     () => localStorage.getItem(SHARE_UI_COMPACT_KEY) === '1'
   )
@@ -379,7 +375,6 @@ export default function MapPage() {
       const code = (e as Error).message
       if (code === 'not_always') {
         toastError(t('map.allowAlways'))
-        void openAlwaysLocationSettings()
       } else if (code === 'permission_denied') {
         toastError(t('map.locationRequired'))
       } else {
@@ -398,18 +393,21 @@ export default function MapPage() {
   async function tryEnableSharing() {
     if (sharingBusy) return
 
-    const { granted } = await checkAlwaysLocationPermission()
-    if (granted) {
-      await setSharingEnabled(true)
-      return
+    try {
+      const result = await promptAlwaysLocationAccess({
+        title: t('map.shareExplainTitle'),
+        message: `${t('map.shareExplainBody')}\n\n${t('map.shareExplainAlways')}`,
+        settingsMessage: `${t('map.shareExplainBody')}\n\n${t('map.shareExplainOpenSettings')}`,
+        cancelLabel: t('common.cancel'),
+        continueLabel: t('map.shareExplainContinue'),
+        settingsLabel: t('map.settingsButton'),
+      })
+      if (result === 'granted') {
+        await setSharingEnabled(true)
+      }
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('map.toggleFailed')))
     }
-
-    setShareExplainOpen(true)
-  }
-
-  async function confirmEnableSharing() {
-    setShareExplainOpen(false)
-    await setSharingEnabled(true)
   }
 
   async function handleStartBroadcast() {
@@ -467,10 +465,10 @@ export default function MapPage() {
   if (!me) return null
 
   return (
-    <div className="relative h-[calc(100dvh-5.5rem)] min-h-[420px] w-full overflow-hidden">
+    <div className="fixed inset-0 z-10 overflow-hidden">
       <div ref={mapElRef} className="absolute inset-0 z-0 streak-map" />
 
-      <div className="map-page-header pointer-events-none absolute inset-x-0 top-0 z-10 px-5 pb-10 pt-[max(3rem,calc(env(safe-area-inset-top)+1rem))]">
+      <div className="map-page-header pointer-events-none absolute inset-x-0 top-0 z-10 px-5 pb-10 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--color-brand-primary)]">
@@ -602,48 +600,6 @@ export default function MapPage() {
           />
         </button>
       </div>
-
-      {shareExplainOpen && (
-        <div
-          className="fixed inset-0 z-[200] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center"
-          style={{ background: 'var(--map-modal-scrim)' }}
-        >
-          <div
-            className="w-full max-w-md rounded-3xl border border-subtle bg-[var(--color-surface-container-high)] p-6 shadow-2xl"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="map-share-explain-title"
-          >
-            <h2 id="map-share-explain-title" className="text-lg font-bold text-on-surface">
-              {t('map.shareExplainTitle')}
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--color-on-surface-variant)]">
-              {t('map.shareExplainBody')}
-            </p>
-            <p className="mt-2 text-xs leading-relaxed text-[var(--color-on-surface-variant)] opacity-90">
-              {t('map.shareExplainAlways')}
-            </p>
-            <div className="mt-6 flex flex-col gap-2">
-              <button
-                type="button"
-                disabled={sharingBusy}
-                onClick={() => void confirmEnableSharing()}
-                className="btn btn--primary w-full"
-              >
-                {sharingBusy ? '…' : t('map.shareExplainContinue')}
-              </button>
-              <button
-                type="button"
-                disabled={sharingBusy}
-                onClick={() => setShareExplainOpen(false)}
-                className="btn btn--ghost w-full"
-              >
-                {t('common.cancel')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {!compactShareUi && (
         <div className="absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">

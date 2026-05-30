@@ -22,7 +22,7 @@ export default function MagicMeetResultPage() {
 
   if (!state?.photo || !state.partners?.length) {
     return (
-      <div className="min-h-[100dvh] bg-[var(--color-background)] flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-screen bg-[var(--color-background)] flex flex-col items-center justify-center px-6 text-center">
         <p className="text-zinc-400 mb-6">{t('meet.resultNotFound')}</p>
         <button
           type="button"
@@ -39,7 +39,7 @@ export default function MagicMeetResultPage() {
   const message = formatMagicMeetMessage(state)
 
   return (
-    <div className="min-h-[100dvh] bg-[var(--color-background)] flex flex-col px-6 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
+    <div className="min-h-screen bg-[var(--color-background)] flex flex-col px-6 pt-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="enroll-success-circle mb-8">
           <div className="w-20 h-20 rounded-full bg-[var(--color-brand-primary)]/15 border-2 border-[var(--color-brand-primary)] flex items-center justify-center">

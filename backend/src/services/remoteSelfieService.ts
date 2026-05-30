@@ -10,17 +10,10 @@ import { partnerIdOf, partnerOf } from '../lib/relations.js'
 import { ErrorCodes } from '../lib/apiErrors.js'
 import { ApiHttpError } from '../lib/httpErrors.js'
 import { findStreakForUser } from '../lib/streakAccess.js'
-import {
-  notifyRemoteSelfieCompleted,
-  notifyRemoteSelfieRequest,
-} from '../lib/notifications.js'
+import { notifyRemoteSelfieCompleted, notifyRemoteSelfieRequest } from '../lib/notifications.js'
 import { recordMeetForStreak } from './streakMeetService.js'
 
-export async function initRemoteSelfie(
-  userId: string,
-  streakId: string,
-  photoBase64: string
-) {
+export async function initRemoteSelfie(userId: string, streakId: string, photoBase64: string) {
   const streak = await findStreakForUser(streakId, userId)
 
   const partnerId = partnerIdOf(streak, userId)

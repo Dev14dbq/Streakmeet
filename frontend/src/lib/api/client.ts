@@ -13,6 +13,11 @@ api.interceptors.request.use((config) => {
 })
 
 let onUnauthorized: (() => void) | null = null
+let sessionClearInProgress = false
+
+export function hasAuthSession(): boolean {
+  return !!localStorage.getItem('accessToken')
+}
 
 export function setUnauthorizedHandler(handler: () => void) {
   onUnauthorized = handler
@@ -24,9 +29,17 @@ api.interceptors.response.use(
     const status = error.response?.status
     const code = error.response?.data?.code
     if (status === 401 && code !== 'ACCOUNT_DELETED') {
+      const hadSession = hasAuthSession()
       localStorage.removeItem('accessToken')
       localStorage.removeItem('user')
-      onUnauthorized?.()
+      if (hadSession && !sessionClearInProgress) {
+        sessionClearInProgress = true
+        try {
+          onUnauthorized?.()
+        } finally {
+          sessionClearInProgress = false
+        }
+      }
     }
     return Promise.reject(error)
   }

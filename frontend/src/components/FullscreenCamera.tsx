@@ -318,9 +318,21 @@ export default function FullscreenCamera({
 
   const handleFlip = useCallback(() => {
     if (torchOn) void setTorch(false)
-    setFacingMode((f) => (f === 'user' ? 'environment' : 'user'))
+    setTorchAvailable(false)
+    setTorchOn(false)
     setCameraReady(false)
-    bumpMountKey()
+
+    // Stop current stream tracks so iOS fully releases camera hardware
+    // before getUserMedia is called for the other camera.
+    const tracks = streamRef.current?.getTracks() ?? []
+    tracks.forEach((t) => t.stop())
+    streamRef.current = null
+
+    // Brief pause for iOS to release the camera hardware before starting new stream
+    setTimeout(() => {
+      setFacingMode((f) => (f === 'user' ? 'environment' : 'user'))
+      bumpMountKey()
+    }, 250)
   }, [torchOn, setTorch, bumpMountKey])
 
   const handleViewportTap = useCallback(() => {

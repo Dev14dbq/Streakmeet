@@ -206,7 +206,9 @@
     "shareExplainAlways": "在下一步骤中，选择“始终允许” ，否则当应用程序在后台时，共享将不起作用。",
     "shareExplainContinue": "继续",
     "locateMe": "我的位置",
-    "locateFailed": "无法获取您的位置"
+    "locateFailed": "无法获取您的位置",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "打开设置 → StreakMeet → 位置，选择「始终」，以便应用在后台时好友仍能在地图上看到您。"
   },
   "profile": {
     "avatarUploadFailed": "头像上传失败",

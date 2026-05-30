@@ -84,7 +84,7 @@ function LockedMemories({
   const progress = unlockProgress(unlockAtDays, daysUntilUnlock)
 
   return (
-    <div className="flex min-h-full flex-col px-6 pt-12 pb-8">
+    <div className="flex min-h-full flex-col px-6 pt-4 pb-8">
       <div className="mb-8 text-center">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-on-surface-variant)]">
           {t('memories.title')}
@@ -119,10 +119,10 @@ function LockedMemories({
             </span>
             <span>{progress}%</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+          <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.12] border border-white/[0.08]">
             <div
               className="h-full rounded-full bg-[var(--color-brand-primary)] transition-all duration-500"
-              style={{ width: `${progress}%` }}
+              style={{ width: progress > 0 ? `${progress}%` : '3px' }}
             />
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function MemoriesPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col px-6 pt-12 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+    <div className="flex min-h-full flex-col px-6 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <header className="mb-8">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-on-surface-variant)]">
           {t('memories.title')}

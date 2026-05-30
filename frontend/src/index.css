@@ -313,6 +313,35 @@ body {
   -webkit-tap-highlight-color: transparent;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  padding-top: var(--native-top, 0px);
+  /* Prevent the body itself from scrolling/bouncing — only inner containers scroll */
+  overscroll-behavior-y: none;
+}
+
+/*
+ * iOS/Android: push all content below the status bar + a little breathing room.
+ * --native-top is set here in CSS (uses env() which only works in CSS, not JS).
+ * The class is set on <html> from main.tsx before React mounts.
+ */
+html.native-ios {
+  --native-top: env(safe-area-inset-top, 0px);
+}
+
+html.native-android {
+  --native-top: env(safe-area-inset-top, 0px);
+}
+
+/*
+ * Override Tailwind's min-h-screen / h-screen so that pages with these classes
+ * don't overflow the viewport when body has padding-top.
+ * Selector specificity (html + class) beats the plain utility class.
+ */
+html .min-h-screen {
+  min-height: calc(100dvh - var(--native-top, 0px));
+}
+
+html .h-screen {
+  height: calc(100dvh - var(--native-top, 0px));
 }
 
 .pb-safe {
@@ -763,6 +792,84 @@ body {
 .camera-video::-webkit-media-controls-start-playback-button {
   display: none !important;
   -webkit-appearance: none;
+}
+
+@keyframes face-enroll-camera-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.78);
+    filter: blur(10px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.04);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes face-enroll-orbit-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.06);
+  }
+}
+
+.face-enroll-camera-circle {
+  animation: face-enroll-camera-pop 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-origin: center;
+}
+
+.face-enroll-intro-card {
+  display: flex;
+  width: min(82vw, 340px);
+  min-height: min(72vw, 290px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 26, 79, 0.16), transparent 46%),
+    var(--color-surface-container-high);
+  padding: 1.5rem;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+}
+
+.face-enroll-intro-orbit {
+  position: relative;
+  display: grid;
+  height: 8.5rem;
+  width: 8.5rem;
+  place-items: center;
+  color: var(--color-brand-primary);
+}
+
+.face-enroll-intro-orbit > span {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 26, 79, 0.3);
+  animation: face-enroll-orbit-pulse 2.6s ease-in-out infinite;
+}
+
+.face-enroll-intro-orbit > span:nth-child(2) {
+  inset: 1rem;
+  animation-delay: 0.25s;
+}
+
+.face-enroll-intro-orbit > span:nth-child(3) {
+  inset: 2rem;
+  animation-delay: 0.5s;
 }
 
 /* Fullscreen camera (native-style) */

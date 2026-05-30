@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
-import { searchUsers, requestFriend, acceptFriend, createStreak, fetcher, getApiErrorMessage } from '../lib/api'
+import {
+  searchUsers,
+  requestFriend,
+  acceptFriend,
+  createStreak,
+  fetcher,
+  getApiErrorMessage,
+} from '../lib/api'
 import { SWR_KEYS } from '../lib/swrKeys'
 import { toastError, toastLink } from '../lib/toast'
 import type { FriendListItem, AuthUser } from '@streakmeet/api-spec'

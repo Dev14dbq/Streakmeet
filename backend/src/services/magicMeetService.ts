@@ -1,8 +1,5 @@
 import { prisma } from '../lib/prisma.js'
-import {
-  saveBase64ImageAsAvif,
-  computePhotoHash,
-} from '../lib/saveImage.js'
+import { saveBase64ImageAsAvif, computePhotoHash } from '../lib/saveImage.js'
 import {
   bestFaceMatchInGallery,
   CURRENT_FACE_MODEL,
@@ -114,11 +111,7 @@ function validateSelfPresence(pool: FaceCandidate[], myGallery: number[][]) {
   return { selfMatch, myFaceCandidateIdx, myFrameIndex }
 }
 
-async function selectBestFrame(
-  pool: FaceCandidate[],
-  photos: string[],
-  selfMatchIdx: number
-) {
+async function selectBestFrame(pool: FaceCandidate[], photos: string[], selfMatchIdx: number) {
   const bestFrameIdx = pickBestFrame(pool, selfMatchIdx) ?? 0
   const bestPhotoBase64 = photos[bestFrameIdx]!
 
@@ -130,12 +123,16 @@ async function selectBestFrame(
   return { bestPhotoBase64, photoHash }
 }
 
-type ActiveStreak = Awaited<ReturnType<typeof prisma.streak.findMany<{
-  include: {
-    userA: { include: { faceEmbeddings: true } }
-    userB: { include: { faceEmbeddings: true } }
-  }
-}>>>[number]
+type ActiveStreak = Awaited<
+  ReturnType<
+    typeof prisma.streak.findMany<{
+      include: {
+        userA: { include: { faceEmbeddings: true } }
+        userB: { include: { faceEmbeddings: true } }
+      }
+    }>
+  >
+>[number]
 
 type StreakPartnerUser = ActiveStreak['userA']
 
@@ -151,9 +148,7 @@ async function matchPartners(
   myFaceCandidateIdx: number,
   activeStreaks: ActiveStreak[]
 ): Promise<{ matched: MatchedEntry[] }> {
-  const partnerProbes = pool
-    .map((c) => c.embedding)
-    .filter((_, i) => i !== myFaceCandidateIdx)
+  const partnerProbes = pool.map((c) => c.embedding).filter((_, i) => i !== myFaceCandidateIdx)
 
   const matched: MatchedEntry[] = []
 
@@ -192,7 +187,11 @@ async function persistMatches(
   pool: FaceCandidate[],
   selfSim: number,
   currentUser: UserFaceContext['currentUser']
-): Promise<{ extended: MagicMeetPartner[]; added: MagicMeetPartner[]; skippedDuplicates: string[] }> {
+): Promise<{
+  extended: MagicMeetPartner[]
+  added: MagicMeetPartner[]
+  skippedDuplicates: string[]
+}> {
   const extended: MagicMeetPartner[] = []
   const added: MagicMeetPartner[] = []
   const skippedDuplicates: string[] = []

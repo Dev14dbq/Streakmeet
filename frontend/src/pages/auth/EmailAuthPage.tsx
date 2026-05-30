@@ -87,7 +87,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
   return (
     <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 pt-14 pb-4">
+      <div className="flex items-center gap-4 px-6 pt-4 pb-4">
         <button
           onClick={() => (step === 'password' ? setStep('email') : navigate('/login'))}
           className="btn btn--icon-lg btn--secondary shrink-0"

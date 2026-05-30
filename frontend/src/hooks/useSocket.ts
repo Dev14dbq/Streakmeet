@@ -18,10 +18,7 @@ function getOrCreateSocket(token: string): Socket {
   return sharedSocket
 }
 
-export function useSocket(
-  enabled: boolean,
-  onEvent: (socket: Socket) => (() => void) | void
-) {
+export function useSocket(enabled: boolean, onEvent: (socket: Socket) => (() => void) | void) {
   useEffect(() => {
     if (!enabled) return
     const token = getAccessToken()

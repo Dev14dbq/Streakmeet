@@ -30,7 +30,8 @@ export async function verifyAuthToken(token: string): Promise<AuthTokenResult> {
   })
 
   if (!user) return { ok: false, reason: 'invalid' }
-  if (user.deletedAt) return { ok: false, reason: 'deleted', email: user.email, deletedAt: user.deletedAt }
+  if (user.deletedAt)
+    return { ok: false, reason: 'deleted', email: user.email, deletedAt: user.deletedAt }
 
   return { ok: true, userId: payload.sub, emailVerified: isEmailVerified(user) }
 }

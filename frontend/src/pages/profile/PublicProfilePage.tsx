@@ -176,7 +176,7 @@ export default function PublicProfilePage({ currentUser }: Props) {
 
   return (
     <div className="flex flex-col min-h-screen bg-[var(--color-background)] pb-safe">
-      <div className="px-6 pt-12 pb-6 max-w-lg mx-auto w-full flex-1">
+      <div className="px-6 pt-4 pb-6 max-w-lg mx-auto w-full flex-1">
         <button
           type="button"
           onClick={() =>

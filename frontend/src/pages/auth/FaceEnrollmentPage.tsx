@@ -6,6 +6,7 @@ import * as faceapi from '@vladmandic/face-api'
 import CameraGate from '../../components/CameraGate'
 import { enrollFace } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import { clearFaceEnrollmentDefer, deferFaceEnrollment } from '../../lib/faceEnrollmentDefer'
 import { captureVideoFrame } from '../../lib/captureVideoFrame'
 import { waitForLiveVideo } from '../../lib/webCamera'
 import { useCameraGate } from '../../lib/useCameraGate'
@@ -288,10 +289,17 @@ export default function FaceEnrollmentPage() {
     closeFaceWidthPeakRef.current = 0
     yawHistory.current = []
     pitchHistory.current = []
+    setCameraReady(false)
     setStepIndex(0)
     setPhase(STEPS[0]!.id)
     setStatusMsg(t(STEPS[0]!.hintKey))
     setHoldPct(0)
+  }
+
+  function handleSkipLater() {
+    loopRunning.current = false
+    deferFaceEnrollment()
+    navigate('/', { replace: true })
   }
 
   useEffect(() => {
@@ -315,7 +323,7 @@ export default function FaceEnrollmentPage() {
   }, []) // eslint-disable-line
 
   const isScanning = STEPS.some((s) => s.id === phase)
-  const needsCamera = modelsLoaded && (phase === 'intro' || isScanning)
+  const needsCamera = modelsLoaded && isScanning
 
   const {
     cameraAccess,
@@ -481,6 +489,7 @@ export default function FaceEnrollmentPage() {
         throw new Error(t('face.saveFailed'))
       }
       await enrollFace(photosRef.current)
+      clearFaceEnrollmentDefer()
       if (user) setUser({ ...user, faceEnrolled: true })
       setPhase('done')
     } catch (e: unknown) {
@@ -514,7 +523,7 @@ export default function FaceEnrollmentPage() {
   const scanning = !!currentStep
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-background)] px-6 pt-10 pb-safe">
+    <div className="flex min-h-screen flex-col bg-[var(--color-background)] px-6 pb-safe">
       <div className="w-full max-w-[600px] mx-auto flex flex-col flex-1 items-center">
         <h2 className="text-2xl font-extrabold text-on-surface tracking-tight text-center mb-1">
           {t('face.faceRecognition')}
@@ -526,81 +535,121 @@ export default function FaceEnrollmentPage() {
         </p>
 
         <div className="flex items-center justify-center gap-4 w-full flex-1 min-h-[280px]">
-          <div className="flex items-center justify-center w-10">
-            {currentStep?.arrow === '←' && (
-              <span className="text-4xl font-black text-[var(--color-brand-primary)] animate-pulse select-none">
-                ←
-              </span>
-            )}
-          </div>
-
-          <div
-            className="relative rounded-full bg-[var(--color-surface-container-high)] shrink-0"
-            style={{
-              width: 'min(72vw, 290px)',
-              height: 'min(72vw, 290px)',
-              boxShadow: scanning
-                ? '0 0 0 3px #FF1A4F, 0 0 40px rgba(255,26,79,0.2)'
-                : '0 0 0 2px rgba(255,255,255,0.08)',
-              transition: 'box-shadow 0.4s',
-            }}
-          >
-            <div className="absolute inset-[22px] rounded-full overflow-hidden">
-              {modelsLoaded && cameraGranted ? (
-                <Webcam
-                  key={webcamKey}
-                  ref={webcamRef}
-                  audio={false}
-                  screenshotFormat="image/jpeg"
-                  forceScreenshotSourceSize
-                  videoConstraints={{
-                    facingMode: 'user',
-                    width: { ideal: 720 },
-                    height: { ideal: 720 },
-                  }}
-                  className={`camera-video absolute inset-0 w-full h-full object-cover scale-x-[-1] ${cameraReady ? 'camera-video--ready' : ''}`}
-                  onUserMedia={() => void handleWebcamReady()}
-                  onUserMediaError={(err) => {
-                    setCameraReady(false)
-                    handleStreamError(err, (msg) =>
-                      setStatusMsg(t('face.cameraError', { message: msg }))
-                    )
-                  }}
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-5xl opacity-30 animate-pulse">👤</span>
-                </div>
-              )}
-              {needsCamera && (
-                <CameraGate
-                  access={cameraAccess}
-                  onRetry={() => void requestAccess()}
-                  variant="overlay"
-                />
-              )}
-              <canvas
-                ref={canvasRef}
-                className="absolute inset-0 w-full h-full scale-x-[-1] pointer-events-none"
-                style={{ zIndex: 10 }}
-              />
-              {phase === 'saving' && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-                  <p className="text-white font-semibold text-sm animate-pulse">
-                    {t('face.saving')}
-                  </p>
-                </div>
-              )}
+          {!scanning && phase === 'intro' ? (
+            <div className="face-enroll-intro-card">
+              <div className="face-enroll-intro-orbit" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <svg viewBox="0 0 96 96" className="h-16 w-16">
+                  <path
+                    d="M48 50c12.7 0 23-10.3 23-23S60.7 4 48 4 25 14.3 25 27s10.3 23 23 23Z"
+                    fill="currentColor"
+                    opacity="0.18"
+                  />
+                  <path
+                    d="M16 90c2.8-17 15.8-29 32-29s29.2 12 32 29"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    fill="none"
+                    opacity="0.55"
+                  />
+                  <path
+                    d="M72 22h6a8 8 0 0 1 8 8v6M24 22h-6a8 8 0 0 0-8 8v6M72 74h6a8 8 0 0 0 8-8v-6M24 74h-6a8 8 0 0 1-8-8v-6"
+                    stroke="currentColor"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                </svg>
+              </div>
+              <p className="mt-5 text-center text-sm font-semibold text-on-surface">
+                {t('face.pressStart')}
+              </p>
+              <p className="mt-2 max-w-xs text-center text-xs leading-relaxed text-[var(--color-on-surface-variant)]">
+                {t('settings.biometricDesc')}
+              </p>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-center w-10">
+                {currentStep?.arrow === '←' && (
+                  <span className="text-4xl font-black text-[var(--color-brand-primary)] animate-pulse select-none">
+                    ←
+                  </span>
+                )}
+              </div>
 
-          <div className="flex items-center justify-center w-10">
-            {currentStep?.arrow === '→' && (
-              <span className="text-4xl font-black text-[var(--color-brand-primary)] animate-pulse select-none">
-                →
-              </span>
-            )}
-          </div>
+              <div
+                className="face-enroll-camera-circle relative rounded-full bg-[var(--color-surface-container-high)] shrink-0"
+                style={{
+                  width: 'min(72vw, 290px)',
+                  height: 'min(72vw, 290px)',
+                  boxShadow: scanning
+                    ? '0 0 0 3px #FF1A4F, 0 0 40px rgba(255,26,79,0.2)'
+                    : '0 0 0 2px rgba(255,255,255,0.08)',
+                  transition: 'box-shadow 0.4s',
+                }}
+              >
+                <div className="absolute inset-[22px] rounded-full overflow-hidden">
+                  {modelsLoaded && cameraGranted ? (
+                    <Webcam
+                      key={webcamKey}
+                      ref={webcamRef}
+                      audio={false}
+                      screenshotFormat="image/jpeg"
+                      forceScreenshotSourceSize
+                      videoConstraints={{
+                        facingMode: 'user',
+                        width: { ideal: 720 },
+                        height: { ideal: 720 },
+                      }}
+                      className={`camera-video absolute inset-0 w-full h-full object-cover scale-x-[-1] ${cameraReady ? 'camera-video--ready' : ''}`}
+                      onUserMedia={() => void handleWebcamReady()}
+                      onUserMediaError={(err) => {
+                        setCameraReady(false)
+                        handleStreamError(err, (msg) =>
+                          setStatusMsg(t('face.cameraError', { message: msg }))
+                        )
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-[var(--color-brand-primary)]" />
+                    </div>
+                  )}
+                  {needsCamera && (
+                    <CameraGate
+                      access={cameraAccess}
+                      onRetry={() => void requestAccess()}
+                      variant="overlay"
+                    />
+                  )}
+                  <canvas
+                    ref={canvasRef}
+                    className="absolute inset-0 w-full h-full scale-x-[-1] pointer-events-none"
+                    style={{ zIndex: 10 }}
+                  />
+                  {phase === 'saving' && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                      <p className="text-white font-semibold text-sm animate-pulse">
+                        {t('face.saving')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center w-10">
+                {currentStep?.arrow === '→' && (
+                  <span className="text-4xl font-black text-[var(--color-brand-primary)] animate-pulse select-none">
+                    →
+                  </span>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {scanning ? (
@@ -638,7 +687,7 @@ export default function FaceEnrollmentPage() {
               <button
                 type="button"
                 onClick={handleStart}
-                disabled={!cameraReady || !cameraGranted}
+                disabled={!modelsLoaded}
                 className="btn btn--primary btn--lg w-full disabled:pointer-events-none"
               >
                 {t('auth.continue')}
@@ -656,10 +705,8 @@ export default function FaceEnrollmentPage() {
           )}
           {phase !== 'saving' && !autoStart && (
             <button
-              onClick={() => {
-                loopRunning.current = false
-                navigate(-1)
-              }}
+              type="button"
+              onClick={phase === 'intro' ? handleSkipLater : () => navigate('/', { replace: true })}
               className="btn btn--ghost w-full"
             >
               {phase === 'intro' ? t('face.skipLater') : t('common.cancel')}

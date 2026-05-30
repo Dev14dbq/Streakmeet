@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, X } from 'lucide-react'
@@ -47,7 +48,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
   }
 
   if (showScanner) {
-    return (
+    return createPortal(
       <div
         className={`fixed inset-0 z-[100] flex flex-col bg-[var(--color-background)] ${screenClass}`}
       >
@@ -95,11 +96,12 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
             styles={{ container: { width: '100%', height: '100%' } }}
           />
         </div>
-      </div>
+      </div>,
+      document.body
     )
   }
 
-  return (
+  return createPortal(
     <div
       className={`fixed inset-0 z-[100] flex flex-col items-center bg-[var(--color-background)]/95 p-6 backdrop-blur-md ${screenClass}`}
     >
@@ -145,6 +147,7 @@ export default function ProfileQrModal({ nickname, open, onClose }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

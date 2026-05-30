@@ -37,12 +37,8 @@ describe('streakCalendarDate', () => {
 describe('isStreakMetToday', () => {
   it('matches lastMetDate against today in streak timezone', () => {
     const at = new Date('2024-03-10T15:00:00Z')
-    expect(
-      isStreakMetToday({ lastMetDate: '2024-03-10', timezone: 'UTC' }, at)
-    ).toBe(true)
-    expect(
-      isStreakMetToday({ lastMetDate: '2024-03-09', timezone: 'UTC' }, at)
-    ).toBe(false)
+    expect(isStreakMetToday({ lastMetDate: '2024-03-10', timezone: 'UTC' }, at)).toBe(true)
+    expect(isStreakMetToday({ lastMetDate: '2024-03-09', timezone: 'UTC' }, at)).toBe(false)
     expect(isStreakMetToday({ lastMetDate: null, timezone: 'UTC' }, at)).toBe(false)
   })
 })

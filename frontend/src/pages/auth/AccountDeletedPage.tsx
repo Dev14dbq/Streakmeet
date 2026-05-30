@@ -57,7 +57,7 @@ export default function AccountDeletedPage({ onAuth }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--color-background)] px-6 pt-14 pb-safe">
+    <div className="flex min-h-screen flex-col bg-[var(--color-background)] px-6 pt-4 pb-safe">
       <div className="flex flex-1 flex-col items-center justify-center max-w-sm mx-auto w-full">
         <div className="mb-8 text-6xl select-none">🗑️</div>
         <h1 className="text-2xl font-extrabold text-on-surface tracking-tight text-center">

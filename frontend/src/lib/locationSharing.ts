@@ -2,6 +2,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 import i18n from '../i18n'
 import { Geolocation } from '@capacitor/geolocation'
 import type { BackgroundGeolocationPlugin } from '@capacitor-community/background-geolocation'
+import { hasAuthSession } from './api/client'
 import { setLocationSharing, updateMyLocation, getMyLocation } from './api'
 import { requestAlwaysLocationPermission } from './alwaysLocationPermission'
 
@@ -12,8 +13,8 @@ let lastSentAt = 0
 let lastSentLat: number | null = null
 let lastSentLng: number | null = null
 
-const MIN_SEND_INTERVAL_MS = 4_000
-const MIN_MOVE_METERS = 3
+const MIN_SEND_INTERVAL_MS = 15_000
+const MIN_MOVE_METERS = 10
 
 function metersBetween(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const r = 6_371_000
@@ -26,6 +27,7 @@ function metersBetween(lat1: number, lng1: number, lat2: number, lng2: number): 
 }
 
 async function pushLocation(latitude: number, longitude: number): Promise<void> {
+  if (!hasAuthSession()) return
   const now = Date.now()
   if (now - lastSentAt < MIN_SEND_INTERVAL_MS) {
     if (lastSentLat != null && lastSentLng != null) {
@@ -56,7 +58,7 @@ async function startWatcher(): Promise<void> {
       backgroundMessage: i18n.t('map.backgroundMessage'),
       requestPermissions: false,
       stale: false,
-      distanceFilter: 0,
+      distanceFilter: 10,
     },
     (location, error) => {
       if (error) {
@@ -90,6 +92,9 @@ export async function startLocationSharing(): Promise<void> {
   if (!Capacitor.isNativePlatform()) {
     throw new Error('native_only')
   }
+  if (!hasAuthSession()) {
+    throw new Error('no_session')
+  }
 
   try {
     await requestAlwaysLocationPermission()
@@ -119,13 +124,13 @@ export async function stopLocationSharing(): Promise<void> {
   lastSentAt = 0
   lastSentLat = null
   lastSentLng = null
-  if (Capacitor.isNativePlatform()) {
+  if (Capacitor.isNativePlatform() && hasAuthSession()) {
     await setLocationSharing(false)
   }
 }
 
 export async function resumeLocationSharingIfNeeded(): Promise<void> {
-  if (!Capacitor.isNativePlatform()) return
+  if (!Capacitor.isNativePlatform() || !hasAuthSession()) return
   try {
     const { data } = await getMyLocation()
     if (!data.sharingLocation) return

@@ -235,6 +235,7 @@
     "shareExplainTitle": "Location for the friends map",
     "shareExplainBody": "To show you on the map for friends, StreakMeet needs background location access. We only use it for the map — not for ads and we don't share it with third parties.",
     "shareExplainAlways": "On the next step, choose «Allow all the time» — otherwise sharing won't work when the app is in the background.",
+    "shareExplainOpenSettings": "Open Settings → StreakMeet → Location and choose «Always» so friends can see you on the map in the background.",
     "shareExplainContinue": "Continue",
     "resolving": "Resolving…",
     "distanceFromYou": "~{{distance}} from you",
@@ -246,7 +247,8 @@
     "shareLocation": "Share location",
     "backgroundMessage": "Sharing location for friends",
     "locateMe": "My location",
-    "locateFailed": "Could not get your location"
+    "locateFailed": "Could not get your location",
+    "settingsButton": "Settings"
   },
   "profile": {
     "avatarUploadFailed": "Avatar upload failed",

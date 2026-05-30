@@ -21,10 +21,11 @@ export default function HomePage({ user }: Props) {
   const [showQr, setShowQr] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  const { data, error: streaksError, mutate: mutateStreaks } = useSWR<StreakListItem[]>(
-    SWR_KEYS.streaks,
-    fetcher
-  )
+  const {
+    data,
+    error: streaksError,
+    mutate: mutateStreaks,
+  } = useSWR<StreakListItem[]>(SWR_KEYS.streaks, fetcher)
   const streaks = data ?? []
 
   const {
@@ -105,7 +106,7 @@ export default function HomePage({ user }: Props) {
   }
 
   return (
-    <div className="flex flex-col px-6 pt-12 pb-6 min-h-full">
+    <div className="flex flex-col px-6 pt-4 pb-6 min-h-full">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-on-surface tracking-tight">{t('home.title')}</h1>
         <div className="flex items-center gap-2 bg-[var(--color-surface-container-high)] px-4 py-2 rounded-full">

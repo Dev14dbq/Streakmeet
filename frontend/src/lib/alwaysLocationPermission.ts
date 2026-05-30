@@ -4,6 +4,7 @@ export interface AlwaysLocationStatus {
   granted: boolean
   foreground: boolean
   background: boolean
+  denied: boolean
 }
 
 interface StreakLocationPermissionPlugin {
@@ -11,6 +12,13 @@ interface StreakLocationPermissionPlugin {
   requestAlways(): Promise<{ granted: boolean }>
   openSettings(): Promise<void>
   openExternalUrl(options: { url: string }): Promise<void>
+  showAlwaysPrompt(options: {
+    title: string
+    message: string
+    cancelLabel: string
+    actionLabel: string
+    actionType: 'continue' | 'settings'
+  }): Promise<{ action: 'continue' | 'settings' | 'cancel' }>
 }
 
 const StreakLocationPermission = registerPlugin<StreakLocationPermissionPlugin>(
@@ -20,7 +28,7 @@ const StreakLocationPermission = registerPlugin<StreakLocationPermissionPlugin>(
 /** Проверяет, что выдано «всегда», а не только «при использовании». */
 export async function checkAlwaysLocationPermission(): Promise<AlwaysLocationStatus> {
   if (!Capacitor.isNativePlatform()) {
-    return { granted: false, foreground: false, background: false }
+    return { granted: false, foreground: false, background: false, denied: false }
   }
   return StreakLocationPermission.checkAlways()
 }
@@ -56,6 +64,65 @@ export async function requestAlwaysLocationPermission(): Promise<boolean> {
 export async function openAlwaysLocationSettings(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return
   await StreakLocationPermission.openSettings()
+}
+
+export async function showNativeAlwaysPrompt(options: {
+  title: string
+  message: string
+  cancelLabel: string
+  actionLabel: string
+  actionType: 'continue' | 'settings'
+}): Promise<'continue' | 'settings' | 'cancel'> {
+  if (!Capacitor.isNativePlatform()) return 'continue'
+  const { action } = await StreakLocationPermission.showAlwaysPrompt(options)
+  return action
+}
+
+export type AlwaysLocationPromptResult = 'granted' | 'cancelled' | 'settings'
+
+/** Native alert → system dialog or Settings for «Always» location. */
+export async function promptAlwaysLocationAccess(options: {
+  title: string
+  message: string
+  settingsMessage: string
+  cancelLabel: string
+  continueLabel: string
+  settingsLabel: string
+}): Promise<AlwaysLocationPromptResult> {
+  if (!Capacitor.isNativePlatform()) return 'cancelled'
+
+  const status = await checkAlwaysLocationPermission()
+  if (status.granted) return 'granted'
+
+  const needsSettings = status.denied || (status.foreground && !status.background)
+
+  const action = await showNativeAlwaysPrompt({
+    title: options.title,
+    message: needsSettings ? options.settingsMessage : options.message,
+    cancelLabel: options.cancelLabel,
+    actionLabel: needsSettings ? options.settingsLabel : options.continueLabel,
+    actionType: needsSettings ? 'settings' : 'continue',
+  })
+
+  if (action === 'cancel') return 'cancelled'
+  if (action === 'settings') return 'settings'
+
+  try {
+    const granted = await requestAlwaysLocationPermission()
+    return granted ? 'granted' : 'cancelled'
+  } catch (e) {
+    const code = e instanceof Error ? e.message : ''
+    if (code !== 'not_always' && code !== 'permission_denied') throw e
+
+    const followUp = await showNativeAlwaysPrompt({
+      title: options.title,
+      message: options.settingsMessage,
+      cancelLabel: options.cancelLabel,
+      actionLabel: options.settingsLabel,
+      actionType: 'settings',
+    })
+    return followUp === 'cancel' ? 'cancelled' : 'settings'
+  }
 }
 
 export async function openExternalUrl(url: string): Promise<void> {

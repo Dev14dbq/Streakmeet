@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  pairWhere,
-  partnerIdOf,
-  partnerOf,
-  streakForUserWhere,
-} from '../relations.js'
+import { pairWhere, partnerIdOf, partnerOf, streakForUserWhere } from '../relations.js'
 
 function coversBothOrderings(
   where: ReturnType<typeof pairWhere>,

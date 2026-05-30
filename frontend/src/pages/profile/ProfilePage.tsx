@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { QrCode, Image as ImageIcon, Settings, X, MapPin, Camera } from 'lucide-react'
@@ -174,7 +175,7 @@ export default function ProfilePage({ user: initialUser }: Props) {
   }
 
   return (
-    <div className="flex flex-col px-6 pt-12 pb-6 min-h-screen relative">
+    <div className="flex flex-col px-6 pt-4 pb-6 min-h-full relative">
       <input
         ref={fileInputRef}
         type="file"
@@ -334,126 +335,132 @@ export default function ProfilePage({ user: initialUser }: Props) {
         )}
       </div>
 
-      {/* Avatar sheet */}
-      {showAvatarSheet && (
-        <div
-          className="fixed inset-0 z-[100] flex flex-col justify-end backdrop-blur-sm"
-          style={{ background: 'var(--map-modal-scrim)' }}
-          onClick={closeAvatarSheet}
-        >
+      {/* Avatar sheet — portalled to body so iOS fixed positioning works correctly */}
+      {showAvatarSheet &&
+        createPortal(
           <div
-            className="bg-[var(--color-surface-container-high)] rounded-t-3xl px-6 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[100] flex flex-col justify-end backdrop-blur-sm"
+            style={{ background: 'var(--map-modal-scrim)' }}
+            onClick={closeAvatarSheet}
           >
-            <div className="w-10 h-1 rounded-full bg-overlay-scrim mx-auto mb-5" />
-            <h3 className="text-lg font-bold text-on-surface mb-4 text-center">
-              {t('settings.profilePhoto')}
-            </h3>
+            <div
+              className="bg-[var(--color-surface-container-high)] rounded-t-3xl px-6 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 rounded-full bg-overlay-scrim mx-auto mb-5" />
+              <h3 className="text-lg font-bold text-on-surface mb-4 text-center">
+                {t('settings.profilePhoto')}
+              </h3>
 
-            {avatarSheetPhase === 'uploading' ? (
-              <div className="flex flex-col items-center py-4">
-                <div className="mb-4 h-32 w-32 overflow-hidden rounded-full border-2 border-[var(--color-brand-primary)] bg-[var(--color-surface-container-highest)]">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-[var(--color-brand-primary)]" />
-                    </div>
-                  )}
+              {avatarSheetPhase === 'uploading' ? (
+                <div className="flex flex-col items-center py-4">
+                  <div className="mb-4 h-32 w-32 overflow-hidden rounded-full border-2 border-[var(--color-brand-primary)] bg-[var(--color-surface-container-highest)]">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-[var(--color-brand-primary)]" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-on-surface">
+                    {t('profile.savingAvatar')}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">
+                    {t('common.savingPhoto')}
+                  </p>
                 </div>
-                <p className="text-sm font-semibold text-on-surface">{t('profile.savingAvatar')}</p>
-                <p className="mt-1 text-xs text-[var(--color-on-surface-variant)]">
-                  {t('common.savingPhoto')}
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAvatarSheet(false)
-                    setShowCamera(true)
-                  }}
-                  className="btn btn--secondary btn--lg w-full rounded-[1.25rem]"
-                >
-                  {t('profile.takePhoto')}
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePickFromGallery}
-                  className="btn btn--secondary btn--lg w-full rounded-[1.25rem]"
-                >
-                  {t('profile.pickFromGallery')}
-                </button>
-                <button
-                  type="button"
-                  onClick={closeAvatarSheet}
-                  className="btn btn--ghost btn--lg w-full"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAvatarSheet(false)
+                      setShowCamera(true)
+                    }}
+                    className="btn btn--secondary btn--lg w-full rounded-[1.25rem]"
+                  >
+                    {t('profile.takePhoto')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePickFromGallery}
+                    className="btn btn--secondary btn--lg w-full rounded-[1.25rem]"
+                  >
+                    {t('profile.pickFromGallery')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeAvatarSheet}
+                    className="btn btn--ghost btn--lg w-full"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
 
       <ProfileQrModal nickname={user.nickname} open={showQR} onClose={() => setShowQR(false)} />
 
-      {/* Camera Modal for Avatar */}
-      {cameraMounted && (
-        <div className={`fixed inset-0 z-[100] flex flex-col bg-black ${cameraScreenClass}`}>
-          <div className="flex items-center justify-between p-6 pb-2">
-            <h2 className="text-white font-bold text-xl">{t('settings.profilePhoto')}</h2>
-            <button
-              type="button"
-              onClick={() => setShowCamera(false)}
-              className="btn btn--icon bg-zinc-900 text-white"
-            >
-              <X size={20} />
-            </button>
-          </div>
-
-          <div className="flex-1 relative overflow-hidden rounded-3xl mx-4 mb-6 bg-zinc-900 flex items-center justify-center">
-            {showCameraGate ? (
-              <CameraGate
-                access={cameraAccess}
-                onRetry={() => void requestAccess()}
-                variant="fullscreen"
-                className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-900"
-              />
-            ) : cameraGranted ? (
-              <Webcam
-                key={webcamMountKey}
-                ref={webcamRef}
-                audio={false}
-                screenshotFormat="image/jpeg"
-                videoConstraints={{ facingMode: 'user', aspectRatio: 1 }}
-                className={`camera-video w-full h-full object-cover max-w-md scale-x-[-1] ${cameraReady ? 'camera-video--ready' : ''}`}
-                onUserMedia={() => void handleWebcamReady()}
-                onUserMediaError={(err) => {
-                  setCameraReady(false)
-                  handleStreamError(err, () => toastError(t('profile.cameraError')))
-                }}
-              />
-            ) : null}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-64 h-64 rounded-full border-4 border-[var(--color-brand-primary)] shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]" />
+      {/* Camera Modal for Avatar — portalled to body */}
+      {cameraMounted &&
+        createPortal(
+          <div className={`fixed inset-0 z-[100] flex flex-col bg-black ${cameraScreenClass}`}>
+            <div className="flex items-center justify-between p-6 pb-2">
+              <h2 className="text-white font-bold text-xl">{t('settings.profilePhoto')}</h2>
+              <button
+                type="button"
+                onClick={() => setShowCamera(false)}
+                className="btn btn--icon bg-zinc-900 text-white"
+              >
+                <X size={20} />
+              </button>
             </div>
-          </div>
 
-          <div className="px-6 pb-12">
-            <button
-              type="button"
-              onClick={handleCaptureAvatar}
-              disabled={uploading || !cameraReady || !cameraGranted}
-              className="btn btn--primary btn--lg w-full"
-            >
-              {uploading ? t('common.saving') : t('profile.takePhoto')}
-            </button>
-          </div>
-        </div>
-      )}
+            <div className="flex-1 relative overflow-hidden rounded-3xl mx-4 mb-6 bg-zinc-900 flex items-center justify-center">
+              {showCameraGate ? (
+                <CameraGate
+                  access={cameraAccess}
+                  onRetry={() => void requestAccess()}
+                  variant="fullscreen"
+                  className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-900"
+                />
+              ) : cameraGranted ? (
+                <Webcam
+                  key={webcamMountKey}
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  videoConstraints={{ facingMode: 'user', aspectRatio: 1 }}
+                  className={`camera-video w-full h-full object-cover max-w-md scale-x-[-1] ${cameraReady ? 'camera-video--ready' : ''}`}
+                  onUserMedia={() => void handleWebcamReady()}
+                  onUserMediaError={(err) => {
+                    setCameraReady(false)
+                    handleStreamError(err, () => toastError(t('profile.cameraError')))
+                  }}
+                />
+              ) : null}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-64 h-64 rounded-full border-4 border-[var(--color-brand-primary)] shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]" />
+              </div>
+            </div>
+
+            <div className="px-6 pb-12">
+              <button
+                type="button"
+                onClick={handleCaptureAvatar}
+                disabled={uploading || !cameraReady || !cameraGranted}
+                className="btn btn--primary btn--lg w-full"
+              >
+                {uploading ? t('common.saving') : t('profile.takePhoto')}
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {selectedPhoto && (
         <PhotoViewerModal photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />

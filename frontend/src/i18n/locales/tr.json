@@ -206,7 +206,9 @@
     "shareExplainAlways": "Sonraki adımda «Her zaman izin ver»i seç — yoksa arka planda paylaşım çalışmaz.",
     "shareExplainContinue": "Devam",
     "locateMe": "Konumum",
-    "locateFailed": "Konumun alınamadı"
+    "locateFailed": "Konumun alınamadı",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "Ayarlar → StreakMeet → Konum'u aç ve arkadaşların seni arka planda haritada görsün diye «Her Zaman»ı seç."
   },
   "profile": {
     "avatarUploadFailed": "Avatar yüklenemedi",

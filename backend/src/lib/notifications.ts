@@ -38,10 +38,7 @@ export function notifyMeetPhotoAdded(partnerId: string, uploaderNickname: string
   })
 }
 
-export function notifyRemoteSelfieRequest(
-  recipientId: string,
-  senderNickname: string
-): void {
+export function notifyRemoteSelfieRequest(recipientId: string, senderNickname: string): void {
   emit(recipientId, {
     type: 'remote_selfie_request',
     params: { nickname: senderNickname },

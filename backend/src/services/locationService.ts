@@ -117,11 +117,7 @@ export async function setLocationSharing(userId: string, enabled: unknown) {
   return mePayload(user)
 }
 
-export async function updateLocation(
-  userId: string,
-  latitude: unknown,
-  longitude: unknown
-) {
+export async function updateLocation(userId: string, latitude: unknown, longitude: unknown) {
   if (
     typeof latitude !== 'number' ||
     typeof longitude !== 'number' ||

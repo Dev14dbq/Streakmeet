@@ -5,12 +5,7 @@ import { Camera } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import useSWR from 'swr'
 import { isAxiosError } from 'axios'
-import {
-  getApiErrorMessage,
-  initRemoteSelfie,
-  magicMeet,
-  replyRemoteSelfie,
-} from '../lib/api'
+import { getApiErrorMessage, initRemoteSelfie, magicMeet, replyRemoteSelfie } from '../lib/api'
 import { SWR_KEYS } from '../lib/swrKeys'
 import { toastError, toastLink, toastSuccess } from '../lib/toast'
 import type { MagicMeetResultState } from '../pages/meet/MagicMeetResultPage'

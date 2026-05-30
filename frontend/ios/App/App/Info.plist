@@ -59,5 +59,14 @@
 	</array>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Напомним, когда серия с друзьями скоро сгорит</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.442480638149-mqdlqfiof7riq5a526d2m0sl7d413au1</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

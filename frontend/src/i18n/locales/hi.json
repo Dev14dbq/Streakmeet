@@ -206,7 +206,9 @@
     "shareExplainAlways": "अगले चरण में «हमेशा अनुमति» चुनें — वरना पृष्ठभूमि में साझा नहीं होगा।",
     "shareExplainContinue": "जारी रखें",
     "locateMe": "मेरा स्थान",
-    "locateFailed": "आपका स्थान नहीं मिला"
+    "locateFailed": "आपका स्थान नहीं मिला",
+    "settingsButton": "Settings",
+    "shareExplainOpenSettings": "सेटिंग्स → StreakMeet → स्थान खोलें और «हमेशा» चुनें ताकि दोस्त पृष्ठभूमि में मानचित्र पर आपको देख सकें।"
   },
   "profile": {
     "avatarUploadFailed": "अवतार अपलोड विफल",
