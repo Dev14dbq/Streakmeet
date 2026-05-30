@@ -35,10 +35,7 @@ export function useFriendSearch() {
   const [searchResults, setSearchResults] = useState<AuthUser[]>([])
   const [loadingSearch, setLoadingSearch] = useState(false)
 
-  const { data: friends = [], mutate: mutateFriends } = useSWR<FriendListItem[]>(
-    SWR_KEYS.friends,
-    fetcher
-  )
+  const { data: friends = [] } = useSWR<FriendListItem[]>(SWR_KEYS.friends, fetcher)
 
   useEffect(() => {
     if (query.length < 3) {
@@ -61,7 +58,6 @@ export function useFriendSearch() {
     try {
       await requestFriend(userId)
       setQuery('')
-      void mutateFriends()
     } catch (e) {
       toastError(getApiErrorMessage(e, t('friends.requestOrError')))
     }
@@ -70,7 +66,6 @@ export function useFriendSearch() {
   async function handleAccept(friendshipId: string) {
     try {
       await acceptFriend(friendshipId)
-      void mutateFriends()
     } catch (e) {
       toastError(getApiErrorMessage(e, t('errors.generic')))
     }
@@ -93,7 +88,6 @@ export function useFriendSearch() {
     searchResults,
     loadingSearch,
     friends,
-    mutateFriends,
     partition,
     handleAdd,
     handleAccept,

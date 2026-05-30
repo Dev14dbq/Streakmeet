@@ -1,4 +1,5 @@
 mod auth;
+mod auth_routes;
 mod friends;
 mod location;
 mod routes;
@@ -51,6 +52,23 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/health", get(routes::health))
         .route("/api/auth/login", post(routes::login))
+        .route("/api/auth/register", post(auth_routes::register_handler))
+        .route("/api/auth/check-email", post(auth_routes::check_email_handler))
+        .route("/api/auth/google", post(auth_routes::google_login_handler))
+        .route("/api/auth/apple", post(auth_routes::apple_login_handler))
+        .route("/api/auth/forgot-password", post(auth_routes::forgot_password_handler))
+        .route("/api/auth/reset-password", post(auth_routes::reset_password_handler))
+        .route("/api/auth/verify-email", get(auth_routes::verify_email_get_handler))
+        .route("/api/auth/verify-email", post(auth_routes::verify_email_post_handler))
+        .route(
+            "/api/auth/resend-verification",
+            post(auth_routes::resend_verification_handler),
+        )
+        .route("/api/auth/enroll-face", post(auth_routes::enroll_face_handler))
+        .route(
+            "/api/auth/restore-account",
+            post(auth_routes::restore_account_handler),
+        )
         .route("/api/friends/", get(friends::list_friends_handler))
         .route("/api/friends/request", post(friends::request_friend_handler))
         .route("/api/friends/accept", post(friends::accept_friend_handler))
@@ -67,8 +85,17 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/users/search", get(users::search_handler))
         .route("/api/public/users/{nickname}", get(users::public_profile_handler))
         .route("/api/streaks/meet", post(streaks::record_meet_handler))
+        .route("/api/streaks/magic-meet", post(streaks::magic_meet_handler))
         .route("/api/streaks/", get(streaks::list_streaks_handler))
         .route("/api/streaks/", post(streaks::create_streak_handler))
+        .route(
+            "/api/streaks/{streak_id}/remote-selfie/init",
+            post(streaks::init_remote_selfie_handler),
+        )
+        .route(
+            "/api/streaks/{streak_id}/remote-selfie/reply/{request_id}",
+            post(streaks::reply_remote_selfie_handler),
+        )
         .route(
             "/api/streaks/{partner_nickname}",
             get(streaks::get_streak_detail_handler),

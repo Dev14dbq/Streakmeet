@@ -12,6 +12,7 @@ members = [
     "crates/streakmeet-location",
     "crates/streakmeet-users",
     "crates/streakmeet-media",
+    "crates/streakmeet-face",
     "services/api-gateway",
     "services/streaks-service",
     "services/worker-service",
@@ -32,6 +33,9 @@ axum = "0.8"
 dashmap = "6"
 futures = "0.3"
 bcrypt = "0.16"
+cuid = "1.3"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+rand = "0.8"
 chrono = { version = "0.4", features = ["serde"] }
 chrono-tz = "0.10"
 dotenvy = "0.15"
@@ -50,6 +54,7 @@ streakmeet-streaks = { path = "crates/streakmeet-streaks" }
 streakmeet-location = { path = "crates/streakmeet-location" }
 streakmeet-users = { path = "crates/streakmeet-users" }
 streakmeet-media = { path = "crates/streakmeet-media" }
+streakmeet-face = { path = "crates/streakmeet-face" }
 streakmeet-sync = { path = "crates/streakmeet-sync" }
 streakmeet-types = { path = "crates/streakmeet-types" }
 thiserror = "2"

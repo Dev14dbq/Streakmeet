@@ -1,0 +1,13 @@
+[package]
+name = "streakmeet-face"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+streakmeet-types = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

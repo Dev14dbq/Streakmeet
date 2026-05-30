@@ -33,6 +33,64 @@ pub async fn compute_photo_hash(photo_base64: &str) -> Result<String> {
     Ok(format!("{:x}", hash))
 }
 
+pub async fn hash_image_file(relative_url: &str) -> Result<String> {
+    let buf = get_object_buffer(relative_url).await?;
+    let hash = Sha256::digest(&buf);
+    Ok(format!("{:x}", hash))
+}
+
+pub async fn get_object_buffer(relative_url: &str) -> Result<Vec<u8>> {
+    let key = super::storage::url_to_key(relative_url);
+    let dir = std::env::var("UPLOADS_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| std::path::PathBuf::from("/tmp/streakmeet-uploads"));
+    let file_path = dir.join(key.strip_prefix("uploads/").unwrap_or(&key));
+    tokio::fs::read(&file_path)
+        .await
+        .with_context(|| format!("read upload file {}", file_path.display()))
+}
+
+pub async fn combine_remote_selfie_images(
+    photo_url_a: &str,
+    photo_base64_b: &str,
+    name_without_ext: &str,
+) -> Result<String> {
+    use image::imageops::FilterType;
+    use image::{GenericImage, RgbaImage};
+
+    let buf_a = get_object_buffer(photo_url_a).await?;
+    let img_a = image::load_from_memory(&buf_a).context("decode image A")?;
+    let img_b = load_image(photo_base64_b)?;
+
+    let target_width = 960u32;
+    let target_height = 540u32;
+
+    let resized_a = img_a.resize_to_fill(target_width, target_height, FilterType::Lanczos3);
+    let resized_b = img_b.resize_to_fill(target_width, target_height, FilterType::Lanczos3);
+
+    let mut canvas = RgbaImage::new(target_width * 2, target_height);
+    for (x, y, pixel) in resized_a.to_rgba8().enumerate_pixels() {
+        canvas.put_pixel(x, y, *pixel);
+    }
+    for (x, y, pixel) in resized_b.to_rgba8().enumerate_pixels() {
+        canvas.put_pixel(x + target_width, y, *pixel);
+    }
+
+    let rgb = image::DynamicImage::ImageRgba8(canvas).to_rgb8();
+    let (w, h) = rgb.dimensions();
+    let pixels = rgb.as_raw().as_rgb();
+    let encoded = ravif::Encoder::new()
+        .with_quality(65.0)
+        .with_speed(4)
+        .encode_rgb(ravif::Img::new(pixels, w as usize, h as usize))
+        .map_err(|e| anyhow!("avif encode failed: {e}"))?;
+
+    let file_name = format!("{name_without_ext}.avif");
+    let relative_url = format!("/uploads/{file_name}");
+    super::storage::upload_avif(&relative_url, &encoded.avif_file).await?;
+    Ok(relative_url)
+}
+
 pub async fn save_base64_image_as_avif(
     photo_base64: &str,
     name_without_ext: &str,

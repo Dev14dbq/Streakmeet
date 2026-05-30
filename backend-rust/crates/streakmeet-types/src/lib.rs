@@ -119,3 +119,8 @@ impl fmt::Display for ApiError {
 }
 
 impl std::error::Error for ApiError {}
+
+/// New Prisma-compatible cuid id.
+pub fn new_cuid() -> Result<String, ApiError> {
+    cuid::cuid().map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))
+}

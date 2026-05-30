@@ -264,6 +264,49 @@ pub fn envelope_to_connect_json(envelope: &SyncEnvelope) -> Option<String> {
                 }),
             );
         }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakPhotoAdded(p)) => {
+            root.insert(
+                "streakPhotoAdded".into(),
+                serde_json::json!({
+                    "streakId": p.streak_id,
+                    "streakDayId": p.streak_day_id,
+                    "photoUrl": p.photo_url,
+                }),
+            );
+        }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::RemoteSelfiePending(p)) => {
+            let pending = p.pending.as_ref();
+            root.insert(
+                "remoteSelfiePending".into(),
+                serde_json::json!({
+                    "streakId": p.streak_id,
+                    "pendingRemoteSelfie": pending.map(|pi| serde_json::json!({
+                        "id": pi.id,
+                        "senderId": pi.sender_id,
+                        "receiverId": pi.receiver_id,
+                        "senderPhotoUrl": pi.sender_photo_url,
+                        "needsReply": pi.needs_reply,
+                        "senderNickname": pi.sender_nickname,
+                    })),
+                }),
+            );
+        }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::RemoteSelfieCleared(p)) => {
+            let meet = p.meet.as_ref();
+            root.insert(
+                "remoteSelfieCleared".into(),
+                serde_json::json!({
+                    "streakId": p.streak_id,
+                    "pendingRemoteSelfie": null,
+                    "meet": meet.map(|m| serde_json::json!({
+                        "streakId": m.streak_id,
+                        "count": m.count,
+                        "lastMetDate": null_if_empty_str(&m.last_met_date),
+                        "partner": m.partner.as_ref().map(user_summary_json),
+                    })),
+                }),
+            );
+        }
         Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::Heartbeat(hb)) => {
             root.insert("heartbeat".into(), serde_json::json!({ "message": hb.message }));
         }

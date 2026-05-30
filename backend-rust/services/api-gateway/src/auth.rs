@@ -5,13 +5,14 @@ use axum::{
     http::{request::Parts, StatusCode},
     Json,
 };
-use streakmeet_auth::verify_access_token;
+use streakmeet_auth::{verify_auth_token, AuthTokenResult, DeletedAccountBody};
 use streakmeet_types::codes;
 
 use crate::AppState;
 
 pub struct AuthUser {
     pub user_id: String,
+    pub email_verified: bool,
 }
 
 impl FromRequestParts<AppState> for AuthUser {
@@ -31,10 +32,24 @@ impl FromRequestParts<AppState> for AuthUser {
             .strip_prefix("Bearer ")
             .ok_or_else(|| unauthorized(codes::UNAUTHORIZED))?;
 
-        let user_id = verify_access_token(token, &state.auth_config.jwt_secret)
-            .map_err(|_| unauthorized(codes::INVALID_TOKEN))?;
+        if token.is_empty() {
+            return Err(unauthorized(codes::UNAUTHORIZED));
+        }
 
-        Ok(AuthUser { user_id })
+        match verify_auth_token(&state.pool, token, &state.auth_config.jwt_secret).await {
+            AuthTokenResult::Ok {
+                user_id,
+                email_verified,
+            } => Ok(AuthUser {
+                user_id,
+                email_verified,
+            }),
+            AuthTokenResult::Invalid => Err(unauthorized(codes::INVALID_TOKEN)),
+            AuthTokenResult::Deleted {
+                email,
+                deleted_at,
+            } => Err(deleted_account(email, deleted_at)),
+        }
     }
 }
 
@@ -48,6 +63,10 @@ pub async fn require_email_verified(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<AuthUser, (StatusCode, Json<serde_json::Value>)> {
+    if auth.email_verified {
+        return Ok(auth);
+    }
+
     let row = sqlx::query_as::<_, EmailVerifiedRow>(
         r#"
         SELECT "emailVerifiedAt" AS email_verified_at, "passwordHash" AS password_hash
@@ -71,7 +90,10 @@ pub async fn require_email_verified(
         ));
     }
 
-    Ok(auth)
+    Ok(AuthUser {
+        user_id: auth.user_id,
+        email_verified: true,
+    })
 }
 
 fn unauthorized(code: &str) -> (StatusCode, Json<serde_json::Value>) {
@@ -81,6 +103,27 @@ fn unauthorized(code: &str) -> (StatusCode, Json<serde_json::Value>) {
             "code": code,
             "error": streakmeet_types::default_message(code),
         })),
+    )
+}
+
+fn deleted_account(
+    email: String,
+    deleted_at: chrono::DateTime<chrono::Utc>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let retention_secs = streakmeet_auth::ACCOUNT_RETENTION_DAYS * 86_400;
+    let elapsed = (chrono::Utc::now() - deleted_at).num_seconds();
+    let days_remaining = ((retention_secs - elapsed).max(0) / 86_400) as i32;
+
+    let body = DeletedAccountBody {
+        error: "Аккаунт удалён — войдите, чтобы восстановить".into(),
+        code: codes::ACCOUNT_DELETED.into(),
+        email,
+        deleted_at: deleted_at.to_rfc3339(),
+        days_remaining,
+    };
+    (
+        StatusCode::FORBIDDEN,
+        Json(serde_json::to_value(body).unwrap()),
     )
 }
 
@@ -129,7 +172,15 @@ impl FromRequestParts<AppState> for OptionalAuthUser {
             return Ok(OptionalAuthUser { user_id: None });
         };
 
-        let user_id = verify_access_token(token, &state.auth_config.jwt_secret).ok();
+        if token.is_empty() {
+            return Ok(OptionalAuthUser { user_id: None });
+        }
+
+        let user_id = match verify_auth_token(&state.pool, token, &state.auth_config.jwt_secret).await
+        {
+            AuthTokenResult::Ok { user_id, .. } => Some(user_id),
+            _ => None,
+        };
         Ok(OptionalAuthUser { user_id })
     }
 }

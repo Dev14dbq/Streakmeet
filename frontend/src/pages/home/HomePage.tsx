@@ -52,7 +52,6 @@ export default function HomePage({ user }: Props) {
 
   async function handleStartStreak(friendId: string) {
     await doHandleStartStreak(friendId)
-    void mutateStreaks()
   }
 
   const streakPartnerIds = new Set(streaks.map((s) => s.partner.id))

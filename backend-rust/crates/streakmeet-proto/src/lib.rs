@@ -13,9 +13,10 @@ pub use streakmeet::v1::{
     FriendEvent, FriendListItem, FriendshipRecord, GetStreakDetailRequest, Heartbeat,
     ListFriendsRequest, ListFriendsResponse, ListStreaksRequest, ListStreaksResponse,
     LocationRemoved, LocationUpdated, LoginRequest, LoginResponse, Notification, ProfileUpdated,
-    RequestFriendRequest, StreakBurned, StreakCreated, StreakDetailDay, StreakDetailResponse,
-    StreakEvent, StreakListItem, StreakMeetUpdated, StreakRecord, SubscribeRequest, SyncEnvelope,
-    UserSummary,
+    RemoteSelfieCleared, RemoteSelfiePending, RemoteSelfiePendingInfo, RequestFriendRequest,
+    StreakBurned, StreakCreated, StreakDetailDay, StreakDetailResponse, StreakEvent,
+    StreakListItem, StreakMeetUpdated, StreakPhotoAdded, StreakRecord, SubscribeRequest,
+    SyncEnvelope, UserSummary,
 };
 
 pub use auth_service_server::AuthService;

@@ -4,7 +4,9 @@ use chrono::Utc;
 use prost::Message;
 use serde::Serialize;
 use sqlx::PgPool;
-use streakmeet_sync::{enqueue_outbox, streak_meet_envelope, OutboxPublisher};
+use streakmeet_sync::{
+    enqueue_outbox, streak_meet_envelope, streak_photo_added_envelope, OutboxPublisher,
+};
 use streakmeet_types::{codes, ApiError};
 
 use crate::calendar::get_local_date_string;
@@ -210,34 +212,50 @@ pub async fn record_meet_for_streak(
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let last_met_str = new_last_met.clone().unwrap_or_default();
-    let mut envelopes = Vec::with_capacity(2);
+    let mut envelopes: Vec<(String, streakmeet_proto::SyncEnvelope, &'static str)> =
+        Vec::with_capacity(2);
     for viewer_id in [&streak.user_a_id, &streak.user_b_id] {
         let (partner_id, partner_nickname, partner_avatar) = partner_for_viewer(&streak, viewer_id);
-        let envelope = streak_meet_envelope(
-            input.uploaded_by_id,
-            input.streak_id,
-            new_count,
-            &last_met_str,
-            partner_id,
-            partner_nickname,
-            partner_avatar,
-        );
+        let (envelope, event_type) = if extended {
+            (
+                streak_meet_envelope(
+                    input.uploaded_by_id,
+                    input.streak_id,
+                    new_count,
+                    &last_met_str,
+                    partner_id,
+                    partner_nickname,
+                    partner_avatar,
+                ),
+                "streaks.meet_extended",
+            )
+        } else {
+            (
+                streak_photo_added_envelope(
+                    input.uploaded_by_id,
+                    input.streak_id,
+                    &streak_day_id,
+                    input.photo_url,
+                ),
+                "streaks.photo_added",
+            )
+        };
         let bytes = streakmeet_proto::SyncEnvelope::encode_to_vec(&envelope);
         enqueue_outbox(
             &mut tx,
             viewer_id,
-            "streaks.meet_extended",
+            event_type,
             &envelope.event_id,
             &bytes,
         )
         .await
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
-        envelopes.push((viewer_id.clone(), envelope));
+        envelopes.push((viewer_id.clone(), envelope, event_type));
     }
 
     tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
-    for (viewer_id, envelope) in envelopes {
+    for (viewer_id, envelope, _) in envelopes {
         if let Err(err) = publisher.publish_inline(&viewer_id, &envelope).await {
             tracing::warn!(error = %err, recipient = %viewer_id, "inline meet publish failed");
         }

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use streakmeet_nats::connect_from_env;
-use streakmeet_streaks::worker::process_streak_burns;
+use streakmeet_streaks::worker::{process_remote_selfie_expiry, process_streak_burns};
 use streakmeet_sync::{run_outbox_worker, OutboxPublisher};
 use tracing_subscriber::EnvFilter;
 
@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
     let publisher = OutboxPublisher::new(pool.clone(), nats.clone());
     run_outbox_worker(pool.clone(), nats);
 
-    tracing::info!("worker-service: streak burn cron every 5 min");
+    tracing::info!("worker-service: streak burn + remote selfie expiry every 5 min");
 
     let mut interval = tokio::time::interval(Duration::from_secs(300));
     loop {
@@ -26,6 +26,11 @@ async fn main() -> anyhow::Result<()> {
             Ok(n) if n > 0 => tracing::info!(burned = n, "streak burn cycle"),
             Ok(_) => tracing::debug!("streak burn cycle: none"),
             Err(err) => tracing::warn!(error = %err, "streak burn cycle failed"),
+        }
+        match process_remote_selfie_expiry(&pool, &publisher).await {
+            Ok(n) if n > 0 => tracing::info!(expired = n, "remote selfie expiry cycle"),
+            Ok(_) => tracing::debug!("remote selfie expiry cycle: none"),
+            Err(err) => tracing::warn!(error = %err, "remote selfie expiry cycle failed"),
         }
     }
 }

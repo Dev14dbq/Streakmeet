@@ -1,5 +1,6 @@
 import axios, { isAxiosError } from 'axios'
 import i18n from '../../i18n'
+import { invalidateAfterMutation } from '../swrInvalidation'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '',
@@ -24,7 +25,10 @@ export function setUnauthorizedHandler(handler: () => void) {
 }
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    invalidateAfterMutation(response.config.method, response.config.url)
+    return response
+  },
   (error) => {
     const status = error.response?.status
     const code = error.response?.data?.code

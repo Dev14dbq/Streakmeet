@@ -1,10 +1,19 @@
+mod account;
+mod credentials;
+mod email;
+mod face;
 mod jwt;
 mod models;
+mod oauth;
+mod token;
+mod verification;
 
 pub use jwt::{issue_access_token, verify_access_token, JwtClaims};
 pub use models::{
     AuthResponseJson, AuthUserJson, DeletedAccountBody, UserRow, ACCOUNT_RETENTION_DAYS,
 };
+pub use token::{build_auth_response, verify_auth_token, AuthTokenResult};
+pub use verification::{enroll_face, EnrollFaceResult};
 
 use models::{deleted_account_error, is_retention_expired, AuthResponseJson as ResponseJson};
 use sqlx::PgPool;
@@ -26,37 +35,16 @@ impl Clone for AuthConfig {
 }
 
 pub async fn find_user_by_email(pool: &PgPool, email: &str) -> Result<Option<UserRow>, ApiError> {
-    let normalized = email.to_lowercase();
-    sqlx::query_as::<_, UserRow>(
-        r#"
-        SELECT
-            id, email, "passwordHash", nickname, "qrCodeId", "gemsBalance",
-            "faceEnrolled", "emailVerifiedAt", "avatarUrl", timezone,
-            "isPublic", "notifyFriends", "notifyMeet", "geoOnPhotos", "deletedAt"
-        FROM users
-        WHERE LOWER(email) = $1
-        LIMIT 1
-        "#,
-    )
-    .bind(&normalized)
-    .fetch_optional(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))
-}
-
-async fn sync_timezone(pool: &PgPool, user_id: &str, timezone: Option<&str>) {
-    let Some(tz) = timezone.filter(|t| is_valid_timezone(t)) else {
-        return;
-    };
-    let _ = sqlx::query(r#"UPDATE users SET timezone = $1 WHERE id = $2"#)
-        .bind(tz)
-        .bind(user_id)
-        .execute(pool)
-        .await;
-}
-
-fn is_valid_timezone(tz: &str) -> bool {
-    !tz.is_empty() && tz.len() <= 64 && tz.chars().all(|c| c.is_ascii() && !c.is_whitespace())
+    let normalized = email.to_lowercase().trim().to_string();
+    let sql = format!(
+        r#"SELECT {} FROM users WHERE LOWER(email) = $1 LIMIT 1"#,
+        account::USER_PROFILE_SELECT
+    );
+    sqlx::query_as::<_, UserRow>(&sql)
+        .bind(&normalized)
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))
 }
 
 pub async fn login(
@@ -86,19 +74,15 @@ pub async fn login(
 
     if let Some(deleted_at) = user.deleted_at {
         if is_retention_expired(deleted_at) {
+            account::purge_user(pool, &user.id).await?;
             return Err(ApiError::new(401, codes::INVALID_CREDENTIALS, None));
         }
         return Err(deleted_account_error(&user));
     }
 
-    sync_timezone(pool, &user.id, timezone).await;
+    account::sync_timezone(pool, &user.id, timezone).await;
 
-    let access_token = jwt::issue_access_token(&user.id, &config.jwt_secret, &config.jwt_expires_in)?;
-
-    Ok(ResponseJson {
-        access_token,
-        user: models::AuthUserJson::from(&user),
-    })
+    build_auth_response(&user, config)
 }
 
 pub async fn login_proto(
@@ -136,3 +120,10 @@ pub fn config_from_env() -> AuthConfig {
         jwt_expires_in: std::env::var("JWT_EXPIRES_IN").unwrap_or_else(|_| "7d".into()),
     }
 }
+
+pub use credentials::{check_email, register, RegisterInput};
+pub use oauth::{apple_login, google_login, restore_account, RestoreAccountInput};
+pub use verification::{
+    forgot_password, resend_verification, reset_password, verify_email_and_get_redirect,
+    verify_email_with_token,
+};

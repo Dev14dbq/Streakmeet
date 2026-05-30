@@ -6,7 +6,10 @@ edition.workspace = true
 [dependencies]
 bcrypt = { workspace = true }
 chrono = { workspace = true }
+cuid = { workspace = true }
 jsonwebtoken = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 sqlx = { workspace = true }
@@ -14,4 +17,5 @@ streakmeet-db = { workspace = true }
 streakmeet-proto = { workspace = true }
 streakmeet-types = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true }
 tracing = { workspace = true }

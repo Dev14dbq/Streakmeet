@@ -405,3 +405,48 @@ pub fn streak_record_proto(record: &StreakRecordJson) -> StreakRecord {
         timezone: record.timezone.clone(),
     }
 }
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct StreakForUserRow {
+    pub id: String,
+    pub user_a_id: String,
+    pub user_b_id: String,
+    pub user_a_nickname: String,
+    pub user_a_avatar_url: Option<String>,
+    pub user_b_nickname: String,
+    pub user_b_avatar_url: Option<String>,
+}
+
+/// Loads an active streak and returns 404 if the user is not a participant.
+pub async fn find_streak_for_user(
+    pool: &PgPool,
+    streak_id: &str,
+    user_id: &str,
+) -> Result<StreakForUserRow, ApiError> {
+    let streak = sqlx::query_as::<_, StreakForUserRow>(
+        r#"
+        SELECT
+            s.id,
+            s."userAId" AS user_a_id,
+            s."userBId" AS user_b_id,
+            ua.nickname AS user_a_nickname,
+            ua."avatarUrl" AS user_a_avatar_url,
+            ub.nickname AS user_b_nickname,
+            ub."avatarUrl" AS user_b_avatar_url
+        FROM streaks s
+        JOIN users ua ON ua.id = s."userAId"
+        JOIN users ub ON ub.id = s."userBId"
+        WHERE s.id = $1 AND s.active = true
+        "#,
+    )
+    .bind(streak_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+
+    let streak = streak.ok_or_else(|| ApiError::new(404, codes::STREAK_NOT_FOUND, None))?;
+    if streak.user_a_id != user_id && streak.user_b_id != user_id {
+        return Err(ApiError::new(404, codes::STREAK_NOT_FOUND, None));
+    }
+    Ok(streak)
+}

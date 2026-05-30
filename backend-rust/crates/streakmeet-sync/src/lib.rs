@@ -7,8 +7,9 @@ pub use outbox::{enqueue_outbox, publish_pending_outbox, run_outbox_worker, Outb
 use chrono::Utc;
 use prost_types::Timestamp;
 use streakmeet_proto::{
-    FriendEvent, FriendListItem, LocationRemoved, LocationUpdated, ProfileUpdated, StreakBurned,
-    StreakCreated, StreakListItem, StreakMeetUpdated, SyncEnvelope, UserSummary,
+    FriendEvent, FriendListItem, LocationRemoved, LocationUpdated, ProfileUpdated, RemoteSelfieCleared,
+    RemoteSelfiePending, RemoteSelfiePendingInfo, StreakBurned, StreakCreated, StreakListItem,
+    StreakMeetUpdated, StreakPhotoAdded, SyncEnvelope, UserSummary,
 };
 use uuid::Uuid;
 
@@ -149,6 +150,72 @@ pub fn streak_meet_envelope(
             }),
         }),
     )
+}
+
+pub fn streak_photo_added_envelope(
+    actor_id: &str,
+    streak_id: &str,
+    streak_day_id: &str,
+    photo_url: &str,
+) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakPhotoAdded(StreakPhotoAdded {
+            streak_id: streak_id.to_string(),
+            streak_day_id: streak_day_id.to_string(),
+            photo_url: photo_url.to_string(),
+        }),
+    )
+}
+
+pub fn remote_selfie_pending_envelope(
+    actor_id: &str,
+    streak_id: &str,
+    pending: RemoteSelfiePendingInfo,
+) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::RemoteSelfiePending(
+            RemoteSelfiePending {
+                streak_id: streak_id.to_string(),
+                pending: Some(pending),
+            },
+        ),
+    )
+}
+
+pub fn remote_selfie_cleared_envelope(
+    actor_id: &str,
+    streak_id: &str,
+    meet: Option<StreakMeetUpdated>,
+) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::RemoteSelfieCleared(
+            RemoteSelfieCleared {
+                streak_id: streak_id.to_string(),
+                meet,
+            },
+        ),
+    )
+}
+
+pub fn remote_selfie_pending_info(
+    id: &str,
+    sender_id: &str,
+    receiver_id: &str,
+    sender_photo_url: &str,
+    needs_reply: bool,
+    sender_nickname: &str,
+) -> RemoteSelfiePendingInfo {
+    RemoteSelfiePendingInfo {
+        id: id.to_string(),
+        sender_id: sender_id.to_string(),
+        receiver_id: receiver_id.to_string(),
+        sender_photo_url: sender_photo_url.to_string(),
+        needs_reply,
+        sender_nickname: sender_nickname.to_string(),
+    }
 }
 
 pub fn friend_list_item_proto(

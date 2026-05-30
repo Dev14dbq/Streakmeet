@@ -33,11 +33,10 @@ export default function PublicProfilePage({ currentUser }: Props) {
 
   const isValidNickname = NICKNAME_RE.test(normalized)
 
-  const {
-    data: profile,
-    error: profileError,
-    mutate: mutateProfile,
-  } = useSWR<PublicProfile>(isValidNickname ? `/api/public/users/${normalized}` : null, fetcher)
+  const { data: profile, error: profileError } = useSWR<PublicProfile>(
+    isValidNickname ? `/api/public/users/${normalized}` : null,
+    fetcher
+  )
 
   const getKey = (pageIndex: number, previousPageData: unknown[]) => {
     if (!isValidNickname || !profile) return null
@@ -89,7 +88,6 @@ export default function PublicProfilePage({ currentUser }: Props) {
     try {
       await requestFriend(user.id)
       toastSuccess(t('profile.requestSent'))
-      await mutateProfile()
     } catch (e) {
       toastError(getApiErrorMessage(e, t('profile.requestFailed')))
     } finally {
@@ -103,7 +101,6 @@ export default function PublicProfilePage({ currentUser }: Props) {
     try {
       await acceptFriend(friendship.id)
       toastSuccess(t('profile.nowFriends'))
-      await mutateProfile()
     } catch (e) {
       toastError(getApiErrorMessage(e, t('profile.acceptFailed')))
     } finally {

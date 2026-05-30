@@ -15,6 +15,8 @@ streakmeet-proto = { workspace = true }
 streakmeet-sync = { workspace = true }
 streakmeet-types = { workspace = true }
 streakmeet-media = { workspace = true }
+streakmeet-face = { workspace = true }
+cuid = { workspace = true }
 sha2 = "0.10"
 tracing = { workspace = true }
 uuid = { workspace = true }

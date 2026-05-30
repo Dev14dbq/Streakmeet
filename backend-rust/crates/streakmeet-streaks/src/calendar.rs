@@ -63,6 +63,18 @@ pub fn generous_streak_timezone(
     }
 }
 
+pub fn instant_meet_streak_day(streak_timezone: &str, at: chrono::DateTime<chrono::Utc>) -> String {
+    get_local_date_string(streak_timezone, at)
+}
+
+/// Async remote selfie: anchor to the day when the request was sent.
+pub fn remote_selfie_streak_day(
+    streak_timezone: &str,
+    initiated_at: chrono::DateTime<chrono::Utc>,
+) -> String {
+    get_local_date_string(streak_timezone, initiated_at)
+}
+
 pub fn get_local_time_parts(timezone: &str, date: DateTime<Utc>) -> (u32, u32) {
     let tz = normalize_timezone(Some(timezone), "UTC");
     let parsed = tz.parse::<Tz>().unwrap_or(chrono_tz::UTC);

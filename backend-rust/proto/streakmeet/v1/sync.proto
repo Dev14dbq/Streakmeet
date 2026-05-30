@@ -51,6 +51,31 @@ message StreakBurned {
   int32 count = 2;
 }
 
+message StreakPhotoAdded {
+  string streak_id = 1;
+  string streak_day_id = 2;
+  string photo_url = 3;
+}
+
+message RemoteSelfiePendingInfo {
+  string id = 1;
+  string sender_id = 2;
+  string receiver_id = 3;
+  string sender_photo_url = 4;
+  bool needs_reply = 5;
+  string sender_nickname = 6;
+}
+
+message RemoteSelfiePending {
+  string streak_id = 1;
+  RemoteSelfiePendingInfo pending = 2;
+}
+
+message RemoteSelfieCleared {
+  string streak_id = 1;
+  StreakMeetUpdated meet = 2;
+}
+
 message LocationUpdated {
   string user_id = 1;
   double lat = 2;
@@ -95,6 +120,9 @@ message SyncEnvelope {
     LocationUpdated location = 13;
     LocationRemoved location_removed = 14;
     ProfileUpdated profile_updated = 18;
+    StreakPhotoAdded streak_photo_added = 19;
+    RemoteSelfiePending remote_selfie_pending = 20;
+    RemoteSelfieCleared remote_selfie_cleared = 21;
     Notification notification = 16;
     Heartbeat heartbeat = 99;
   }

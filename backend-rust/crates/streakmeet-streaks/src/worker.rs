@@ -75,3 +75,32 @@ pub async fn process_streak_burns(pool: &PgPool, publisher: &OutboxPublisher) ->
 
     Ok(burned)
 }
+
+/// Expire PENDING remote selfie requests older than `REMOTE_SELFIE_TTL_MS`.
+pub async fn process_remote_selfie_expiry(
+    pool: &PgPool,
+    publisher: &OutboxPublisher,
+) -> Result<usize, anyhow::Error> {
+    use crate::remote_selfie::{expire_stale_remote_selfie_requests, REMOTE_SELFIE_TTL_MS};
+
+    let cutoff = chrono::Utc::now() - chrono::Duration::milliseconds(REMOTE_SELFIE_TTL_MS);
+    let rows = sqlx::query_as::<_, (String,)>(
+        r#"
+        SELECT DISTINCT "streakId" AS streak_id
+        FROM remote_selfie_requests
+        WHERE status = 'PENDING' AND "createdAt" < $1
+        "#,
+    )
+    .bind(cutoff)
+    .fetch_all(pool)
+    .await?;
+
+    let mut expired = 0usize;
+    for (streak_id,) in rows {
+        expire_stale_remote_selfie_requests(pool, publisher, &streak_id)
+            .await
+            .map_err(|e| anyhow::anyhow!(e))?;
+        expired += 1;
+    }
+    Ok(expired)
+}
