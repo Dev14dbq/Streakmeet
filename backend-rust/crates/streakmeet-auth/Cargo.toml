@@ -1,0 +1,17 @@
+[package]
+name = "streakmeet-auth"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+bcrypt = { workspace = true }
+chrono = { workspace = true }
+jsonwebtoken = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+streakmeet-db = { workspace = true }
+streakmeet-proto = { workspace = true }
+streakmeet-types = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }

@@ -1,0 +1,21 @@
+[package]
+name = "auth-service"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "auth-service"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+dotenvy = { workspace = true }
+serde_json = { workspace = true }
+streakmeet-auth = { workspace = true }
+streakmeet-db = { workspace = true }
+streakmeet-proto = { workspace = true }
+streakmeet-types = { workspace = true }
+tokio = { workspace = true }
+tonic = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

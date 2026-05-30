@@ -2,8 +2,9 @@
 
 use anyhow::{Context, Result};
 use sqlx::postgres::PgPoolOptions;
-use sqlx::PgPool;
 use std::time::Duration;
+
+pub use sqlx::PgPool;
 
 pub async fn connect_from_env() -> Result<PgPool> {
     let url = std::env::var("DATABASE_URL").context("DATABASE_URL is not set")?;

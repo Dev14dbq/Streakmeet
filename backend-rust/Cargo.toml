@@ -4,7 +4,10 @@ members = [
     "crates/streakmeet-types",
     "crates/streakmeet-db",
     "crates/streakmeet-proto",
+    "crates/streakmeet-auth",
+    "services/api-gateway",
     "services/sync-gateway",
+    "services/auth-service",
 ]
 
 [workspace.package]
