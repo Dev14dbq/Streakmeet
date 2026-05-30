@@ -201,6 +201,37 @@ pub fn envelope_to_connect_json(envelope: &SyncEnvelope) -> Option<String> {
                 }),
             );
         }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakCreated(ev)) => {
+            let streak = ev.streak.as_ref()?;
+            let partner = streak.partner.as_ref()?;
+            root.insert(
+                "streakCreated".into(),
+                serde_json::json!({
+                    "streak": streak_list_item_json(streak, partner)
+                }),
+            );
+        }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakMeet(ev)) => {
+            let partner = ev.partner.as_ref();
+            root.insert(
+                "streakMeet".into(),
+                serde_json::json!({
+                    "streakId": ev.streak_id,
+                    "count": ev.count,
+                    "lastMetDate": null_if_empty_str(&ev.last_met_date),
+                    "partner": partner.map(|p| user_summary_json(p)),
+                }),
+            );
+        }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakBurned(ev)) => {
+            root.insert(
+                "streakBurned".into(),
+                serde_json::json!({
+                    "streakId": ev.streak_id,
+                    "count": ev.count,
+                }),
+            );
+        }
         Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::Heartbeat(hb)) => {
             root.insert("heartbeat".into(), serde_json::json!({ "message": hb.message }));
         }
@@ -208,6 +239,31 @@ pub fn envelope_to_connect_json(envelope: &SyncEnvelope) -> Option<String> {
     }
 
     serde_json::to_string(&root).ok()
+}
+
+fn streak_list_item_json(
+    streak: &streakmeet_proto::StreakListItem,
+    partner: &streakmeet_proto::UserSummary,
+) -> serde_json::Value {
+    serde_json::json!({
+        "id": streak.id,
+        "count": streak.count,
+        "lastMetDate": null_if_empty_str(&streak.last_met_date),
+        "timezone": streak.timezone,
+        "partner": user_summary_json(partner),
+    })
+}
+
+fn user_summary_json(user: &streakmeet_proto::UserSummary) -> serde_json::Value {
+    serde_json::json!({
+        "id": user.id,
+        "nickname": user.nickname,
+        "avatarUrl": null_if_empty(&user.avatar_url),
+    })
+}
+
+fn null_if_empty_str(value: &str) -> serde_json::Value {
+    null_if_empty(value)
 }
 
 fn null_if_empty(value: &str) -> serde_json::Value {

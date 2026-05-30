@@ -1,6 +1,6 @@
 use axum::{extract::State, Json};
 use serde::Deserialize;
-use streakmeet_social::{accept_friend, list_friends, request_friend};
+use streakmeet_social::{accept_friend, cancel_friend, list_friends, reject_friend, request_friend};
 
 use crate::auth::{require_email_verified, AuthUser};
 use crate::routes::api_error_response;
@@ -40,6 +40,40 @@ pub async fn request_friend_handler(
         &state.outbox,
         &auth.user_id,
         body.friend_id.as_deref(),
+    )
+    .await
+    .map(Json)
+    .map_err(api_error_response)
+}
+
+pub async fn reject_friend_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(body): Json<AcceptFriendBody>,
+) -> Result<Json<streakmeet_social::FriendshipRecordJson>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    let auth = require_email_verified(State(state.clone()), auth).await?;
+    reject_friend(
+        &state.pool,
+        &state.outbox,
+        &auth.user_id,
+        body.friendship_id.as_deref(),
+    )
+    .await
+    .map(Json)
+    .map_err(api_error_response)
+}
+
+pub async fn cancel_friend_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(body): Json<AcceptFriendBody>,
+) -> Result<Json<streakmeet_social::FriendshipRecordJson>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    let auth = require_email_verified(State(state.clone()), auth).await?;
+    cancel_friend(
+        &state.pool,
+        &state.outbox,
+        &auth.user_id,
+        body.friendship_id.as_deref(),
     )
     .await
     .map(Json)

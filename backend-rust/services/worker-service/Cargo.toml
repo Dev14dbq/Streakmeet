@@ -1,0 +1,19 @@
+[package]
+name = "worker-service"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "worker-service"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+dotenvy = { workspace = true }
+streakmeet-db = { workspace = true }
+streakmeet-nats = { workspace = true }
+streakmeet-streaks = { workspace = true }
+streakmeet-sync = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
