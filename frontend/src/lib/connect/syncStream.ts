@@ -13,18 +13,22 @@ import type {
   ProfileUpdatedPayload,
   StreakBurnedPayload,
   StreakCreatedPayload,
+  StreakEventPayload,
   StreakMeetPayload,
+  SyncNotificationPayload,
 } from '../applySyncEvent'
 
 export type SyncEnvelopePayload =
   | { case: 'heartbeat'; message: string }
   | { case: 'friendEvent'; value: FriendSyncPayload }
   | { case: 'streakCreated'; value: StreakCreatedPayload }
+  | { case: 'streakEvent'; value: StreakEventPayload }
   | { case: 'streakMeet'; value: StreakMeetPayload }
   | { case: 'streakBurned'; value: StreakBurnedPayload }
   | { case: 'locationUpdated'; value: LocationUpdatedPayload }
   | { case: 'locationRemoved'; value: LocationRemovedPayload }
   | { case: 'profileUpdated'; value: ProfileUpdatedPayload }
+  | { case: 'notification'; value: SyncNotificationPayload }
   | { case: 'unknown'; raw: unknown }
 
 export interface SyncEnvelope {
@@ -157,6 +161,51 @@ function parseEnvelope(raw: unknown): SyncEnvelope | null {
     }
   }
 
+  const streakEventRaw = obj.streakEvent ?? obj.streak_event
+  if (streakEventRaw && typeof streakEventRaw === 'object') {
+    const se = streakEventRaw as Record<string, unknown>
+    const eventType =
+      typeof se.eventType === 'string'
+        ? se.eventType
+        : typeof se.event_type === 'string'
+          ? se.event_type
+          : ''
+    const streakRaw = se.streak
+    if (eventType && streakRaw && typeof streakRaw === 'object') {
+      const streak = parseStreakListItem(streakRaw as Record<string, unknown>)
+      if (streak) {
+        return { eventId, sequence, payload: { case: 'streakEvent', value: { eventType, streak } } }
+      }
+    }
+  }
+
+  const notificationRaw = obj.notification
+  if (notificationRaw && typeof notificationRaw === 'object') {
+    const n = notificationRaw as Record<string, unknown>
+    const type = typeof n.type === 'string' ? n.type : ''
+    if (type) {
+      const paramsRaw = n.params
+      const params: Record<string, string> = {}
+      if (paramsRaw && typeof paramsRaw === 'object') {
+        for (const [k, v] of Object.entries(paramsRaw)) {
+          if (typeof v === 'string') params[k] = v
+        }
+      }
+      return {
+        eventId,
+        sequence,
+        payload: {
+          case: 'notification',
+          value: {
+            type,
+            params: Object.keys(params).length > 0 ? params : undefined,
+            route: typeof n.route === 'string' ? n.route : undefined,
+          },
+        },
+      }
+    }
+  }
+
   const streakCreatedRaw = obj.streakCreated ?? obj.streak_created
   if (streakCreatedRaw && typeof streakCreatedRaw === 'object') {
     const sc = streakCreatedRaw as Record<string, unknown>
@@ -234,9 +283,14 @@ function parseEnvelope(raw: unknown): SyncEnvelope | null {
             ? loc.user_id
             : ''
     const nickname = typeof loc.nickname === 'string' ? loc.nickname : ''
-    const latitude = typeof loc.latitude === 'number' ? loc.latitude : typeof loc.lat === 'number' ? loc.lat : NaN
+    const latitude =
+      typeof loc.latitude === 'number' ? loc.latitude : typeof loc.lat === 'number' ? loc.lat : NaN
     const longitude =
-      typeof loc.longitude === 'number' ? loc.longitude : typeof loc.lng === 'number' ? loc.lng : NaN
+      typeof loc.longitude === 'number'
+        ? loc.longitude
+        : typeof loc.lng === 'number'
+          ? loc.lng
+          : NaN
     if (id && nickname && Number.isFinite(latitude) && Number.isFinite(longitude)) {
       return {
         eventId,
@@ -290,11 +344,7 @@ function parseEnvelope(raw: unknown): SyncEnvelope | null {
   if (profileUpdatedRaw && typeof profileUpdatedRaw === 'object') {
     const p = profileUpdatedRaw as Record<string, unknown>
     const userId =
-      typeof p.userId === 'string'
-        ? p.userId
-        : typeof p.user_id === 'string'
-          ? p.user_id
-          : ''
+      typeof p.userId === 'string' ? p.userId : typeof p.user_id === 'string' ? p.user_id : ''
     const nickname = typeof p.nickname === 'string' ? p.nickname : ''
     if (userId && nickname) {
       return {

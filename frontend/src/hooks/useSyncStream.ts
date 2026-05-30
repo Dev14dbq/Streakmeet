@@ -1,62 +1,50 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type MutableRefObject } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { AuthUser } from '../lib/api'
 import type { BootstrapPhase } from '../context/AuthContext'
 import { applySyncEvent } from '../lib/applySyncEvent'
 import { isSyncStreamEnabled } from '../lib/connect/client'
 import { runSyncStream, type SyncEnvelope } from '../lib/connect/syncStream'
+import { useSyncModeReady } from './useSyncModeReady'
+import {
+  showInstantPushNotification,
+  type AppNotificationPayload,
+} from '../lib/instantNotifications'
+import { translateNotification } from '../lib/translateNotification'
+import { notify, toastLink } from '../lib/toast'
 
 /**
- * Connect server-stream sync (replaces socket.io gradually).
- * Enabled when VITE_USE_SYNC_STREAM=true — patches SWR caches from sync events.
+ * Connect server-stream sync (replaces socket.io for cache patches when Rust stack is up).
  */
-export function useSyncStream(user: AuthUser | null, bootstrapPhase: BootstrapPhase) {
-  const enabled = user !== null && bootstrapPhase !== 'loading' && isSyncStreamEnabled()
+export function useSyncStream(
+  user: AuthUser | null,
+  bootstrapPhase: BootstrapPhase,
+  appActiveRef: MutableRefObject<boolean>
+) {
+  const navigate = useNavigate()
+  const syncReady = useSyncModeReady()
+  const enabled =
+    syncReady && user !== null && bootstrapPhase !== 'loading' && isSyncStreamEnabled()
   const handlerRef = useRef<(env: SyncEnvelope) => void>(() => {})
 
   useEffect(() => {
     handlerRef.current = (env) => {
-      if (env.payload.case === 'heartbeat') {
-        console.debug('[sync] heartbeat', env.payload.message, env.eventId)
-        return
+      if (env.payload.case === 'notification') {
+        const n = env.payload.value
+        const message = translateNotification({ type: n.type, params: n.params, message: '' })
+        const detail: AppNotificationPayload = { ...n, message }
+        window.dispatchEvent(new CustomEvent('app-notification', { detail }))
+        if (!appActiveRef.current) {
+          void showInstantPushNotification(detail)
+        } else if (detail.route) {
+          toastLink(message, detail.route, navigate)
+        } else {
+          notify(message)
+        }
       }
-      if (env.payload.case === 'friendEvent') {
-        console.debug('[sync] friendEvent', env.payload.value.eventType, env.eventId)
-        applySyncEvent(env)
-        return
-      }
-      if (env.payload.case === 'streakCreated') {
-        console.debug('[sync] streakCreated', env.payload.value.streak.id, env.eventId)
-        applySyncEvent(env)
-        return
-      }
-      if (env.payload.case === 'streakMeet') {
-        console.debug('[sync] streakMeet', env.payload.value.streakId, env.eventId)
-        applySyncEvent(env)
-        return
-      }
-      if (env.payload.case === 'streakBurned') {
-        console.debug('[sync] streakBurned', env.payload.value.streakId, env.eventId)
-        applySyncEvent(env)
-        return
-      }
-      if (env.payload.case === 'locationUpdated') {
-        console.debug('[sync] locationUpdated', env.payload.value.id, env.eventId)
-        applySyncEvent(env)
-        return
-      }
-      if (env.payload.case === 'locationRemoved') {
-        console.debug('[sync] locationRemoved', env.payload.value.id, env.eventId)
-        applySyncEvent(env)
-        return
-      }
-      if (env.payload.case === 'profileUpdated') {
-        console.debug('[sync] profileUpdated', env.payload.value.userId, env.eventId)
-        applySyncEvent(env)
-        return
-      }
-      console.debug('[sync] envelope', env)
+      applySyncEvent(env)
     }
-  })
+  }, [navigate, appActiveRef])
 
   useEffect(() => {
     if (!enabled) return

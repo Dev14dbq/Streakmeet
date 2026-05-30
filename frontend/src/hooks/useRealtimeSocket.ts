@@ -8,7 +8,10 @@ import {
   type AppNotificationPayload,
 } from '../lib/instantNotifications'
 import { notify, toastLink } from '../lib/toast'
+import { isSyncStreamEnabled } from '../lib/connect/client'
+import { useSyncModeReady } from './useSyncModeReady'
 import { useSocket } from './useSocket'
+import { invalidateAfterNotification } from '../lib/swrInvalidation'
 
 export function useRealtimeSocket(
   user: AuthUser | null,
@@ -16,10 +19,14 @@ export function useRealtimeSocket(
   navigate: NavigateFunction
 ) {
   const appActiveRef = useRef(true)
+  const syncReady = useSyncModeReady()
+  const socketEnabled =
+    syncReady && user !== null && bootstrapPhase !== 'loading' && !isSyncStreamEnabled()
 
   const onEvent = useCallback(
     (socket: Socket) => {
       socket.on('notification', (data: AppNotificationPayload) => {
+        invalidateAfterNotification(data.type)
         window.dispatchEvent(new CustomEvent('app-notification', { detail: data }))
         if (!appActiveRef.current) {
           void showInstantPushNotification(data)
@@ -36,7 +43,7 @@ export function useRealtimeSocket(
     [navigate]
   )
 
-  useSocket(user !== null && bootstrapPhase !== 'loading', onEvent)
+  useSocket(socketEnabled, onEvent)
 
   return appActiveRef
 }

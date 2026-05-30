@@ -1,7 +1,8 @@
 import { mutate } from 'swr'
 import type { FriendListItem, StreakListItem } from '@streakmeet/api-spec'
 import { SWR_KEYS } from './swrKeys'
-import type { SyncEnvelope } from '../connect/syncStream'
+import type { SyncEnvelope } from './connect/syncStream'
+import { invalidateAfterNotification } from './swrInvalidation'
 
 export interface FriendSyncPayload {
   eventType: string
@@ -44,6 +45,17 @@ export interface ProfileUpdatedPayload {
   avatarUrl?: string | null
 }
 
+export interface StreakEventPayload {
+  eventType: string
+  streak: StreakListItem
+}
+
+export interface SyncNotificationPayload {
+  type: string
+  params?: Record<string, string>
+  route?: string
+}
+
 /** Patch SWR caches from a live SyncEnvelope (no refetch). */
 export function applySyncEvent(env: SyncEnvelope): void {
   switch (env.payload.case) {
@@ -52,6 +64,9 @@ export function applySyncEvent(env: SyncEnvelope): void {
       break
     case 'streakCreated':
       patchStreaksCacheInsert(env.payload.value.streak)
+      break
+    case 'streakEvent':
+      patchStreakEvent(env.payload.value)
       break
     case 'streakMeet':
       patchStreaksCacheMeet(env.payload.value)
@@ -68,9 +83,47 @@ export function applySyncEvent(env: SyncEnvelope): void {
     case 'profileUpdated':
       patchProfileCache(env.payload.value)
       break
+    case 'notification':
+      applySyncNotification(env.payload.value)
+      break
+    case 'heartbeat':
+    case 'unknown':
+      break
     default:
       break
   }
+}
+
+function patchStreakEvent(event: StreakEventPayload): void {
+  const type = event.eventType.toLowerCase()
+  if (type.includes('created')) {
+    patchStreaksCacheInsert(event.streak)
+    return
+  }
+  if (type.includes('meet') || type.includes('extended') || type.includes('photo')) {
+    patchStreaksCacheMeet({
+      streakId: event.streak.id,
+      count: event.streak.count,
+      lastMetDate: event.streak.lastMetDate,
+      partner: event.streak.partner,
+    })
+    return
+  }
+  if (type.includes('burned')) {
+    patchStreaksCacheBurn({ streakId: event.streak.id, count: event.streak.count })
+    return
+  }
+  if (type.includes('remote_selfie')) {
+    void mutate((key) => typeof key === 'string' && key.startsWith('/api/streaks/'), undefined, {
+      revalidate: true,
+    })
+    return
+  }
+  patchStreaksCacheInsert(event.streak)
+}
+
+function applySyncNotification(payload: SyncNotificationPayload): void {
+  invalidateAfterNotification(payload.type)
 }
 
 function patchFriendsCache(event: FriendSyncPayload): void {

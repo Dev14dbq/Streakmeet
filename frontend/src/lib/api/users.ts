@@ -1,6 +1,9 @@
 import type { AuthUser } from '@streakmeet/api-spec'
 import { getDeviceTimezone } from '../timezone'
 import { api } from './client'
+import { migratedApi } from './migratedClient'
+
+const usersApi = () => migratedApi()
 
 export const deleteAccount = () => api.delete<{ success: boolean }>('/api/users/me')
 
@@ -11,7 +14,7 @@ export const updatePreferences = (prefs: {
 }) => api.patch<AuthUser>('/api/users/preferences', prefs)
 
 export const searchUsers = (q: string) =>
-  api.get<AuthUser[]>(`/api/users/search?q=${encodeURIComponent(q)}`)
+  usersApi().get<AuthUser[]>(`/api/users/search?q=${encodeURIComponent(q)}`)
 
 export const uploadAvatar = (photoBase64: string) =>
   api.post<{ avatarUrl: string }>('/api/users/avatar', { photoBase64 })

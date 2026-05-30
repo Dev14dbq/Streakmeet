@@ -76,7 +76,44 @@ sync-gateway speaks **Connect JSON** over HTTP (not raw tonic gRPC). Vite proxie
 - `POST /connect/streakmeet.v1.SyncService/Subscribe`
 - `POST /streakmeet.v1.SyncService/Subscribe` (direct)
 
-Set `VITE_USE_SYNC_STREAM=true` in frontend `.env` to enable the stream and route friends/streaks API to `http://127.0.0.1:8080`.
+Default frontend mode is **`VITE_USE_SYNC_STREAM=auto`**: probes `http://127.0.0.1:8080/health` and `:8081/health` in dev; uses Connect + Rust REST when both respond. Force Node-only with `VITE_USE_SYNC_STREAM=false` or `VITE_DEV_RUST_PROXY=false` (Vite `/api` → :3000).
+
+## Frontend testing (Connect sync)
+
+### Prerequisites
+
+- Rust `api-gateway` (:8080) and `sync-gateway` (:8081) running
+- `JWT_SECRET` matches Node `backend/.env`
+- Optional: Node on :3000 for legal, memories, magic-meet, remote selfie
+
+### Dev env (`frontend/.env.local`)
+
+```bash
+VITE_USE_SYNC_STREAM=auto
+# VITE_RUST_GATEWAY_URL=          # empty → same-origin /api (Vite → :8080)
+# VITE_CONNECT_URL=/connect
+```
+
+Node-only dev (no Rust):
+
+```bash
+VITE_USE_SYNC_STREAM=false
+VITE_DEV_RUST_PROXY=false
+```
+
+### Checklist
+
+1. **Probe** — Open app; console should show `[sync] stream connected` when logged in (not with `false`).
+2. **Login** — Email login hits Rust when auto/true (`/api/auth/login` via proxy).
+3. **Friends** — User A requests B; B’s Home friend list updates without refresh (sync `friendEvent`).
+4. **Streaks** — A creates streak with B; B sees new card (`streakCreated`).
+5. **Burn** — Worker or manual SQL; both get `streakBurned`, count → 0 in list.
+6. **Map** — With sync on, Map does not open Socket.IO; friend pins update from `locationUpdated` / SWR `friendLocations`.
+7. **Fallback** — Stop Rust gateways, reload; app uses Socket.IO + Node (`VITE_USE_SYNC_STREAM=false` or failed probe).
+
+### Production Node-only
+
+Set `VITE_USE_SYNC_STREAM=false` and `VITE_API_URL` to the Node API. Do not set `VITE_RUST_GATEWAY_URL` unless Rust is deployed.
 
 ## Manual test flow
 
@@ -147,12 +184,11 @@ curl -s http://127.0.0.1:8080/api/friends/reject \
   -d '{"friendshipId":"<id>"}'
 ```
 
-## Frontend dev test
+## Frontend dev test (quick)
 
 ```bash
-# frontend/.env.local
-VITE_USE_SYNC_STREAM=true
-VITE_RUST_GATEWAY_URL=http://127.0.0.1:8080
+# frontend/.env.local — auto is enough when Rust is up
+VITE_USE_SYNC_STREAM=auto
 ```
 
 Open two browser profiles → login as A and B → A creates streak → B sees card on Home without refetch.

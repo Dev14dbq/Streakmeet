@@ -17,6 +17,7 @@ import {
 } from '../../lib/api'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { isSyncStreamEnabled } from '../../lib/connect/client'
+import { useSyncModeReady } from '../../hooks/useSyncModeReady'
 import { useSocket } from '../../hooks/useSocket'
 import {
   isLocationSharingActive,
@@ -116,6 +117,8 @@ export default function MapPage() {
   const [locating, setLocating] = useState(false)
 
   const { user: me } = useAuth()
+  const syncReady = useSyncModeReady()
+  const syncStreamActive = syncReady && isSyncStreamEnabled()
 
   const mapDataKey = isNative && me ? SWR_KEYS.locationMe : null
   const friendsDataKey = isNative && me ? SWR_KEYS.friendLocations : null
@@ -240,7 +243,7 @@ export default function MapPage() {
     [upsertFriend, removeFriend]
   )
 
-  useSocket(isNative && !isSyncStreamEnabled(), onLocationEvent)
+  useSocket(isNative && syncReady && !syncStreamActive, onLocationEvent)
 
   useEffect(() => {
     if (!isNative || !mapElRef.current || mapRef.current) return

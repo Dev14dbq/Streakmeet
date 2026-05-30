@@ -6,12 +6,20 @@ import type {
 } from '@streakmeet/api-spec'
 import { getDeviceTimezone } from '../timezone'
 import { api } from './client'
+import { isSyncStreamEnabled } from '../connect/client'
+import { migratedApi } from './migratedClient'
 
 export const checkEmail = (email: string) =>
   api.post<{ exists: boolean }>('/api/auth/check-email', { email })
 
-export const login = (email: string, password: string) =>
-  api.post<AuthResponse>('/api/auth/login', { email, password, timezone: getDeviceTimezone() })
+export const login = (email: string, password: string) => {
+  const client = isSyncStreamEnabled() ? migratedApi() : api
+  return client.post<AuthResponse>('/api/auth/login', {
+    email,
+    password,
+    timezone: getDeviceTimezone(),
+  })
+}
 
 export const restoreAccount = (payload: RestoreAccountPayload) =>
   api.post<AuthResponse>('/api/auth/restore-account', payload)

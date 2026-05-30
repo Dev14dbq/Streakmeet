@@ -1,27 +1,25 @@
 import { createConnectTransport, type ConnectTransportOptions } from '@connectrpc/connect-web'
 import { getAccessToken } from '../../context/AuthContext'
+export { initSyncMode, isSyncModeResolved, isSyncStreamEnabled, onSyncModeReady } from './syncMode'
 
 /** Base URL for Connect/gRPC services (sync-gateway). Vite proxies `/connect` in dev. */
 export function getConnectBaseUrl(): string {
   const configured = import.meta.env.VITE_CONNECT_URL as string | undefined
-  if (configured) return configured.replace(/\/$/, '')
+  if (configured?.trim()) return configured.replace(/\/$/, '')
   return '/connect'
 }
 
-/** Rust REST gateway (optional during migration). Falls back to Vite `/api` proxy → Node. */
+/**
+ * Rust REST gateway base URL. Empty string uses same-origin `/api` (Vite proxy → :8080 in dev).
+ * Set VITE_RUST_GATEWAY_URL for Capacitor native or production gateway host.
+ */
 export function getRustGatewayUrl(): string {
   const configured = import.meta.env.VITE_RUST_GATEWAY_URL as string | undefined
-  if (configured) return configured.replace(/\/$/, '')
-  return 'http://127.0.0.1:8080'
+  if (configured?.trim()) return configured.replace(/\/$/, '')
+  return ''
 }
 
-export function isSyncStreamEnabled(): boolean {
-  return import.meta.env.VITE_USE_SYNC_STREAM === 'true'
-}
-
-export function createSyncTransport(
-  overrides: Partial<ConnectTransportOptions> = {}
-) {
+export function createSyncTransport(overrides: Partial<ConnectTransportOptions> = {}) {
   return createConnectTransport({
     baseUrl: getConnectBaseUrl(),
     interceptors: [

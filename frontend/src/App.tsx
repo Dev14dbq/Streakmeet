@@ -66,7 +66,7 @@ export default function App() {
     useLegalConsent(user, isLoggedIn)
 
   const appActiveRef = useRealtimeSocket(user, bootstrapPhase, navigate)
-  useSyncStream(user, bootstrapPhase)
+  useSyncStream(user, bootstrapPhase, appActiveRef)
   useAppLifecycle(user, appActiveRef)
 
   useEffect(() => {

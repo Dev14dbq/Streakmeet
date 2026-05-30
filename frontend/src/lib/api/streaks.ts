@@ -1,10 +1,16 @@
 import type { MagicMeetResponse, StreakDetail, StreakListItem } from '@streakmeet/api-spec'
 import { api } from './client'
+import { isSyncStreamEnabled } from '../connect/client'
+import { migratedApi } from './migratedClient'
 
-export const getStreaks = () => api.get<StreakListItem[]>('/api/streaks')
+const streaksApi = () => migratedApi()
+
+export const getStreaks = () => streaksApi().get<StreakListItem[]>('/api/streaks')
 export const getStreak = (partnerNickname: string) =>
-  api.get<StreakDetail>(`/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}`)
-export const createStreak = (partnerId: string) => api.post('/api/streaks', { partnerId })
+  streaksApi().get<StreakDetail>(
+    `/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}`
+  )
+export const createStreak = (partnerId: string) => streaksApi().post('/api/streaks', { partnerId })
 export const remindStreak = (partnerNickname: string) =>
   api.post<{ ok: true }>(`/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}/remind`)
 
@@ -21,4 +27,7 @@ export const magicMeet = (payload: {
   photoBase64?: string
   photosBase64?: string[]
   location?: { lat: number; lng: number }
-}) => api.post<MagicMeetResponse>('/api/streaks/magic-meet', payload, { timeout: 120_000 })
+}) => {
+  const client = isSyncStreamEnabled() ? streaksApi() : api
+  return client.post<MagicMeetResponse>('/api/streaks/magic-meet', payload, { timeout: 120_000 })
+}

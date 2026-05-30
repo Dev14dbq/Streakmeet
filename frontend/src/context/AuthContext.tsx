@@ -11,6 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom'
 import type { AuthUser } from '../lib/api'
 import { setUnauthorizedHandler } from '../lib/api'
+import { initSyncMode } from '../lib/connect/client'
 import { bootstrapSession } from '../lib/bootstrapApp'
 import { clearFaceEnrollmentDefer, isFaceEnrollmentDeferred } from '../lib/faceEnrollmentDefer'
 import { stopLocationSharing } from '../lib/locationSharing'
@@ -131,6 +132,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
+    void initSyncMode()
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
     const hasToken = !!localStorage.getItem('accessToken')
 
@@ -145,28 +150,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setBootstrapPhase('loading')
     }
 
-    void bootstrapSession().then((result) => {
-      if (cancelled) return
+    void initSyncMode()
+      .then(() => bootstrapSession())
+      .then((result) => {
+        if (cancelled) return
 
-      if (result.deletedAccount) {
-        setUser(null)
+        if (result.deletedAccount) {
+          setUser(null)
+          setBootstrapPhase('hidden')
+          navigateRef.current('/account-deleted', {
+            replace: true,
+            state: result.deletedAccount,
+          })
+          return
+        }
+
+        setUser(result.user)
         setBootstrapPhase('hidden')
-        navigateRef.current('/account-deleted', {
-          replace: true,
-          state: result.deletedAccount,
-        })
-        return
-      }
 
-      setUser(result.user)
-      setBootstrapPhase('hidden')
-
-      const pending = pendingNavRef.current
-      if (pending && result.user) {
-        pendingNavRef.current = null
-        applyPendingNavigation(pending, result.user)
-      }
-    })
+        const pending = pendingNavRef.current
+        if (pending && result.user) {
+          pendingNavRef.current = null
+          applyPendingNavigation(pending, result.user)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBootstrapPhase('hidden')
+      })
 
     return () => {
       cancelled = true

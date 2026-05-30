@@ -1,9 +1,11 @@
 import type { FriendLocation, MyLocationState } from '@streakmeet/api-spec'
-import { api } from './client'
+import { migratedApi } from './migratedClient'
 
-export const getFriendLocations = () => api.get<FriendLocation[]>('/api/location/friends')
-export const getMyLocation = () => api.get<MyLocationState>('/api/location/me')
+const locationApi = () => migratedApi()
+
+export const getFriendLocations = () => locationApi().get<FriendLocation[]>('/api/location/friends')
+export const getMyLocation = () => locationApi().get<MyLocationState>('/api/location/me')
 export const setLocationSharing = (enabled: boolean) =>
-  api.post<MyLocationState>('/api/location/sharing', { enabled })
+  locationApi().post<MyLocationState>('/api/location/sharing', { enabled })
 export const updateMyLocation = (latitude: number, longitude: number) =>
-  api.post<{ ok: true }>('/api/location/update', { latitude, longitude })
+  locationApi().post<{ ok: true }>('/api/location/update', { latitude, longitude })

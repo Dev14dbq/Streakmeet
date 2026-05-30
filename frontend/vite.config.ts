@@ -4,6 +4,10 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 
+/** Dev: proxy /api to Rust api-gateway (:8080). Set VITE_DEV_RUST_PROXY=false for Node (:3000). */
+const devRustProxy = process.env.VITE_DEV_RUST_PROXY !== 'false'
+const apiProxyTarget = devRustProxy ? 'http://127.0.0.1:8080' : 'http://127.0.0.1:3000'
+
 // https://vite.dev/config/
 export default defineConfig({
   server: {
@@ -14,14 +18,13 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3000',
+        target: apiProxyTarget,
         changeOrigin: true,
         timeout: 180_000,
       },
       '/connect': {
         target: 'http://127.0.0.1:8081',
         changeOrigin: true,
-        // Connect/gRPC streaming to Rust sync-gateway
       },
       '/uploads': {
         target: 'http://127.0.0.1:3000',
