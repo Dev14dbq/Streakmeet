@@ -76,6 +76,7 @@ impl SocialService for SocialGrpc {
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn user_id_from_metadata(metadata: &tonic::metadata::MetadataMap) -> Result<String, Status> {
     let token = metadata
         .get("authorization")

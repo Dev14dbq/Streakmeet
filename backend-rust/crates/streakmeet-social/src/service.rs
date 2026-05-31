@@ -1,8 +1,10 @@
 use prost::Message;
 use sqlx::PgPool;
 use streakmeet_proto::{FriendListItem, FriendshipRecord, ListFriendsResponse};
-use streakmeet_sync::{enqueue_outbox, friend_event_envelope, friend_list_item_proto, OutboxPublisher};
-use streakmeet_types::{codes, ApiError};
+use streakmeet_sync::{
+    OutboxPublisher, enqueue_outbox, friend_event_envelope, friend_list_item_proto,
+};
+use streakmeet_types::{ApiError, codes};
 
 use crate::models::{FriendListItemJson, FriendshipRecordJson, UserSummaryJson};
 
@@ -101,7 +103,10 @@ async fn publish_envelopes(
     Ok(())
 }
 
-pub async fn list_friends(pool: &PgPool, user_id: &str) -> Result<Vec<FriendListItemJson>, ApiError> {
+pub async fn list_friends(
+    pool: &PgPool,
+    user_id: &str,
+) -> Result<Vec<FriendListItemJson>, ApiError> {
     let rows = sqlx::query_as::<_, FriendshipWithUsersRow>(
         r#"
         SELECT
@@ -134,9 +139,9 @@ pub async fn request_friend(
     user_id: &str,
     friend_id: Option<&str>,
 ) -> Result<FriendshipRecordJson, ApiError> {
-    let friend_id = friend_id.filter(|s| !s.trim().is_empty()).ok_or_else(|| {
-        ApiError::new(400, codes::MISSING_FIELD, None)
-    })?;
+    let friend_id = friend_id
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| ApiError::new(400, codes::MISSING_FIELD, None))?;
 
     if user_id == friend_id {
         return Err(ApiError::new(400, codes::CANNOT_ADD_SELF, None));
@@ -171,7 +176,10 @@ pub async fn request_friend(
         return Err(ApiError::new(400, codes::FRIENDSHIP_EXISTS, None));
     }
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let created = sqlx::query_as::<_, FriendshipRow>(
         r#"
@@ -208,8 +216,11 @@ pub async fn request_friend(
     .await
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
-    let envelopes = enqueue_friend_events(&mut tx, user_id, &with_users, "friends.requested").await?;
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let envelopes =
+        enqueue_friend_events(&mut tx, user_id, &with_users, "friends.requested").await?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     publish_envelopes(publisher, &with_users, envelopes).await?;
 
@@ -227,9 +238,9 @@ pub async fn accept_friend(
     user_id: &str,
     friendship_id: Option<&str>,
 ) -> Result<FriendshipRecordJson, ApiError> {
-    let friendship_id = friendship_id.filter(|s| !s.trim().is_empty()).ok_or_else(|| {
-        ApiError::new(400, codes::MISSING_FIELD, None)
-    })?;
+    let friendship_id = friendship_id
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| ApiError::new(400, codes::MISSING_FIELD, None))?;
 
     let friendship = sqlx::query_as::<_, FriendshipRow>(
         r#"
@@ -250,7 +261,10 @@ pub async fn accept_friend(
         return Err(ApiError::new(400, codes::FRIENDSHIP_NOT_PENDING, None));
     }
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let updated = sqlx::query_as::<_, FriendshipRow>(
         r#"
@@ -286,8 +300,11 @@ pub async fn accept_friend(
     .await
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
-    let envelopes = enqueue_friend_events(&mut tx, user_id, &with_users, "friends.accepted").await?;
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let envelopes =
+        enqueue_friend_events(&mut tx, user_id, &with_users, "friends.accepted").await?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     publish_envelopes(publisher, &with_users, envelopes).await?;
 
@@ -299,10 +316,13 @@ pub async fn accept_friend(
     })
 }
 
-pub async fn list_friends_proto(pool: &PgPool, user_id: &str) -> Result<ListFriendsResponse, ApiError> {
+pub async fn list_friends_proto(
+    pool: &PgPool,
+    user_id: &str,
+) -> Result<ListFriendsResponse, ApiError> {
     let friends = list_friends(pool, user_id).await?;
     Ok(ListFriendsResponse {
-        friends: friends.iter().map(|f| to_proto_item(f)).collect(),
+        friends: friends.iter().map(to_proto_item).collect(),
     })
 }
 
@@ -313,9 +333,9 @@ pub async fn reject_friend(
     user_id: &str,
     friendship_id: Option<&str>,
 ) -> Result<FriendshipRecordJson, ApiError> {
-    let friendship_id = friendship_id.filter(|s| !s.trim().is_empty()).ok_or_else(|| {
-        ApiError::new(400, codes::MISSING_FIELD, None)
-    })?;
+    let friendship_id = friendship_id
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| ApiError::new(400, codes::MISSING_FIELD, None))?;
 
     let with_users = sqlx::query_as::<_, FriendshipWithUsersRow>(
         r#"
@@ -344,7 +364,10 @@ pub async fn reject_friend(
         return Err(ApiError::new(404, codes::FRIENDSHIP_NOT_FOUND, None));
     }
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     sqlx::query(r#"DELETE FROM friendships WHERE id = $1"#)
         .bind(friendship_id)
@@ -352,8 +375,11 @@ pub async fn reject_friend(
         .await
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
-    let envelopes = enqueue_friend_events(&mut tx, user_id, &with_users, "friends.rejected").await?;
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let envelopes =
+        enqueue_friend_events(&mut tx, user_id, &with_users, "friends.rejected").await?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     publish_envelopes(publisher, &with_users, envelopes).await?;
 
@@ -372,9 +398,9 @@ pub async fn cancel_friend(
     user_id: &str,
     friendship_id: Option<&str>,
 ) -> Result<FriendshipRecordJson, ApiError> {
-    let friendship_id = friendship_id.filter(|s| !s.trim().is_empty()).ok_or_else(|| {
-        ApiError::new(400, codes::MISSING_FIELD, None)
-    })?;
+    let friendship_id = friendship_id
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| ApiError::new(400, codes::MISSING_FIELD, None))?;
 
     let with_users = sqlx::query_as::<_, FriendshipWithUsersRow>(
         r#"
@@ -403,7 +429,10 @@ pub async fn cancel_friend(
         return Err(ApiError::new(404, codes::FRIENDSHIP_NOT_FOUND, None));
     }
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     sqlx::query(r#"DELETE FROM friendships WHERE id = $1"#)
         .bind(friendship_id)
@@ -411,8 +440,11 @@ pub async fn cancel_friend(
         .await
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
-    let envelopes = enqueue_friend_events(&mut tx, user_id, &with_users, "friends.cancelled").await?;
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let envelopes =
+        enqueue_friend_events(&mut tx, user_id, &with_users, "friends.cancelled").await?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     publish_envelopes(publisher, &with_users, envelopes).await?;
 
@@ -461,7 +493,10 @@ pub async fn remove_friend(
         return Err(ApiError::new(400, codes::FRIENDSHIP_NOT_PENDING, None));
     }
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     sqlx::query(r#"DELETE FROM friendships WHERE id = $1"#)
         .bind(friendship_id)
@@ -470,7 +505,9 @@ pub async fn remove_friend(
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let envelopes = enqueue_friend_events(&mut tx, user_id, &with_users, "friends.removed").await?;
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     publish_envelopes(publisher, &with_users, envelopes).await?;
 

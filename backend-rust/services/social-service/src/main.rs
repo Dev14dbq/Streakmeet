@@ -2,7 +2,7 @@ mod grpc;
 
 use streakmeet_nats::connect_from_env;
 use streakmeet_proto::social_service_server::SocialServiceServer;
-use streakmeet_sync::{run_outbox_worker, OutboxPublisher};
+use streakmeet_sync::{OutboxPublisher, run_outbox_worker};
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 
@@ -23,10 +23,7 @@ async fn main() -> anyhow::Result<()> {
         .parse()?;
     let addr = format!("0.0.0.0:{port}").parse()?;
 
-    let svc = SocialServiceServer::new(grpc::SocialGrpc {
-        pool,
-        publisher,
-    });
+    let svc = SocialServiceServer::new(grpc::SocialGrpc { pool, publisher });
 
     tracing::info!(%port, "social-service listening");
     Server::builder().add_service(svc).serve(addr).await?;

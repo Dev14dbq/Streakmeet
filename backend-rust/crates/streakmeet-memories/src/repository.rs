@@ -3,7 +3,7 @@
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use streakmeet_streaks::partner_of;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct MeetProofRow {
@@ -214,7 +214,18 @@ pub async fn load_partner_by_streak_id(
     streak_id: Option<&str>,
 ) -> Result<std::collections::HashMap<String, MemoryPartner>, ApiError> {
     let rows = if let Some(streak_id) = streak_id {
-        sqlx::query_as::<_, (String, String, String, String, Option<String>, String, Option<String>)>(
+        sqlx::query_as::<
+            _,
+            (
+                String,
+                String,
+                String,
+                String,
+                Option<String>,
+                String,
+                Option<String>,
+            ),
+        >(
             r#"
             SELECT
                 s.id,
@@ -236,7 +247,18 @@ pub async fn load_partner_by_streak_id(
         .fetch_all(pool)
         .await
     } else {
-        sqlx::query_as::<_, (String, String, String, String, Option<String>, String, Option<String>)>(
+        sqlx::query_as::<
+            _,
+            (
+                String,
+                String,
+                String,
+                String,
+                Option<String>,
+                String,
+                Option<String>,
+            ),
+        >(
             r#"
             SELECT
                 s.id,

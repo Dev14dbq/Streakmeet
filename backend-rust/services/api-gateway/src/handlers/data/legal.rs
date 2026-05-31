@@ -1,13 +1,13 @@
 use axum::{
-    extract::{Query, State},
-    http::{header, HeaderMap},
     Json,
+    extract::{Query, State},
+    http::{HeaderMap, header},
 };
 use serde::Deserialize;
 
-use crate::auth::AuthUser;
-use crate::routes::api_error_response;
 use crate::AppState;
+use crate::handlers::auth::routes::api_error_response;
+use crate::middleware::auth::AuthUser;
 
 #[derive(Debug, Deserialize)]
 pub struct LegalLocaleQuery {
@@ -17,7 +17,10 @@ pub struct LegalLocaleQuery {
 pub async fn legal_status_handler(
     State(state): State<AppState>,
     auth: AuthUser,
-) -> Result<Json<streakmeet_legal::LegalStatusResponse>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<
+    Json<streakmeet_legal::LegalStatusResponse>,
+    (axum::http::StatusCode, Json<serde_json::Value>),
+> {
     match streakmeet_legal::get_legal_status_for_user(&state.pool, &auth.user_id).await {
         Ok(Some(status)) => Ok(Json(status)),
         Ok(None) => Err(api_error_response(streakmeet_types::ApiError::new(
@@ -48,7 +51,10 @@ pub async fn legal_document_handler(
     headers: HeaderMap,
     Query(query): Query<LegalLocaleQuery>,
     axum::extract::Path(slug): axum::extract::Path<String>,
-) -> Result<Json<streakmeet_legal::LegalDocumentJson>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<
+    Json<streakmeet_legal::LegalDocumentJson>,
+    (axum::http::StatusCode, Json<serde_json::Value>),
+> {
     let Some(legal_slug) = streakmeet_legal::LegalSlug::from_param(&slug) else {
         return Err(api_error_response(streakmeet_types::ApiError::new(
             404,

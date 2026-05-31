@@ -1,10 +1,9 @@
 //! Account helpers — parity with `backend/src/common/account.ts`.
 
-use chrono::{DateTime, Utc};
 use sqlx::PgPool;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::models::{is_retention_expired, UserRow};
+use crate::models::{UserRow, is_retention_expired};
 
 pub const USER_PROFILE_SELECT: &str = r#"
     id, email, "passwordHash", nickname, "qrCodeId", "gemsBalance",
@@ -51,12 +50,11 @@ pub async fn load_full_user(pool: &PgPool, user_id: &str) -> Result<Option<UserR
 }
 
 pub async fn accept_current_legal_for_user(pool: &PgPool, user_id: &str) -> Result<(), ApiError> {
-    let rows: Vec<(String, i32)> = sqlx::query_as(
-        r#"SELECT slug::text, version FROM legal_documents"#,
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let rows: Vec<(String, i32)> =
+        sqlx::query_as(r#"SELECT slug::text, version FROM legal_documents"#)
+            .fetch_all(pool)
+            .await
+            .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let terms = rows
         .iter()
@@ -85,10 +83,7 @@ pub async fn accept_current_legal_for_user(pool: &PgPool, user_id: &str) -> Resu
     Ok(())
 }
 
-pub async fn handle_deleted_email_conflict(
-    pool: &PgPool,
-    user: &UserRow,
-) -> Result<(), ApiError> {
+pub async fn handle_deleted_email_conflict(pool: &PgPool, user: &UserRow) -> Result<(), ApiError> {
     let Some(deleted_at) = user.deleted_at else {
         return Err(ApiError::new(409, codes::EMAIL_ALREADY_IN_USE, None));
     };
@@ -128,7 +123,13 @@ pub fn safe_nickname(email: &str) -> String {
         .unwrap_or("user")
         .to_lowercase()
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .take(20)
         .collect()
 }

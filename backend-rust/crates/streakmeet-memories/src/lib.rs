@@ -4,5 +4,7 @@ mod feed;
 mod milestones;
 mod repository;
 
-pub use feed::{get_memories_feed, MemoriesFeedResponse, MEMORIES_MILESTONE_DAYS, MEMORIES_UNLOCK_DAYS};
+pub use feed::{
+    MEMORIES_MILESTONE_DAYS, MEMORIES_UNLOCK_DAYS, MemoriesFeedResponse, get_memories_feed,
+};
 pub use repository::list_for_user;

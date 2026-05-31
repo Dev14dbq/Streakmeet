@@ -5,11 +5,11 @@ use prost::Message;
 use serde::Serialize;
 use sqlx::PgPool;
 use streakmeet_sync::{
-    enqueue_outbox, streak_meet_envelope, streak_photo_added_envelope, OutboxPublisher,
+    OutboxPublisher, enqueue_outbox, streak_meet_envelope, streak_photo_added_envelope,
 };
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::calendar::get_local_date_string;
+use crate::core::calendar::get_local_date_string;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,7 +34,6 @@ pub struct RecordMeetInput<'a> {
 
 #[derive(Debug, sqlx::FromRow)]
 struct StreakMetaRow {
-    id: String,
     last_met_date: Option<String>,
     user_a_id: String,
     user_b_id: String,
@@ -55,7 +54,6 @@ async fn load_streak_row(pool: &PgPool, streak_id: &str) -> Result<StreakMetaRow
     sqlx::query_as::<_, StreakMetaRow>(
         r#"
         SELECT
-            s.id,
             s."lastMetDate" AS last_met_date,
             s."userAId" AS user_a_id,
             s."userBId" AS user_b_id,
@@ -78,7 +76,10 @@ async fn load_streak_row(pool: &PgPool, streak_id: &str) -> Result<StreakMetaRow
     .ok_or_else(|| ApiError::new(404, codes::STREAK_NOT_FOUND, None))
 }
 
-fn partner_for_viewer<'a>(row: &'a StreakMetaRow, viewer_id: &str) -> (&'a str, &'a str, Option<&'a str>) {
+fn partner_for_viewer<'a>(
+    row: &'a StreakMetaRow,
+    viewer_id: &str,
+) -> (&'a str, &'a str, Option<&'a str>) {
     if row.user_a_id == viewer_id {
         (
             &row.user_b_id,
@@ -138,7 +139,10 @@ pub async fn record_meet_for_streak(
 
     let extended = streak.last_met_date.as_deref() != Some(input.calendar_date);
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let streak_day_id = if let Some(day) = streak_day.take() {
         day.id
@@ -158,7 +162,11 @@ pub async fn record_meet_for_streak(
         created.id
     };
 
-    let new_count = if extended { streak.count + 1 } else { streak.count };
+    let new_count = if extended {
+        streak.count + 1
+    } else {
+        streak.count
+    };
     let new_last_met = if extended {
         Some(input.calendar_date.to_string())
     } else {
@@ -241,19 +249,15 @@ pub async fn record_meet_for_streak(
             )
         };
         let bytes = streakmeet_proto::SyncEnvelope::encode_to_vec(&envelope);
-        enqueue_outbox(
-            &mut tx,
-            viewer_id,
-            event_type,
-            &envelope.event_id,
-            &bytes,
-        )
-        .await
-        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+        enqueue_outbox(&mut tx, viewer_id, event_type, &envelope.event_id, &bytes)
+            .await
+            .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
         envelopes.push((viewer_id.clone(), envelope, event_type));
     }
 
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     for (viewer_id, envelope, _) in envelopes {
         if let Err(err) = publisher.publish_inline(&viewer_id, &envelope).await {
@@ -269,6 +273,7 @@ pub async fn record_meet_for_streak(
 }
 
 /// Record a meet for an active streak (simple upload stub for magic-meet path).
+#[allow(clippy::too_many_arguments)]
 pub async fn record_meet_upload(
     pool: &PgPool,
     publisher: &OutboxPublisher,
@@ -287,10 +292,11 @@ pub async fn record_meet_upload(
     let photo_url = if let Some(url) = photo_url.filter(|u| !u.is_empty()) {
         url.to_string()
     } else {
-        let photo_base64 = photo_base64.filter(|s| !s.is_empty()).ok_or_else(|| {
-            ApiError::new(400, codes::MAGIC_MEET_PHOTO_REQUIRED, None)
-        })?;
+        let photo_base64 = photo_base64
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| ApiError::new(400, codes::MAGIC_MEET_PHOTO_REQUIRED, None))?;
         streakmeet_media::save_base64_image_as_avif(
+            pool,
             photo_base64,
             &format!("{}_{user_id}", Utc::now().timestamp_millis()),
         )

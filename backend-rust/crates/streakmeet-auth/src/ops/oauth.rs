@@ -3,15 +3,13 @@
 use reqwest::Client;
 use serde::Deserialize;
 use sqlx::PgPool;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::account::{
-    assert_not_deleted_account, load_full_user, restore_deleted_user, USER_PROFILE_SELECT,
-};
-use crate::credentials::find_or_create_oauth_user;
-use crate::models::{is_retention_expired, AuthResponseJson, UserRow};
-use crate::token::build_auth_response;
 use crate::AuthConfig;
+use crate::models::{AuthResponseJson, is_retention_expired};
+use crate::ops::account::{assert_not_deleted_account, load_full_user, restore_deleted_user};
+use crate::ops::credentials::find_or_create_oauth_user;
+use crate::token::build_auth_response;
 
 struct GoogleProfile {
     email: String,
@@ -32,14 +30,8 @@ async fn resolve_google_profile(
     let client = Client::new();
 
     if let Some(id_token) = id_token {
-        let url = format!(
-            "https://oauth2.googleapis.com/tokeninfo?id_token={id_token}"
-        );
-        let resp = client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|_| oauth_invalid())?;
+        let url = format!("https://oauth2.googleapis.com/tokeninfo?id_token={id_token}");
+        let resp = client.get(&url).send().await.map_err(|_| oauth_invalid())?;
 
         if !resp.status().is_success() {
             return Err(oauth_invalid());
@@ -52,16 +44,13 @@ async fn resolve_google_profile(
             aud: Option<String>,
         }
 
-        let info: TokenInfo = resp
-            .json()
-            .await
-            .map_err(|_| oauth_invalid())?;
+        let info: TokenInfo = resp.json().await.map_err(|_| oauth_invalid())?;
 
         if info.aud.as_deref() != Some(client_id.as_str()) {
             return Err(oauth_invalid());
         }
 
-        let email = info.email.ok_or_else(|| oauth_invalid())?;
+        let email = info.email.ok_or_else(oauth_invalid)?;
         return Ok(GoogleProfile {
             email,
             name: info.name,
@@ -87,7 +76,7 @@ async fn resolve_google_profile(
     }
 
     let info: UserInfo = resp.json().await.map_err(|_| oauth_invalid())?;
-    let email = info.email.ok_or_else(|| oauth_invalid())?;
+    let email = info.email.ok_or_else(oauth_invalid)?;
     Ok(GoogleProfile {
         email,
         name: info.name,
@@ -117,13 +106,13 @@ struct AppleClaims {
 }
 
 async fn verify_apple_id_token(id_token: &str) -> Result<AppleClaims, ApiError> {
-    use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+    use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode, decode_header};
 
     let client_id = std::env::var("APPLE_CLIENT_ID")
         .map_err(|_| ApiError::new(503, codes::OAUTH_NOT_CONFIGURED, None))?;
 
     let header = decode_header(id_token).map_err(|_| oauth_invalid())?;
-    let kid = header.kid.ok_or_else(|| oauth_invalid())?;
+    let kid = header.kid.ok_or_else(oauth_invalid)?;
 
     let client = Client::new();
     let keys: AppleKeysResponse = client
@@ -139,7 +128,7 @@ async fn verify_apple_id_token(id_token: &str) -> Result<AppleClaims, ApiError> 
         .keys
         .into_iter()
         .find(|k| k.kid == kid && k.kty == "RSA")
-        .ok_or_else(|| oauth_invalid())?;
+        .ok_or_else(oauth_invalid)?;
 
     let decoding_key =
         DecodingKey::from_rsa_components(&key.n, &key.e).map_err(|_| oauth_invalid())?;
@@ -148,8 +137,8 @@ async fn verify_apple_id_token(id_token: &str) -> Result<AppleClaims, ApiError> 
     validation.set_audience(&[client_id.as_str()]);
     validation.set_issuer(&["https://appleid.apple.com"]);
 
-    let data = decode::<AppleClaims>(id_token, &decoding_key, &validation)
-        .map_err(|_| oauth_invalid())?;
+    let data =
+        decode::<AppleClaims>(id_token, &decoding_key, &validation).map_err(|_| oauth_invalid())?;
 
     Ok(data.claims)
 }
@@ -187,15 +176,12 @@ pub async fn google_login(
     let profile = resolve_google_profile(access_token, id_token).await;
     match profile {
         Ok(p) => {
-            run_oauth_login(
-                pool,
-                config,
-                async move { Ok((p.email, p.name)) },
-                timezone,
-            )
-            .await
+            run_oauth_login(pool, config, async move { Ok((p.email, p.name)) }, timezone).await
         }
-        Err(e) if e.body.code == codes::OAUTH_NOT_CONFIGURED || e.body.code == codes::MISSING_FIELD => {
+        Err(e)
+            if e.body.code == codes::OAUTH_NOT_CONFIGURED
+                || e.body.code == codes::MISSING_FIELD =>
+        {
             Err(e)
         }
         Err(_) => Err(oauth_invalid()),
@@ -208,9 +194,9 @@ pub async fn apple_login(
     id_token: Option<&str>,
     timezone: Option<&str>,
 ) -> Result<AuthResponseJson, ApiError> {
-    let id_token = id_token.filter(|s| !s.is_empty()).ok_or_else(|| {
-        ApiError::new(400, codes::MISSING_FIELD, None)
-    })?;
+    let id_token = id_token
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| ApiError::new(400, codes::MISSING_FIELD, None))?;
 
     if std::env::var("APPLE_CLIENT_ID").is_err() {
         return Err(ApiError::new(503, codes::OAUTH_NOT_CONFIGURED, None));

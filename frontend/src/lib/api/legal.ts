@@ -8,7 +8,8 @@ export const getLegalDocument = (slug: 'terms' | 'privacy', locale?: string) =>
     params: locale ? { locale } : undefined,
   })
 
-export const getLegalConsentStatus = () => legalApi().get<LegalConsentStatus>('/api/legal/status/me')
+export const getLegalConsentStatus = () =>
+  legalApi().get<LegalConsentStatus>('/api/legal/status/me')
 
 export const acceptLegalDocuments = () =>
   legalApi().post<{ ok: true; terms: number; privacy: number }>('/api/legal/accept')

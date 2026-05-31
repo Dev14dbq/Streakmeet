@@ -27,9 +27,9 @@ export default function VerifyEmailPage({ user, onLogout, onUserUpdate }: Props)
     void migratedApi()
       .get<AuthUser>(SWR_KEYS.me)
       .then(({ data }) => {
-      onUserUpdate(data)
-      localStorage.setItem('user', JSON.stringify(data))
-    })
+        onUserUpdate(data)
+        localStorage.setItem('user', JSON.stringify(data))
+      })
   }, [verified, onUserUpdate])
 
   async function handleResend() {

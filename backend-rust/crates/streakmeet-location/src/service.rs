@@ -1,10 +1,9 @@
-use chrono::Utc;
 use prost::Message;
 use sqlx::PgPool;
 use streakmeet_sync::{
-    enqueue_outbox, location_removed_envelope, location_updated_envelope, OutboxPublisher,
+    OutboxPublisher, enqueue_outbox, location_removed_envelope, location_updated_envelope,
 };
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
 use crate::models::{FriendLocationJson, MyLocationJson};
 
@@ -89,7 +88,10 @@ async fn publish_to_friends(
     }
 }
 
-fn location_envelope_from_user(user: &UserLocationRow, actor_id: &str) -> streakmeet_proto::SyncEnvelope {
+fn location_envelope_from_user(
+    user: &UserLocationRow,
+    actor_id: &str,
+) -> streakmeet_proto::SyncEnvelope {
     location_updated_envelope(
         actor_id,
         &user.id,
@@ -176,7 +178,10 @@ pub async fn set_location_sharing(
 ) -> Result<MyLocationJson, ApiError> {
     let enabled = enabled.ok_or_else(|| ApiError::new(400, codes::INVALID_BOOLEAN, None))?;
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let user = if enabled {
         sqlx::query_as::<_, UserLocationRow>(
@@ -222,16 +227,32 @@ pub async fn set_location_sharing(
 
     if !enabled {
         let envelope = location_removed_envelope(user_id, user_id);
-        envelopes = enqueue_location_to_friends(&mut tx, user_id, &friend_ids, "location.sharing_off", envelope).await?;
+        envelopes = enqueue_location_to_friends(
+            &mut tx,
+            user_id,
+            &friend_ids,
+            "location.sharing_off",
+            envelope,
+        )
+        .await?;
     } else if user.last_latitude.is_some()
         && user.last_longitude.is_some()
         && user.last_location_at.is_some()
     {
         let envelope = location_envelope_from_user(&user, user_id);
-        envelopes = enqueue_location_to_friends(&mut tx, user_id, &friend_ids, "location.sharing_on", envelope).await?;
+        envelopes = enqueue_location_to_friends(
+            &mut tx,
+            user_id,
+            &friend_ids,
+            "location.sharing_on",
+            envelope,
+        )
+        .await?;
     }
 
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
     publish_to_friends(publisher, &friend_ids, envelopes).await;
 
     Ok(me_payload(&user))
@@ -245,7 +266,12 @@ pub async fn update_location(
     longitude: Option<f64>,
 ) -> Result<serde_json::Value, ApiError> {
     let (latitude, longitude) = match (latitude, longitude) {
-        (Some(lat), Some(lng)) if lat.is_finite() && lng.is_finite() && (-90.0..=90.0).contains(&lat) && (-180.0..=180.0).contains(&lng) => {
+        (Some(lat), Some(lng))
+            if lat.is_finite()
+                && lng.is_finite()
+                && (-90.0..=90.0).contains(&lat)
+                && (-180.0..=180.0).contains(&lng) =>
+        {
             (lat, lng)
         }
         _ => return Err(ApiError::new(400, codes::INVALID_COORDINATES, None)),
@@ -272,7 +298,10 @@ pub async fn update_location(
         return Err(ApiError::new(409, codes::LOCATION_SHARING_DISABLED, None));
     }
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let user = sqlx::query_as::<_, UserLocationRow>(
         r#"
@@ -298,9 +327,13 @@ pub async fn update_location(
 
     let friend_ids = get_accepted_friend_ids(pool, user_id).await?;
     let envelope = location_envelope_from_user(&user, user_id);
-    let envelopes = enqueue_location_to_friends(&mut tx, user_id, &friend_ids, "location.updated", envelope).await?;
+    let envelopes =
+        enqueue_location_to_friends(&mut tx, user_id, &friend_ids, "location.updated", envelope)
+            .await?;
 
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
     publish_to_friends(publisher, &friend_ids, envelopes).await;
 
     Ok(serde_json::json!({

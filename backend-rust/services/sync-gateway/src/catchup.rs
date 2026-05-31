@@ -101,7 +101,10 @@ async fn load_catchup_outbox(
         .collect())
 }
 
-fn merge_deduped(mut primary: Vec<SyncEnvelope>, supplemental: Vec<SyncEnvelope>) -> Vec<SyncEnvelope> {
+fn merge_deduped(
+    mut primary: Vec<SyncEnvelope>,
+    supplemental: Vec<SyncEnvelope>,
+) -> Vec<SyncEnvelope> {
     let mut seen: HashSet<String> = primary.iter().map(|e| e.event_id.clone()).collect();
     for envelope in supplemental {
         if seen.insert(envelope.event_id.clone()) {

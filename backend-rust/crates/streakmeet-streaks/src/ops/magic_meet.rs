@@ -4,15 +4,15 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use streakmeet_face::{
-    best_face_match_in_gallery, collect_face_candidates, ensure_face_service,
-    face_error_from_exception, face_match_threshold_partner, face_match_threshold_self,
-    is_valid_embedding, pick_best_frame, FaceCandidate, CURRENT_FACE_MODEL, MAGIC_MEET_MAX_FRAMES,
+    CURRENT_FACE_MODEL, FaceCandidate, MAGIC_MEET_MAX_FRAMES, best_face_match_in_gallery,
+    collect_face_candidates, ensure_face_service, face_error_from_exception,
+    face_match_threshold_partner, face_match_threshold_self, is_valid_embedding, pick_best_frame,
 };
 use streakmeet_sync::OutboxPublisher;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::calendar::instant_meet_streak_day;
-use crate::meet::{record_meet_for_streak, RecordMeetInput};
+use crate::core::calendar::instant_meet_streak_day;
+use crate::ops::meet::{RecordMeetInput, record_meet_for_streak};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,22 +71,21 @@ struct EmbeddingRow {
 
 struct MatchedEntry {
     streak: ActiveStreakRow,
-    partner_id: String,
     partner_nickname: String,
     partner_avatar_url: Option<String>,
     match_sim: f64,
 }
 
 pub fn normalize_photos(input: &MagicMeetInput) -> Vec<String> {
-    if let Some(photos) = &input.photos_base64 {
-        if !photos.is_empty() {
-            return photos.iter().take(MAGIC_MEET_MAX_FRAMES).cloned().collect();
-        }
+    if let Some(photos) = &input.photos_base64
+        && !photos.is_empty()
+    {
+        return photos.iter().take(MAGIC_MEET_MAX_FRAMES).cloned().collect();
     }
-    if let Some(photo) = &input.photo_base64 {
-        if !photo.is_empty() {
-            return vec![photo.clone()];
-        }
+    if let Some(photo) = &input.photo_base64
+        && !photo.is_empty()
+    {
+        return vec![photo.clone()];
     }
     vec![]
 }
@@ -144,7 +143,10 @@ async fn load_partner_gallery(pool: &PgPool, partner_id: &str) -> Option<Vec<Vec
     }
 }
 
-async fn load_active_streaks(pool: &PgPool, user_id: &str) -> Result<Vec<ActiveStreakRow>, ApiError> {
+async fn load_active_streaks(
+    pool: &PgPool,
+    user_id: &str,
+) -> Result<Vec<ActiveStreakRow>, ApiError> {
     sqlx::query_as::<_, ActiveStreakRow>(
         r#"
         SELECT
@@ -186,23 +188,22 @@ fn match_partners(
 
     let mut matched = Vec::new();
     for streak in streaks {
-        let (partner_id, partner_nickname, partner_avatar, face_enrolled) = if streak.user_a_id
-            == user_id
-        {
-            (
-                streak.user_b_id.clone(),
-                streak.user_b_nickname.clone(),
-                streak.user_b_avatar_url.clone(),
-                streak.user_b_face_enrolled,
-            )
-        } else {
-            (
-                streak.user_a_id.clone(),
-                streak.user_a_nickname.clone(),
-                streak.user_a_avatar_url.clone(),
-                streak.user_a_face_enrolled,
-            )
-        };
+        let (partner_id, partner_nickname, partner_avatar, face_enrolled) =
+            if streak.user_a_id == user_id {
+                (
+                    streak.user_b_id.clone(),
+                    streak.user_b_nickname.clone(),
+                    streak.user_b_avatar_url.clone(),
+                    streak.user_b_face_enrolled,
+                )
+            } else {
+                (
+                    streak.user_a_id.clone(),
+                    streak.user_a_nickname.clone(),
+                    streak.user_a_avatar_url.clone(),
+                    streak.user_a_face_enrolled,
+                )
+            };
 
         if !face_enrolled {
             continue;
@@ -230,7 +231,6 @@ fn match_partners(
         tracing::debug!(partner = %partner_nickname, sim = m.sim, "magic-meet partner matched");
         matched.push(MatchedEntry {
             streak: streak.clone(),
-            partner_id,
             partner_nickname,
             partner_avatar_url: partner_avatar,
             match_sim: m.sim,
@@ -239,6 +239,7 @@ fn match_partners(
     matched
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn persist_matches(
     pool: &PgPool,
     publisher: &OutboxPublisher,
@@ -249,7 +250,14 @@ async fn persist_matches(
     user_id: &str,
     pool_faces: &[FaceCandidate],
     self_sim: f64,
-) -> Result<(Vec<MagicMeetPartnerJson>, Vec<MagicMeetPartnerJson>, Vec<String>), ApiError> {
+) -> Result<
+    (
+        Vec<MagicMeetPartnerJson>,
+        Vec<MagicMeetPartnerJson>,
+        Vec<String>,
+    ),
+    ApiError,
+> {
     let mut extended = Vec::new();
     let mut added = Vec::new();
     let mut skipped_duplicates = Vec::new();
@@ -260,6 +268,7 @@ async fn persist_matches(
         if saved_photo_url.is_none() {
             saved_photo_url = Some(
                 streakmeet_media::save_base64_image_as_avif(
+                    pool,
                     best_photo_base64,
                     &format!("{}_{user_id}", Utc::now().timestamp_millis()),
                 )
@@ -345,7 +354,11 @@ pub async fn process_magic_meet(
     let pool_embeddings: Vec<Vec<f64>> = pool_faces.iter().map(|c| c.embedding.clone()).collect();
     let self_match = best_face_match_in_gallery(&pool_embeddings, &my_gallery);
     if self_match.sim < face_match_threshold_self() {
-        return Err(ApiError::new(400, codes::MAGIC_MEET_USER_NOT_ON_PHOTO, None));
+        return Err(ApiError::new(
+            400,
+            codes::MAGIC_MEET_USER_NOT_ON_PHOTO,
+            None,
+        ));
     }
 
     let my_face_idx = self_match.face_index as usize;
@@ -375,7 +388,13 @@ pub async fn process_magic_meet(
         }
     }
 
-    let matched = match_partners(user_id, &pool_faces, my_face_idx, &active_streaks, &partner_galleries);
+    let matched = match_partners(
+        user_id,
+        &pool_faces,
+        my_face_idx,
+        &active_streaks,
+        &partner_galleries,
+    );
 
     let (extended, added, skipped_duplicates) = persist_matches(
         pool,
@@ -399,7 +418,11 @@ pub async fn process_magic_meet(
             } else {
                 "Это фото уже было добавлено".to_string()
             };
-            return Err(ApiError::new(400, codes::MAGIC_MEET_DUPLICATE_PHOTO, Some(&msg)));
+            return Err(ApiError::new(
+                400,
+                codes::MAGIC_MEET_DUPLICATE_PHOTO,
+                Some(&msg),
+            ));
         }
         return Err(ApiError::new(400, codes::MAGIC_MEET_NO_MATCH, None));
     }

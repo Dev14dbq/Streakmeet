@@ -1,11 +1,15 @@
 use axum::{
     body::Body,
-    http::{header, StatusCode},
+    extract::{Path, State},
+    http::{StatusCode, header},
     response::Response,
 };
 
+use crate::AppState;
+
 pub async fn serve_upload_handler(
-    axum::extract::Path(filename): axum::extract::Path<String>,
+    State(state): State<AppState>,
+    Path(filename): Path<String>,
 ) -> Result<Response, StatusCode> {
     if filename.is_empty() || filename.contains("..") {
         return Err(StatusCode::BAD_REQUEST);
@@ -16,7 +20,7 @@ pub async fn serve_upload_handler(
         return Err(StatusCode::BAD_REQUEST);
     }
 
-    let object = streakmeet_media::get_object_bytes(&relative_url)
+    let object = streakmeet_media::get_object_bytes(&state.pool, &relative_url)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -26,7 +30,7 @@ pub async fn serve_upload_handler(
 
     Response::builder()
         .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "image/avif")
+        .header(header::CONTENT_TYPE, object.content_type)
         .header(header::CACHE_CONTROL, "public, max-age=31536000, immutable")
         .header(header::CONTENT_LENGTH, object.content_length.to_string())
         .body(Body::from(object.bytes))

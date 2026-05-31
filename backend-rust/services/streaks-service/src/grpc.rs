@@ -26,6 +26,7 @@ fn map_error(err: ApiError) -> Status {
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn user_id_from_metadata(metadata: &tonic::metadata::MetadataMap) -> Result<String, Status> {
     let token = metadata
         .get("authorization")
@@ -78,15 +79,9 @@ impl StreaksService for StreaksGrpc {
         let inner = request.into_inner();
         let page = if inner.page == 0 { 1 } else { inner.page };
         let limit = if inner.limit == 0 { 10 } else { inner.limit };
-        let detail = get_streak_detail(
-            &self.pool,
-            &user_id,
-            &inner.partner_nickname,
-            page,
-            limit,
-        )
-        .await
-        .map_err(map_error)?;
+        let detail = get_streak_detail(&self.pool, &user_id, &inner.partner_nickname, page, limit)
+            .await
+            .map_err(map_error)?;
 
         Ok(Response::new(StreakDetailResponse {
             id: detail.id,

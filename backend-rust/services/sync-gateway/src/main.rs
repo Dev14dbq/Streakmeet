@@ -8,8 +8,8 @@ mod nats;
 use std::sync::Arc;
 
 use axum::{
-    routing::{get, post},
     Router,
+    routing::{get, post},
 };
 use streakmeet_db::connect_from_env;
 use streakmeet_nats::connect_from_env as connect_nats;
@@ -44,11 +44,7 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    let state = AppState {
-        hub,
-        pool,
-        nats,
-    };
+    let state = AppState { hub, pool, nats };
 
     let cors = CorsLayer::new()
         .allow_origin(Any)

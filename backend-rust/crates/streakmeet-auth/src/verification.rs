@@ -5,10 +5,10 @@ use std::sync::{LazyLock, Mutex};
 
 use chrono::{Duration, Utc};
 use sqlx::PgPool;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::email;
 use crate::find_user_by_email;
+use crate::ops::email;
 
 static LAST_RESEND_AT: LazyLock<Mutex<HashMap<String, i64>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -58,13 +58,12 @@ pub async fn mark_email_verified(pool: &PgPool, user_id: &str) -> Result<(), Api
 }
 
 pub async fn verify_email_with_token(pool: &PgPool, token: &str) -> Result<(), ApiError> {
-    let user_id: Option<String> = sqlx::query_scalar(
-        r#"SELECT id FROM users WHERE "emailVerifyToken" = $1 LIMIT 1"#,
-    )
-    .bind(token)
-    .fetch_optional(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let user_id: Option<String> =
+        sqlx::query_scalar(r#"SELECT id FROM users WHERE "emailVerifyToken" = $1 LIMIT 1"#)
+            .bind(token)
+            .fetch_optional(pool)
+            .await
+            .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let Some(user_id) = user_id else {
         return Err(ApiError::new(400, codes::EMAIL_VERIFY_TOKEN_INVALID, None));
@@ -83,14 +82,13 @@ pub async fn verify_email_and_get_redirect(pool: &PgPool, token: &str) -> String
         return format!("{app_url}/verify-email?error=invalid");
     }
 
-    let user_id: Option<String> = sqlx::query_scalar(
-        r#"SELECT id FROM users WHERE "emailVerifyToken" = $1 LIMIT 1"#,
-    )
-    .bind(token)
-    .fetch_optional(pool)
-    .await
-    .ok()
-    .flatten();
+    let user_id: Option<String> =
+        sqlx::query_scalar(r#"SELECT id FROM users WHERE "emailVerifyToken" = $1 LIMIT 1"#)
+            .bind(token)
+            .fetch_optional(pool)
+            .await
+            .ok()
+            .flatten();
 
     let Some(user_id) = user_id else {
         return format!("{app_url}/verify-email?error=invalid");
@@ -100,14 +98,17 @@ pub async fn verify_email_and_get_redirect(pool: &PgPool, token: &str) -> String
     format!("{app_url}/verify-email?verified=1")
 }
 
-pub async fn resend_verification(pool: &PgPool, user_id: &str) -> Result<serde_json::Value, ApiError> {
+pub async fn resend_verification(
+    pool: &PgPool,
+    user_id: &str,
+) -> Result<serde_json::Value, ApiError> {
     let now = Utc::now().timestamp_millis();
     {
         let map = LAST_RESEND_AT.lock().unwrap();
-        if let Some(last) = map.get(user_id) {
-            if now - last < 60_000 {
-                return Err(ApiError::new(429, codes::RESEND_COOLDOWN, None));
-            }
+        if let Some(last) = map.get(user_id)
+            && now - last < 60_000
+        {
+            return Err(ApiError::new(429, codes::RESEND_COOLDOWN, None));
         }
     }
 
@@ -192,8 +193,10 @@ pub async fn reset_password(
     token: Option<&str>,
     password: Option<&str>,
 ) -> Result<serde_json::Value, ApiError> {
-    let (token, password) = match (token.filter(|s| !s.is_empty()), password.filter(|s| !s.is_empty()))
-    {
+    let (token, password) = match (
+        token.filter(|s| !s.is_empty()),
+        password.filter(|s| !s.is_empty()),
+    ) {
         (Some(t), Some(p)) => (t, p),
         _ => return Err(ApiError::new(400, codes::MISSING_FIELD, None)),
     };
@@ -215,11 +218,15 @@ pub async fn reset_password(
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let Some(user_id) = user_id else {
-        return Err(ApiError::new(400, codes::PASSWORD_RESET_TOKEN_INVALID, None));
+        return Err(ApiError::new(
+            400,
+            codes::PASSWORD_RESET_TOKEN_INVALID,
+            None,
+        ));
     };
 
-    let password_hash = bcrypt::hash(password, 12)
-        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let password_hash =
+        bcrypt::hash(password, 12).map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     sqlx::query(
         r#"
@@ -237,4 +244,4 @@ pub async fn reset_password(
     Ok(serde_json::json!({ "success": true }))
 }
 
-pub use crate::face::{enroll_face, EnrollFaceResult};
+pub use crate::ops::face::EnrollFaceResult;

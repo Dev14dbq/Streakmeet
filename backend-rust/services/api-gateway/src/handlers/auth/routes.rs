@@ -1,4 +1,4 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{Json, extract::State, http::StatusCode};
 use serde::Deserialize;
 use streakmeet_auth::login as auth_login;
 use streakmeet_types::ApiError;
@@ -32,8 +32,7 @@ pub async fn login(
 }
 
 pub fn api_error_response(err: ApiError) -> (StatusCode, Json<serde_json::Value>) {
-    let status =
-        StatusCode::from_u16(err.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+    let status = StatusCode::from_u16(err.status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
     let body = if let Some(extra) = err.body.extra {
         extra
     } else {

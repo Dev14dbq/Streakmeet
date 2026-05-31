@@ -4,9 +4,9 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use async_nats::header::HeaderValue;
-use async_nats::jetstream::consumer::{pull, AckPolicy, DeliverPolicy};
+use async_nats::jetstream::consumer::{AckPolicy, DeliverPolicy, pull};
 use async_nats::jetstream::stream::{Config as StreamConfig, StorageType};
-use async_nats::jetstream::{self, consumer::PullConsumer, Context as JetStreamContext};
+use async_nats::jetstream::{self, Context as JetStreamContext, consumer::PullConsumer};
 use async_nats::{Client, HeaderMap};
 use futures::StreamExt;
 use prost::Message;
@@ -140,7 +140,7 @@ pub async fn catchup_user_from_jetstream(
 
     let mut batch = consumer
         .fetch()
-        .max_messages(limit.min(500) as usize)
+        .max_messages(limit.min(500))
         .expires(Duration::from_secs(2))
         .messages()
         .await

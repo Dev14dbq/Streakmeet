@@ -12,7 +12,7 @@ Phase 0–2 foundation for the Rust microservices rewrite. See [rework-backend/]
 ## Quick start (dev)
 
 ```bash
-# Infra: postgres + redis + minio + NATS JetStream
+# Infra: postgres + redis + NATS JetStream
 cd /home/streakmeet
 docker compose -f docker-compose.yml -f docker-compose.rework.yml up -d
 
@@ -37,15 +37,15 @@ cargo run -p worker-service   # streak warnings + burn + remote selfie expiry ev
 
 ## Ports
 
-| Service         | Port  | Role                                                 |
-| --------------- | ----- | ---------------------------------------------------- |
+| Service         | Port  | Role                                                                                              |
+| --------------- | ----- | ------------------------------------------------------------------------------------------------- |
 | api-gateway     | 8080  | REST `/api/auth`, `/api/friends/*`, `/api/streaks/*`, `/api/memories`, `/api/legal`, `/uploads/*` |
-| sync-gateway    | 8081  | Connect JSON `SyncService` stream                    |
-| auth-service    | 50051 | gRPC `AuthService.Login`                             |
-| social-service  | 50053 | gRPC `SocialService` friends RPC                     |
-| streaks-service | 50054 | gRPC `StreaksService` streak RPC                     |
-| worker-service  | —     | Cron: 1h/30m warnings, burn, remote selfie expiry    |
-| Node backend    | 3000  | Legacy (unchanged)                                   |
+| sync-gateway    | 8081  | Connect JSON `SyncService` stream                                                                 |
+| auth-service    | 50051 | gRPC `AuthService.Login`                                                                          |
+| social-service  | 50053 | gRPC `SocialService` friends RPC                                                                  |
+| streaks-service | 50054 | gRPC `StreaksService` streak RPC                                                                  |
+| worker-service  | —     | Cron: 1h/30m warnings, burn, remote selfie expiry                                                 |
+| Node backend    | 3000  | Legacy (unchanged)                                                                                |
 
 ## Phase 1 — Sync + Friends
 
@@ -80,7 +80,7 @@ cargo run -p worker-service   # streak warnings + burn + remote selfie expiry ev
 - [x] memories feed (`GET /api/memories`)
 - [x] legal consent + documents (`/api/legal/*`)
 - [x] users settings, preferences, email/password, photos
-- [x] media uploads serve (`GET /uploads/*`) — MinIO/S3 with local fallback
+- [x] media uploads serve (`GET /uploads/*`) — PostgreSQL `media_objects` (BYTEA)
 - [x] `deploy/nginx-streakmeet-rust.conf` — Rust `/api/*` + `/connect/*`, Node socket.io fallback
 - [x] `deploy/ecosystem-rust.config.cjs` — PM2 for api/sync/worker + Node fallback
 - [x] `scripts/contract-parity.sh` — Node :3000 vs Rust :8080 friends/streaks parity
@@ -268,7 +268,7 @@ Uses Redis when `REDIS_URL` is set; otherwise in-memory per process.
 - `MEMORIES_DEV_MODE` placeholder feed not ported.
 - Contract parity script requires both backends; set `CONTRACT_EMAIL`/`CONTRACT_PASSWORD` for existing users.
 - Push notifications (FCM) not wired — sync events only.
-- MinIO may be down locally; media falls back to `/tmp/streakmeet-uploads`.
+- Media is stored in PostgreSQL (`media_objects`); legacy disk files import on first boot if `/home/streakmeet/uploads` exists.
 
 ## Phase 5 — Sync hardening
 

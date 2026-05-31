@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use serde::Deserialize;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
 pub const FACE_MATCH_THRESHOLD_SELF: f64 = {
     // Overridden at runtime via env; default matches Node.
@@ -21,8 +21,9 @@ pub struct FaceQuality {
     pub pitch: f64,
     pub blur_var: f64,
     pub brightness: f64,
-    pub face_px: f64,
     pub bbox: Vec<f64>,
+    #[serde(rename = "face_px")]
+    pub _face_px: f64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -30,20 +31,24 @@ struct DetectFacesResponse {
     faces: Vec<FaceQuality>,
     width: u32,
     height: u32,
-    model: String,
+    #[serde(rename = "model")]
+    _model: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct BurstResultItem {
-    index: usize,
-    face: Option<FaceQuality>,
-    error: Option<String>,
+pub struct BurstResultItem {
+    #[serde(rename = "index")]
+    pub _index: usize,
+    pub face: Option<FaceQuality>,
+    #[serde(rename = "error")]
+    pub _error: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct BurstResponse {
     results: Vec<BurstResultItem>,
-    model: String,
+    #[serde(rename = "model")]
+    _model: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -98,10 +103,7 @@ async fn face_service_post<T: for<'de> Deserialize<'de>>(
         .map_err(|_| ApiError::new(500, codes::FACE_SERVICE_ERROR, None))?;
 
     let status = res.status();
-    let data: serde_json::Value = res
-        .json()
-        .await
-        .unwrap_or(serde_json::json!({}));
+    let data: serde_json::Value = res.json().await.unwrap_or(serde_json::json!({}));
 
     if !status.is_success() {
         let msg = data
@@ -109,11 +111,7 @@ async fn face_service_post<T: for<'de> Deserialize<'de>>(
             .or_else(|| data.get("error"))
             .and_then(|v| v.as_str())
             .unwrap_or("Face service error");
-        return Err(ApiError::new(
-            500,
-            codes::FACE_SERVICE_ERROR,
-            Some(msg),
-        ));
+        return Err(ApiError::new(500, codes::FACE_SERVICE_ERROR, Some(msg)));
     }
 
     serde_json::from_value(data).map_err(|_| ApiError::new(500, codes::FACE_SERVICE_ERROR, None))
@@ -126,11 +124,13 @@ pub async fn ensure_face_service() -> Result<(), ApiError> {
         .build()
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
-    let res = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|_| ApiError::new(500, codes::FACE_SERVICE_ERROR, Some("Face service unreachable")))?;
+    let res = client.get(&url).send().await.map_err(|_| {
+        ApiError::new(
+            500,
+            codes::FACE_SERVICE_ERROR,
+            Some("Face service unreachable"),
+        )
+    })?;
 
     if !res.status().is_success() {
         return Err(ApiError::new(
@@ -221,10 +221,7 @@ pub fn match_against_gallery(probe: &[f64], gallery: &[Vec<f64>]) -> MatchResult
             best_idx: -1,
         }
     } else {
-        MatchResult {
-            best_sim,
-            best_idx,
-        }
+        MatchResult { best_sim, best_idx }
     }
 }
 
@@ -235,7 +232,10 @@ pub struct FaceVsGalleryResult {
     pub sim: f64,
 }
 
-pub fn best_face_match_in_gallery(probes: &[Vec<f64>], gallery: &[Vec<f64>]) -> FaceVsGalleryResult {
+pub fn best_face_match_in_gallery(
+    probes: &[Vec<f64>],
+    gallery: &[Vec<f64>],
+) -> FaceVsGalleryResult {
     let mut best = FaceVsGalleryResult {
         face_index: -1,
         gallery_index: -1,

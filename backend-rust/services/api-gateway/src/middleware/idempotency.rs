@@ -4,9 +4,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use axum::{
-    body::{to_bytes, Body},
+    body::{Body, to_bytes},
     extract::{Request, State},
-    http::{header, Method, StatusCode},
+    http::{Method, StatusCode, header},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -76,16 +76,13 @@ impl IdempotencyStore {
         if let Some(redis) = &self.redis {
             let mut conn = redis.clone();
             let redis_key = format!("{REDIS_KEY_PREFIX}{key}");
-            if let Ok(raw) = redis::cmd("GET")
+            if let Ok(Some(json)) = redis::cmd("GET")
                 .arg(&redis_key)
                 .query_async::<Option<String>>(&mut conn)
                 .await
+                && let Ok(cached) = serde_json::from_str::<CachedResponse>(&json)
             {
-                if let Some(json) = raw {
-                    if let Ok(cached) = serde_json::from_str::<CachedResponse>(&json) {
-                        return Some(cached);
-                    }
-                }
+                return Some(cached);
             }
         }
 
@@ -149,10 +146,7 @@ pub fn requires_idempotency(method: &Method, path: &str) -> bool {
     )
 }
 
-fn bearer_user_id(
-    request: &Request,
-    jwt_secret: &str,
-) -> Option<String> {
+fn bearer_user_id(request: &Request, jwt_secret: &str) -> Option<String> {
     let auth = request
         .headers()
         .get(header::AUTHORIZATION)

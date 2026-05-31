@@ -76,11 +76,7 @@ pub fn compute_milestones_from_met_days(
         }
     }
 
-    milestones.sort_by(|a, b| {
-        b.date
-            .cmp(&a.date)
-            .then_with(|| b.days.cmp(&a.days))
-    });
+    milestones.sort_by(|a, b| b.date.cmp(&a.date).then_with(|| b.days.cmp(&a.days)));
     milestones
 }
 

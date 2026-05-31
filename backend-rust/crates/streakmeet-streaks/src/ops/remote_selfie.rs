@@ -5,14 +5,14 @@ use prost::Message;
 use serde::Serialize;
 use sqlx::PgPool;
 use streakmeet_sync::{
-    enqueue_outbox, remote_selfie_cleared_envelope, remote_selfie_pending_envelope,
-    remote_selfie_pending_info, OutboxPublisher,
+    OutboxPublisher, enqueue_outbox, remote_selfie_cleared_envelope,
+    remote_selfie_pending_envelope, remote_selfie_pending_info,
 };
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::calendar::remote_selfie_streak_day;
-use crate::meet::{record_meet_for_streak, RecordMeetInput};
-use crate::service::find_streak_for_user;
+use crate::core::calendar::remote_selfie_streak_day;
+use crate::ops::meet::{RecordMeetInput, record_meet_for_streak};
+use crate::ops::service::find_streak_for_user;
 
 pub const REMOTE_SELFIE_TTL_MS: i64 = 24 * 60 * 60 * 1000;
 
@@ -50,19 +50,15 @@ struct RemoteSelfieRow {
 
 #[derive(Debug, sqlx::FromRow)]
 struct RemoteSelfieWithSenderRow {
-    id: String,
     streak_id: String,
-    sender_id: String,
     receiver_id: String,
     sender_photo_url: String,
     status: String,
     created_at: DateTime<Utc>,
-    sender_nickname: String,
 }
 
 #[derive(Debug, sqlx::FromRow)]
 struct StreakUsersRow {
-    id: String,
     timezone: String,
     user_a_id: String,
     user_b_id: String,
@@ -71,7 +67,6 @@ struct StreakUsersRow {
     user_b_nickname: String,
     user_b_avatar_url: Option<String>,
     count: i32,
-    last_met_date: Option<String>,
 }
 
 fn row_to_json(row: RemoteSelfieRow) -> RemoteSelfieRequestJson {
@@ -126,8 +121,8 @@ async fn emit_remote_selfie_cleared(
     let streak = sqlx::query_as::<_, StreakUsersRow>(
         r#"
         SELECT
-            s.id, s.timezone, s."userAId" AS user_a_id, s."userBId" AS user_b_id,
-            s.count, s."lastMetDate" AS last_met_date,
+            s.timezone, s."userAId" AS user_a_id, s."userBId" AS user_b_id,
+            s.count,
             ua.nickname AS user_a_nickname, ua."avatarUrl" AS user_a_avatar_url,
             ub.nickname AS user_b_nickname, ub."avatarUrl" AS user_b_avatar_url
         FROM streaks s
@@ -148,7 +143,10 @@ async fn emit_remote_selfie_cleared(
     let envelope = remote_selfie_cleared_envelope(actor_id, streak_id, meet);
     let bytes = streakmeet_proto::SyncEnvelope::encode_to_vec(&envelope);
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
     for viewer_id in [&streak.user_a_id, &streak.user_b_id] {
         enqueue_outbox(
             &mut tx,
@@ -160,7 +158,9 @@ async fn emit_remote_selfie_cleared(
         .await
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
     }
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     for viewer_id in [&streak.user_a_id, &streak.user_b_id] {
         if let Err(err) = publisher.publish_inline(viewer_id, &envelope).await {
@@ -208,6 +208,7 @@ pub async fn init_remote_selfie(
     }
 
     let saved_photo_url = streakmeet_media::save_base64_image_as_avif(
+        pool,
         photo_base64,
         &format!("remote_selfie_{}_{user_id}", Utc::now().timestamp_millis()),
     )
@@ -247,7 +248,10 @@ pub async fn init_remote_selfie(
     let envelope = remote_selfie_pending_envelope(user_id, &streak.id, pending);
     let bytes = streakmeet_proto::SyncEnvelope::encode_to_vec(&envelope);
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
     enqueue_outbox(
         &mut tx,
         &partner_id,
@@ -257,7 +261,9 @@ pub async fn init_remote_selfie(
     )
     .await
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     if let Err(err) = publisher.publish_inline(&partner_id, &envelope).await {
         tracing::warn!(error = %err, recipient = %partner_id, "remote selfie pending publish failed");
@@ -277,12 +283,10 @@ pub async fn reply_remote_selfie(
     let request = sqlx::query_as::<_, RemoteSelfieWithSenderRow>(
         r#"
         SELECT
-            r.id, r."streakId" AS streak_id, r."senderId" AS sender_id,
+            r."streakId" AS streak_id,
             r."receiverId" AS receiver_id, r."senderPhotoUrl" AS sender_photo_url,
-            r.status::text AS status, r."createdAt" AS created_at,
-            s.nickname AS sender_nickname
+            r.status::text AS status, r."createdAt" AS created_at
         FROM remote_selfie_requests r
-        JOIN users s ON s.id = r."senderId"
         WHERE r.id = $1
         "#,
     )
@@ -334,8 +338,8 @@ pub async fn reply_remote_selfie(
     let streak = sqlx::query_as::<_, StreakUsersRow>(
         r#"
         SELECT
-            s.id, s.timezone, s."userAId" AS user_a_id, s."userBId" AS user_b_id,
-            s.count, s."lastMetDate" AS last_met_date,
+            s.timezone, s."userAId" AS user_a_id, s."userBId" AS user_b_id,
+            s.count,
             ua.nickname AS user_a_nickname, ua."avatarUrl" AS user_a_avatar_url,
             ub.nickname AS user_b_nickname, ub."avatarUrl" AS user_b_avatar_url
         FROM streaks s
@@ -355,6 +359,7 @@ pub async fn reply_remote_selfie(
     };
 
     let combined_url = match streakmeet_media::combine_remote_selfie_images(
+        pool,
         &request.sender_photo_url,
         photo_base64,
         &format!("combined_{}_{streak_id}", Utc::now().timestamp_millis()),
@@ -369,7 +374,7 @@ pub async fn reply_remote_selfie(
         }
     };
 
-    let photo_hash = match streakmeet_media::hash_image_file(&combined_url).await {
+    let photo_hash = match streakmeet_media::hash_image_file(pool, &combined_url).await {
         Ok(h) => h,
         Err(err) => {
             tracing::error!(error = %err, "hash combined image failed");

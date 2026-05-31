@@ -1,8 +1,8 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{NaiveDateTime, Utc};
 use serde::Serialize;
 use sqlx::FromRow;
 use streakmeet_proto::AuthUser;
-use streakmeet_types::{codes, ApiError, ApiErrorBody};
+use streakmeet_types::{ApiError, ApiErrorBody, codes};
 
 pub const ACCOUNT_RETENTION_DAYS: i64 = 30;
 

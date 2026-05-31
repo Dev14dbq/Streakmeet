@@ -1,12 +1,12 @@
 use axum::{
-    extract::{Query, State},
     Json,
+    extract::{Query, State},
 };
 use serde::Deserialize;
 
-use crate::auth::{require_email_verified, AuthUser};
-use crate::routes::api_error_response;
 use crate::AppState;
+use crate::handlers::auth::routes::api_error_response;
+use crate::middleware::auth::{AuthUser, require_email_verified};
 
 #[derive(Debug, Deserialize)]
 pub struct MemoriesQuery {
@@ -20,7 +20,10 @@ pub async fn list_memories_handler(
     State(state): State<AppState>,
     auth: AuthUser,
     Query(query): Query<MemoriesQuery>,
-) -> Result<Json<streakmeet_memories::MemoriesFeedResponse>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<
+    Json<streakmeet_memories::MemoriesFeedResponse>,
+    (axum::http::StatusCode, Json<serde_json::Value>),
+> {
     let auth = require_email_verified(State(state.clone()), auth).await?;
     let (page, limit) = streakmeet_types::parse_pagination(
         query.page.as_deref(),

@@ -1,7 +1,7 @@
 //! Resend HTTP API — parity with `backend/src/notifications/email.ts`.
 
 use reqwest::Client;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
 fn app_public_url() -> String {
     std::env::var("APP_PUBLIC_URL")

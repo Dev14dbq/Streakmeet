@@ -2,8 +2,8 @@ use prost::Message;
 use sqlx::PgPool;
 use streakmeet_auth::UserRow;
 use streakmeet_streaks::is_valid_timezone;
-use streakmeet_sync::{enqueue_outbox, profile_updated_envelope, OutboxPublisher};
-use streakmeet_types::{codes, ApiError};
+use streakmeet_sync::{OutboxPublisher, enqueue_outbox, profile_updated_envelope};
+use streakmeet_types::{ApiError, codes};
 
 use crate::models::{
     PublicFriendshipJson, PublicProfileJson, PublicUserJson, SearchUserJson, UpdateProfileInput,
@@ -97,7 +97,10 @@ async fn notify_friends_profile_updated(
         return Ok(());
     }
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
     let template = profile_updated_envelope(
         &user.id,
         &user.id,
@@ -122,7 +125,9 @@ async fn notify_friends_profile_updated(
         envelopes.push((friend_id.clone(), envelope));
     }
 
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     for (friend_id, envelope) in envelopes {
         if let Err(err) = publisher.publish_inline(&friend_id, &envelope).await {
@@ -179,10 +184,10 @@ pub async fn update_profile(
         }
     }
 
-    if let Some(is_public) = input.is_public {
-        if is_public != user.is_public {
-            user.is_public = is_public;
-        }
+    if let Some(is_public) = input.is_public
+        && is_public != user.is_public
+    {
+        user.is_public = is_public;
     }
 
     if !profile_changed && !timezone_changed && input.is_public.is_none() {
@@ -223,41 +228,36 @@ pub async fn update_profile(
 
 pub async fn upload_avatar(
     pool: &PgPool,
-    publisher: &OutboxPublisher,
+    _publisher: &OutboxPublisher,
     user_id: &str,
     photo_base64: Option<&str>,
 ) -> Result<serde_json::Value, ApiError> {
-    let photo_base64 = photo_base64.filter(|s| !s.is_empty()).ok_or_else(|| {
-        ApiError::new(400, codes::INVALID_PHOTO, None)
-    })?;
+    let photo_base64 = photo_base64
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| ApiError::new(400, codes::INVALID_PHOTO, None))?;
 
     if !photo_base64.starts_with("data:image/") {
         return Err(ApiError::new(400, codes::INVALID_PHOTO, None));
     }
 
-    let avatar_url = streakmeet_media::save_base64_image_as_avif(
+    let avatar_url = streakmeet_media::save_avatar_base64_as_avif(
+        pool,
         photo_base64,
         &format!("avatar_{user_id}_{}", chrono::Utc::now().timestamp_millis()),
     )
     .await
     .map_err(|_| ApiError::new(500, codes::AVATAR_SAVE_FAILED, None))?;
 
-    let user = sqlx::query_as::<_, UserRow>(
-        r#"
-        UPDATE users SET "avatarUrl" = $2 WHERE id = $1
-        RETURNING
-            id, email, "passwordHash", nickname, "qrCodeId", "gemsBalance",
-            "faceEnrolled", "emailVerifiedAt", "avatarUrl", timezone,
-            "isPublic", "notifyFriends", "notifyMeet", "geoOnPhotos", "deletedAt"
-        "#,
-    )
-    .bind(user_id)
-    .bind(&avatar_url)
-    .fetch_one(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let updated = sqlx::query(r#"UPDATE users SET "avatarUrl" = $2 WHERE id = $1"#)
+        .bind(user_id)
+        .bind(&avatar_url)
+        .execute(pool)
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
-    notify_friends_profile_updated(pool, publisher, &user).await?;
+    if updated.rows_affected() == 0 {
+        return Err(ApiError::new(404, codes::USER_NOT_FOUND, None));
+    }
 
     Ok(serde_json::json!({ "avatarUrl": avatar_url }))
 }
@@ -468,20 +468,19 @@ pub async fn update_email(
 
     let normalized_email = email.to_lowercase().trim().to_string();
 
-    if let Some(existing) = streakmeet_auth::find_user_by_email(pool, &normalized_email).await? {
-        if existing.id != user_id {
-            return Err(ApiError::new(409, codes::EMAIL_ALREADY_IN_USE, None));
-        }
+    if let Some(existing) = streakmeet_auth::find_user_by_email(pool, &normalized_email).await?
+        && existing.id != user_id
+    {
+        return Err(ApiError::new(409, codes::EMAIL_ALREADY_IN_USE, None));
     }
 
-    let current = sqlx::query_as::<_, (String,)>(
-        r#"SELECT "passwordHash" FROM users WHERE id = $1"#,
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
-    .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
+    let current =
+        sqlx::query_as::<_, (String,)>(r#"SELECT "passwordHash" FROM users WHERE id = $1"#)
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+            .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
 
     if current.0.is_empty() {
         return Err(ApiError::new(400, codes::OAUTH_ACCOUNT_NO_PASSWORD, None));
@@ -537,14 +536,13 @@ pub async fn update_password(
         return Err(ApiError::new(400, codes::PASSWORD_TOO_SHORT, None));
     }
 
-    let current = sqlx::query_as::<_, (String,)>(
-        r#"SELECT "passwordHash" FROM users WHERE id = $1"#,
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
-    .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
+    let current =
+        sqlx::query_as::<_, (String,)>(r#"SELECT "passwordHash" FROM users WHERE id = $1"#)
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+            .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
 
     if current.0.is_empty() {
         return Err(ApiError::new(400, codes::OAUTH_ACCOUNT_NO_PASSWORD, None));
@@ -614,9 +612,7 @@ pub async fn get_public_photos(
         return Err(ApiError::new(403, codes::PRIVATE_PROFILE, None));
     }
 
-    let mutual_with = if !user.is_public
-        && is_friend_or_self
-        && viewer_id != Some(user.id.as_str())
+    let mutual_with = if !user.is_public && is_friend_or_self && viewer_id != Some(user.id.as_str())
     {
         viewer_id
     } else {

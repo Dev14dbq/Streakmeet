@@ -2,7 +2,7 @@
 
 use reqwest::Client;
 use serde::Deserialize;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
 fn current_face_model() -> String {
     std::env::var("FACE_MODEL_TAG").unwrap_or_else(|_| "antelopev2:v1".into())
@@ -21,22 +21,23 @@ pub struct FaceQuality {
     pub pitch: f64,
     pub blur_var: f64,
     pub brightness: f64,
-    pub face_px: f64,
-    pub bbox: Vec<f64>,
+    pub _face_px: f64,
+    pub _bbox: Vec<f64>,
 }
 
 #[derive(Debug, Deserialize)]
 struct BurstResultItem {
-    index: i32,
-    face: Option<FaceQuality>,
-    error: Option<String>,
+    #[serde(rename = "index")]
+    pub _index: i32,
+    pub face: Option<FaceQuality>,
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct BurstResponse {
     results: Vec<BurstResultItem>,
-    #[allow(dead_code)]
-    model: String,
+    #[serde(rename = "model")]
+    _model: String,
 }
 
 struct EnrollQualityThresholds {
@@ -108,7 +109,11 @@ pub async fn ensure_face_service() -> Result<(), ApiError> {
     }
 
     let data: serde_json::Value = resp.json().await.unwrap_or_default();
-    if !data.get("model_loaded").and_then(|v| v.as_bool()).unwrap_or(false) {
+    if !data
+        .get("model_loaded")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
         return Err(ApiError::new(500, codes::FACE_SERVICE_ERROR, None));
     }
     Ok(())
@@ -195,11 +200,7 @@ pub async fn enroll_face(
             continue;
         };
         if let Err(reason) = passes_enroll_quality(face) {
-            let count = reasons
-                .get(reason)
-                .and_then(|v| v.as_i64())
-                .unwrap_or(0)
-                + 1;
+            let count = reasons.get(reason).and_then(|v| v.as_i64()).unwrap_or(0) + 1;
             reasons.insert(reason.to_string(), serde_json::json!(count));
             continue;
         };
@@ -264,7 +265,7 @@ pub async fn enroll_face(
         .bind(a.yaw)
         .bind(a.pitch)
         .bind(a.blur_var)
-        .bind(&current_face_model())
+        .bind(current_face_model())
         .execute(&mut *tx)
         .await
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
@@ -277,7 +278,7 @@ pub async fn enroll_face(
         WHERE id = $2
         "#,
     )
-    .bind(&current_face_model())
+    .bind(current_face_model())
     .bind(user_id)
     .execute(&mut *tx)
     .await

@@ -2,7 +2,7 @@
 
 mod outbox;
 
-pub use outbox::{enqueue_outbox, publish_pending_outbox, run_outbox_worker, OutboxPublisher};
+pub use outbox::{OutboxPublisher, enqueue_outbox, publish_pending_outbox, run_outbox_worker};
 
 use chrono::Utc;
 use prost_types::Timestamp;
@@ -13,7 +13,10 @@ use streakmeet_proto::{
 };
 use uuid::Uuid;
 
-pub fn new_sync_envelope(actor_id: &str, payload: streakmeet_proto::streakmeet::v1::sync_envelope::Payload) -> SyncEnvelope {
+pub fn new_sync_envelope(
+    actor_id: &str,
+    payload: streakmeet_proto::streakmeet::v1::sync_envelope::Payload,
+) -> SyncEnvelope {
     SyncEnvelope {
         event_id: Uuid::new_v4().to_string(),
         sequence: 0,
@@ -126,9 +129,11 @@ pub fn location_updated_envelope(
 pub fn location_removed_envelope(actor_id: &str, user_id: &str) -> SyncEnvelope {
     new_sync_envelope(
         actor_id,
-        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::LocationRemoved(LocationRemoved {
-            user_id: user_id.to_string(),
-        }),
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::LocationRemoved(
+            LocationRemoved {
+                user_id: user_id.to_string(),
+            },
+        ),
     )
 }
 
@@ -180,11 +185,13 @@ pub fn streak_photo_added_envelope(
 ) -> SyncEnvelope {
     new_sync_envelope(
         actor_id,
-        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakPhotoAdded(StreakPhotoAdded {
-            streak_id: streak_id.to_string(),
-            streak_day_id: streak_day_id.to_string(),
-            photo_url: photo_url.to_string(),
-        }),
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakPhotoAdded(
+            StreakPhotoAdded {
+                streak_id: streak_id.to_string(),
+                streak_day_id: streak_day_id.to_string(),
+                photo_url: photo_url.to_string(),
+            },
+        ),
     )
 }
 

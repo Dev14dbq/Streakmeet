@@ -2,7 +2,7 @@ mod grpc;
 
 use streakmeet_nats::connect_from_env;
 use streakmeet_proto::streaks_service_server::StreaksServiceServer;
-use streakmeet_sync::{run_outbox_worker, OutboxPublisher};
+use streakmeet_sync::{OutboxPublisher, run_outbox_worker};
 use tonic::transport::Server;
 use tracing_subscriber::EnvFilter;
 

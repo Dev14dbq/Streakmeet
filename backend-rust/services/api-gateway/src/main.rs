@@ -1,26 +1,16 @@
-mod auth;
-mod auth_routes;
-mod friends;
-mod idempotency;
-mod legal;
-mod location;
-mod media;
-mod memories;
-mod routes;
-mod streaks;
-mod users;
+mod handlers;
+mod middleware;
 
 use axum::{
-    extract::DefaultBodyLimit,
-    middleware,
-    routing::{delete, get, patch, post},
     Router,
+    extract::DefaultBodyLimit,
+    routing::{delete, get, patch, post},
 };
+use std::net::SocketAddr;
 use streakmeet_auth::config_from_env;
 use streakmeet_db::connect_from_env;
 use streakmeet_nats::connect_from_env as connect_nats;
-use streakmeet_sync::{run_outbox_worker, OutboxPublisher};
-use std::net::SocketAddr;
+use streakmeet_sync::{OutboxPublisher, run_outbox_worker};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::EnvFilter;
 
@@ -29,7 +19,7 @@ pub struct AppState {
     pub pool: streakmeet_db::PgPool,
     pub auth_config: streakmeet_auth::AuthConfig,
     pub outbox: OutboxPublisher,
-    pub idempotency: idempotency::IdempotencyStore,
+    pub idempotency: middleware::idempotency::IdempotencyStore,
 }
 
 #[tokio::main]
@@ -57,12 +47,8 @@ async fn main() -> anyhow::Result<()> {
         });
     }
 
-    tokio::spawn(async {
-        if let Err(err) = streakmeet_media::ensure_bucket().await {
-            tracing::error!(error = %err, "[media] bucket check failed");
-        }
-    });
-    let idempotency = idempotency::IdempotencyStore::connect_from_env().await;
+    streakmeet_media::ensure_media_schema(&pool).await?;
+    let idempotency = middleware::idempotency::IdempotencyStore::connect_from_env().await;
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -84,82 +70,199 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let app = Router::new()
-        .route("/health", get(routes::health))
-        .route("/api/auth/login", post(routes::login))
-        .route("/api/auth/register", post(auth_routes::register_handler))
-        .route("/api/auth/check-email", post(auth_routes::check_email_handler))
-        .route("/api/auth/google", post(auth_routes::google_login_handler))
-        .route("/api/auth/apple", post(auth_routes::apple_login_handler))
-        .route("/api/auth/forgot-password", post(auth_routes::forgot_password_handler))
-        .route("/api/auth/reset-password", post(auth_routes::reset_password_handler))
-        .route("/api/auth/verify-email", get(auth_routes::verify_email_get_handler))
-        .route("/api/auth/verify-email", post(auth_routes::verify_email_post_handler))
+        .route("/health", get(handlers::auth::routes::health))
+        .route("/api/auth/login", post(handlers::auth::routes::login))
+        .route(
+            "/api/auth/register",
+            post(handlers::auth::auth_routes::register_handler),
+        )
+        .route(
+            "/api/auth/check-email",
+            post(handlers::auth::auth_routes::check_email_handler),
+        )
+        .route(
+            "/api/auth/google",
+            post(handlers::auth::auth_routes::google_login_handler),
+        )
+        .route(
+            "/api/auth/apple",
+            post(handlers::auth::auth_routes::apple_login_handler),
+        )
+        .route(
+            "/api/auth/forgot-password",
+            post(handlers::auth::auth_routes::forgot_password_handler),
+        )
+        .route(
+            "/api/auth/reset-password",
+            post(handlers::auth::auth_routes::reset_password_handler),
+        )
+        .route(
+            "/api/auth/verify-email",
+            get(handlers::auth::auth_routes::verify_email_get_handler),
+        )
+        .route(
+            "/api/auth/verify-email",
+            post(handlers::auth::auth_routes::verify_email_post_handler),
+        )
         .route(
             "/api/auth/resend-verification",
-            post(auth_routes::resend_verification_handler),
+            post(handlers::auth::auth_routes::resend_verification_handler),
         )
-        .route("/api/auth/enroll-face", post(auth_routes::enroll_face_handler))
+        .route(
+            "/api/auth/enroll-face",
+            post(handlers::auth::auth_routes::enroll_face_handler),
+        )
         .route(
             "/api/auth/restore-account",
-            post(auth_routes::restore_account_handler),
+            post(handlers::auth::auth_routes::restore_account_handler),
         )
-        .route("/api/friends", get(friends::list_friends_handler))
-        .route("/api/friends/", get(friends::list_friends_handler))
-        .route("/api/friends/request", post(friends::request_friend_handler))
-        .route("/api/friends/accept", post(friends::accept_friend_handler))
-        .route("/api/friends/reject", post(friends::reject_friend_handler))
-        .route("/api/friends/cancel", post(friends::cancel_friend_handler))
-        .route("/api/friends/{id}", delete(friends::remove_friend_handler))
-        .route("/api/location/me", get(location::get_my_location_handler))
-        .route("/api/location/friends", get(location::get_friends_locations_handler))
-        .route("/api/location/sharing", post(location::set_sharing_handler))
-        .route("/api/location/update", post(location::update_location_handler))
-        .route("/api/users/me", get(users::get_me_handler))
-        .route("/api/users/me", patch(users::patch_me_handler))
-        .route("/api/users/me", delete(users::delete_me_handler))
-        .route("/api/users/settings", patch(users::patch_settings_handler))
-        .route("/api/users/preferences", patch(users::patch_preferences_handler))
-        .route("/api/users/email", patch(users::patch_email_handler))
-        .route("/api/users/password", patch(users::patch_password_handler))
-        .route("/api/users/avatar", post(users::upload_avatar_handler))
-        .route("/api/users/photos", get(users::list_photos_handler))
-        .route("/api/users/search", get(users::search_handler))
-        .route("/api/public/users/{nickname}", get(users::public_profile_handler))
+        .route(
+            "/api/friends",
+            get(handlers::data::friends::list_friends_handler),
+        )
+        .route(
+            "/api/friends/",
+            get(handlers::data::friends::list_friends_handler),
+        )
+        .route(
+            "/api/friends/request",
+            post(handlers::data::friends::request_friend_handler),
+        )
+        .route(
+            "/api/friends/accept",
+            post(handlers::data::friends::accept_friend_handler),
+        )
+        .route(
+            "/api/friends/reject",
+            post(handlers::data::friends::reject_friend_handler),
+        )
+        .route(
+            "/api/friends/cancel",
+            post(handlers::data::friends::cancel_friend_handler),
+        )
+        .route(
+            "/api/friends/{id}",
+            delete(handlers::data::friends::remove_friend_handler),
+        )
+        .route(
+            "/api/location/me",
+            get(handlers::data::location::get_my_location_handler),
+        )
+        .route(
+            "/api/location/friends",
+            get(handlers::data::location::get_friends_locations_handler),
+        )
+        .route(
+            "/api/location/sharing",
+            post(handlers::data::location::set_sharing_handler),
+        )
+        .route(
+            "/api/location/update",
+            post(handlers::data::location::update_location_handler),
+        )
+        .route("/api/users/me", get(handlers::users::get_me_handler))
+        .route("/api/users/me", patch(handlers::users::patch_me_handler))
+        .route("/api/users/me", delete(handlers::users::delete_me_handler))
+        .route(
+            "/api/users/settings",
+            patch(handlers::users::patch_settings_handler),
+        )
+        .route(
+            "/api/users/preferences",
+            patch(handlers::users::patch_preferences_handler),
+        )
+        .route(
+            "/api/users/email",
+            patch(handlers::users::patch_email_handler),
+        )
+        .route(
+            "/api/users/password",
+            patch(handlers::users::patch_password_handler),
+        )
+        .route(
+            "/api/users/avatar",
+            post(handlers::users::upload_avatar_handler),
+        )
+        .route(
+            "/api/users/photos",
+            get(handlers::users::list_photos_handler),
+        )
+        .route("/api/users/search", get(handlers::users::search_handler))
+        .route(
+            "/api/public/users/{nickname}",
+            get(handlers::users::public_profile_handler),
+        )
         .route(
             "/api/public/users/{nickname}/photos",
-            get(users::public_photos_handler),
+            get(handlers::users::public_photos_handler),
         )
-        .route("/api/memories", get(memories::list_memories_handler))
-        .route("/api/memories/", get(memories::list_memories_handler))
-        .route("/api/legal/status/me", get(legal::legal_status_handler))
-        .route("/api/legal/accept", post(legal::legal_accept_handler))
-        .route("/api/legal/{slug}", get(legal::legal_document_handler))
-        .route("/uploads/{filename}", get(media::serve_upload_handler))
-        .route("/api/streaks/meet", post(streaks::record_meet_handler))
-        .route("/api/streaks/magic-meet", post(streaks::magic_meet_handler))
-        .route("/api/streaks", get(streaks::list_streaks_handler))
-        .route("/api/streaks", post(streaks::create_streak_handler))
-        .route("/api/streaks/", get(streaks::list_streaks_handler))
-        .route("/api/streaks/", post(streaks::create_streak_handler))
+        .route(
+            "/api/memories",
+            get(handlers::data::memories::list_memories_handler),
+        )
+        .route(
+            "/api/memories/",
+            get(handlers::data::memories::list_memories_handler),
+        )
+        .route(
+            "/api/legal/status/me",
+            get(handlers::data::legal::legal_status_handler),
+        )
+        .route(
+            "/api/legal/accept",
+            post(handlers::data::legal::legal_accept_handler),
+        )
+        .route(
+            "/api/legal/{slug}",
+            get(handlers::data::legal::legal_document_handler),
+        )
+        .route(
+            "/uploads/{filename}",
+            get(handlers::media::serve_upload_handler),
+        )
+        .route(
+            "/api/streaks/meet",
+            post(handlers::data::streaks::record_meet_handler),
+        )
+        .route(
+            "/api/streaks/magic-meet",
+            post(handlers::data::streaks::magic_meet_handler),
+        )
+        .route(
+            "/api/streaks",
+            get(handlers::data::streaks::list_streaks_handler),
+        )
+        .route(
+            "/api/streaks",
+            post(handlers::data::streaks::create_streak_handler),
+        )
+        .route(
+            "/api/streaks/",
+            get(handlers::data::streaks::list_streaks_handler),
+        )
+        .route(
+            "/api/streaks/",
+            post(handlers::data::streaks::create_streak_handler),
+        )
         .route(
             "/api/streaks/{streak_id}/remote-selfie/init",
-            post(streaks::init_remote_selfie_handler),
+            post(handlers::data::streaks::init_remote_selfie_handler),
         )
         .route(
             "/api/streaks/{streak_id}/remote-selfie/reply/{request_id}",
-            post(streaks::reply_remote_selfie_handler),
+            post(handlers::data::streaks::reply_remote_selfie_handler),
         )
         .route(
             "/api/streaks/{partner_nickname}/remind",
-            post(streaks::remind_partner_handler),
+            post(handlers::data::streaks::remind_partner_handler),
         )
         .route(
             "/api/streaks/{partner_nickname}",
-            get(streaks::get_streak_detail_handler),
+            get(handlers::data::streaks::get_streak_detail_handler),
         )
-        .layer(middleware::from_fn_with_state(
+        .layer(axum::middleware::from_fn_with_state(
             state.clone(),
-            idempotency::idempotency_middleware,
+            middleware::idempotency::idempotency_middleware,
         ))
         .with_state(state)
         .layer(DefaultBodyLimit::max(max_body))

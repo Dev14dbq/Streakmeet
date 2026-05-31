@@ -1,6 +1,6 @@
 //! JWT helpers — parity with `backend/src/auth/token.ts` (HS256, `{ sub: userId }`).
 
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use streakmeet_types::ApiError;
 
@@ -11,7 +11,11 @@ pub struct JwtClaims {
     pub iat: i64,
 }
 
-pub fn issue_access_token(user_id: &str, secret: &str, expires_in: &str) -> Result<String, ApiError> {
+pub fn issue_access_token(
+    user_id: &str,
+    secret: &str,
+    expires_in: &str,
+) -> Result<String, ApiError> {
     let now = chrono::Utc::now().timestamp();
     let exp = now + parse_duration_secs(expires_in);
     let claims = JwtClaims {

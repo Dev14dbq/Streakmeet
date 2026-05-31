@@ -24,10 +24,7 @@ async fn main() -> anyhow::Result<()> {
     let svc = AuthServiceServer::new(grpc::AuthGrpc { pool, config });
 
     tracing::info!(%port, "auth-service listening");
-    Server::builder()
-        .add_service(svc)
-        .serve(addr)
-        .await?;
+    Server::builder().add_service(svc).serve(addr).await?;
 
     Ok(())
 }

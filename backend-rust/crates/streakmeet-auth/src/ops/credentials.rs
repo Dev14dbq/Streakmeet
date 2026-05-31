@@ -1,17 +1,17 @@
 //! Email/password auth — parity with `backend/src/auth/credentials.ts`.
 
 use sqlx::PgPool;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::account::{
-    accept_current_legal_for_user, find_active_user_by_nickname, handle_deleted_email_conflict,
-    load_full_user, normalize_timezone, safe_nickname, sync_timezone, USER_PROFILE_SELECT,
-};
-use crate::email;
+use crate::AuthConfig;
 use crate::models::{AuthResponseJson, UserRow};
+use crate::ops::account::{
+    USER_PROFILE_SELECT, accept_current_legal_for_user, find_active_user_by_nickname,
+    handle_deleted_email_conflict, load_full_user, normalize_timezone, safe_nickname,
+    sync_timezone,
+};
 use crate::token::build_auth_response;
 use crate::verification::{issue_email_verification, mark_email_verified};
-use crate::AuthConfig;
 
 pub async fn check_email(pool: &PgPool, email: &str) -> Result<serde_json::Value, ApiError> {
     if email.is_empty() || !email.contains('@') {
@@ -63,8 +63,8 @@ pub async fn register(
         return Err(ApiError::new(409, codes::USERNAME_TAKEN, None));
     }
 
-    let password_hash = bcrypt::hash(password, 12)
-        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let password_hash =
+        bcrypt::hash(password, 12).map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
     let id = streakmeet_types::new_cuid()?;
     let qr_code_id = streakmeet_types::new_cuid()?;
     let timezone = normalize_timezone(input.timezone);
@@ -125,13 +125,10 @@ pub async fn find_or_create_oauth_user(
             .ok_or_else(|| ApiError::new(500, codes::INTERNAL_ERROR, None));
     }
 
-    let mut base = safe_nickname(&normalized);
+    let base = safe_nickname(&normalized);
     let mut nick = base.clone();
     let mut attempt = 0;
-    while find_active_user_by_nickname(pool, &nick)
-        .await?
-        .is_some()
-    {
+    while find_active_user_by_nickname(pool, &nick).await?.is_some() {
         attempt += 1;
         nick = format!("{base}{attempt}");
     }

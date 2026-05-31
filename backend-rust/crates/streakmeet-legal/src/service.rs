@@ -1,10 +1,10 @@
 //! Legal document fetch — parity with `backend/src/legal/service.ts`.
 
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::NaiveDateTime;
 use sqlx::PgPool;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::locales::{get_localized_legal, LegalSlug};
+use crate::locales::{LegalSlug, get_localized_legal};
 
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,17 +1,17 @@
 use axum::{
-    extract::{Query, State},
     Json,
+    extract::{Query, State},
 };
 use serde::Deserialize;
 use streakmeet_users::{
-    get_profile, get_public_photos, get_public_profile, list_photos, search_users, update_email,
-    update_password, update_preferences, update_profile, update_settings, upload_avatar,
-    UpdateProfileInput,
+    UpdateProfileInput, get_profile, get_public_photos, get_public_profile, list_photos,
+    search_users, update_email, update_password, update_preferences, update_profile,
+    update_settings, upload_avatar,
 };
 
-use crate::auth::{require_email_verified, AuthUser, OptionalAuthUser};
-use crate::routes::api_error_response;
 use crate::AppState;
+use crate::handlers::auth::routes::api_error_response;
+use crate::middleware::auth::{AuthUser, OptionalAuthUser, require_email_verified};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,7 +62,8 @@ pub struct PaginationQuery {
 pub async fn get_me_handler(
     State(state): State<AppState>,
     auth: AuthUser,
-) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)>
+{
     get_profile(&state.pool, &auth.user_id)
         .await
         .map(Json)
@@ -73,7 +74,8 @@ pub async fn patch_me_handler(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<UpdateProfileInput>,
-) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)>
+{
     let auth = require_email_verified(State(state.clone()), auth).await?;
     update_profile(&state.pool, &state.outbox, &auth.user_id, body)
         .await
@@ -102,7 +104,10 @@ pub async fn search_handler(
     State(state): State<AppState>,
     auth: AuthUser,
     Query(query): Query<SearchQuery>,
-) -> Result<Json<Vec<streakmeet_users::SearchUserJson>>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<
+    Json<Vec<streakmeet_users::SearchUserJson>>,
+    (axum::http::StatusCode, Json<serde_json::Value>),
+> {
     let auth = require_email_verified(State(state.clone()), auth).await?;
     search_users(&state.pool, &auth.user_id, query.q.as_deref())
         .await
@@ -114,7 +119,10 @@ pub async fn public_profile_handler(
     State(state): State<AppState>,
     auth: OptionalAuthUser,
     axum::extract::Path(nickname): axum::extract::Path<String>,
-) -> Result<Json<streakmeet_users::PublicProfileJson>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<
+    Json<streakmeet_users::PublicProfileJson>,
+    (axum::http::StatusCode, Json<serde_json::Value>),
+> {
     let viewer_id = auth.user_id.as_deref();
     get_public_profile(&state.pool, viewer_id, &nickname)
         .await
@@ -126,7 +134,8 @@ pub async fn patch_settings_handler(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<SettingsBody>,
-) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)>
+{
     let auth = require_email_verified(State(state.clone()), auth).await?;
     update_settings(&state.pool, &auth.user_id, body.timezone.as_deref())
         .await
@@ -138,7 +147,8 @@ pub async fn patch_preferences_handler(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<PreferencesBody>,
-) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)>
+{
     let auth = require_email_verified(State(state.clone()), auth).await?;
     update_preferences(
         &state.pool,
@@ -156,7 +166,8 @@ pub async fn patch_email_handler(
     State(state): State<AppState>,
     auth: AuthUser,
     Json(body): Json<EmailBody>,
-) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+) -> Result<Json<streakmeet_auth::AuthUserJson>, (axum::http::StatusCode, Json<serde_json::Value>)>
+{
     let auth = require_email_verified(State(state.clone()), auth).await?;
     update_email(
         &state.pool,
@@ -192,8 +203,13 @@ pub async fn list_photos_handler(
     Query(query): Query<PaginationQuery>,
 ) -> Result<Json<Vec<serde_json::Value>>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     let auth = require_email_verified(State(state.clone()), auth).await?;
-    let (page, limit) =
-        streakmeet_types::parse_pagination(query.page.as_deref(), query.limit.as_deref(), 1, 12, 50);
+    let (page, limit) = streakmeet_types::parse_pagination(
+        query.page.as_deref(),
+        query.limit.as_deref(),
+        1,
+        12,
+        50,
+    );
     list_photos(&state.pool, &auth.user_id, page, limit)
         .await
         .map(Json)
@@ -206,18 +222,17 @@ pub async fn public_photos_handler(
     axum::extract::Path(nickname): axum::extract::Path<String>,
     Query(query): Query<PaginationQuery>,
 ) -> Result<Json<Vec<serde_json::Value>>, (axum::http::StatusCode, Json<serde_json::Value>)> {
-    let (page, limit) =
-        streakmeet_types::parse_pagination(query.page.as_deref(), query.limit.as_deref(), 1, 12, 50);
-    get_public_photos(
-        &state.pool,
-        auth.user_id.as_deref(),
-        &nickname,
-        page,
-        limit,
-    )
-    .await
-    .map(Json)
-    .map_err(api_error_response)
+    let (page, limit) = streakmeet_types::parse_pagination(
+        query.page.as_deref(),
+        query.limit.as_deref(),
+        1,
+        12,
+        50,
+    );
+    get_public_photos(&state.pool, auth.user_id.as_deref(), &nickname, page, limit)
+        .await
+        .map(Json)
+        .map_err(api_error_response)
 }
 
 pub async fn delete_me_handler(

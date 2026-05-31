@@ -3,13 +3,12 @@
 use serde::Serialize;
 use sqlx::PgPool;
 use streakmeet_streaks::find_streak_for_user;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::milestones::{compute_milestones_from_met_days, MetDayRow};
+use crate::milestones::{MetDayRow, compute_milestones_from_met_days};
 use crate::repository::{
-    count_met_days_for_user, list_meet_proofs_for_user, list_met_days_for_user,
-    load_partner_by_streak_id, max_active_streak_count, partner_from_proof, MeetProofRow,
-    MemoryPartner,
+    MeetProofRow, MemoryPartner, count_met_days_for_user, list_meet_proofs_for_user,
+    list_met_days_for_user, load_partner_by_streak_id, max_active_streak_count, partner_from_proof,
 };
 
 pub const MEMORIES_MILESTONE_DAYS: [i32; 5] = [7, 14, 30, 50, 100];
@@ -171,8 +170,7 @@ pub async fn get_memories_feed(
     }
 
     let fetch_limit = limit + 1;
-    let proofs =
-        list_meet_proofs_for_user(pool, user_id, page, fetch_limit, streak_id).await?;
+    let proofs = list_meet_proofs_for_user(pool, user_id, page, fetch_limit, streak_id).await?;
     let met_day_rows = list_met_days_for_user(pool, user_id, streak_id).await?;
     let met_days: Vec<MetDayRow> = met_day_rows
         .into_iter()
@@ -219,7 +217,7 @@ pub async fn get_memories_feed(
 fn sort_feed_items(a: &MemoryFeedItemJson, b: &MemoryFeedItemJson) -> std::cmp::Ordering {
     let date_a = feed_date(a);
     let date_b = feed_date(b);
-    let date_cmp = date_b.cmp(&date_a);
+    let date_cmp = date_b.cmp(date_a);
     if date_cmp != std::cmp::Ordering::Equal {
         return date_cmp;
     }
@@ -233,9 +231,7 @@ fn sort_feed_items(a: &MemoryFeedItemJson, b: &MemoryFeedItemJson) -> std::cmp::
         (MemoryFeedItemJson::Milestone(_), MemoryFeedItemJson::Meet(_)) => {
             std::cmp::Ordering::Greater
         }
-        (MemoryFeedItemJson::Meet(_), MemoryFeedItemJson::Milestone(_)) => {
-            std::cmp::Ordering::Less
-        }
+        (MemoryFeedItemJson::Meet(_), MemoryFeedItemJson::Milestone(_)) => std::cmp::Ordering::Less,
     }
 }
 

@@ -27,5 +27,4 @@ export const magicMeet = (payload: {
   photoBase64?: string
   photosBase64?: string[]
   location?: { lat: number; lng: number }
-}) =>
-  streaksApi().post<MagicMeetResponse>('/api/streaks/magic-meet', payload, { timeout: 120_000 })
+}) => streaksApi().post<MagicMeetResponse>('/api/streaks/magic-meet', payload, { timeout: 120_000 })

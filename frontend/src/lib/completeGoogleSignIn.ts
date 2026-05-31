@@ -16,11 +16,14 @@ export async function completeGoogleSignIn(
   }
 
   try {
-    const { data } = await migratedApi().post<{ accessToken: string; user: AuthUser }>('/api/auth/google', {
-      accessToken: tokens.accessToken,
-      idToken: tokens.idToken,
-      timezone: getDeviceTimezone(),
-    })
+    const { data } = await migratedApi().post<{ accessToken: string; user: AuthUser }>(
+      '/api/auth/google',
+      {
+        accessToken: tokens.accessToken,
+        idToken: tokens.idToken,
+        timezone: getDeviceTimezone(),
+      }
+    )
     return { ok: true, user: data.user, accessToken: data.accessToken }
   } catch (err) {
     const deleted = getDeletedAccountInfo(err)

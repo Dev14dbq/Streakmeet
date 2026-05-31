@@ -1,8 +1,8 @@
+use streakmeet_auth::{AuthConfig, login_proto};
 use streakmeet_db::PgPool;
-use streakmeet_auth::{login_proto, AuthConfig};
 use streakmeet_proto::auth_service_server::AuthService;
 use streakmeet_proto::{LoginRequest, LoginResponse};
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 use tonic::{Request, Response, Status};
 
 pub struct AuthGrpc {

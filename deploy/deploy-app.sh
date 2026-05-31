@@ -3,23 +3,9 @@ set -euo pipefail
 
 cd /home/streakmeet
 
-echo "==> Docker (Postgres, Redis, MinIO, NATS)..."
+echo "==> Docker (Postgres, Redis, NATS)..."
 docker compose up -d
 docker compose -f docker-compose.yml -f docker-compose.rework.yml up -d 2>/dev/null || true
-
-echo "==> Wait for MinIO..."
-for i in $(seq 1 30); do
-  if curl -sf http://127.0.0.1:9000/minio/health/live >/dev/null 2>&1; then
-    echo "MinIO ready"
-    break
-  fi
-  sleep 2
-done
-echo "==> MinIO bucket (streakmeet-media)..."
-docker compose exec -T minio sh -c '
-  mc alias set local http://127.0.0.1:9000 streakmeet streakmeet_minio_secret 2>/dev/null
-  mc mb local/streakmeet-media --ignore-existing 2>/dev/null
-' || true
 
 echo "==> backend-rust/.env"
 if [ ! -f backend-rust/.env ]; then
@@ -50,18 +36,18 @@ if [ -f backend/.env ]; then
   sync_env_key FACE_MODEL_TAG
   sync_env_key FACE_MATCH_THRESHOLD_SELF
   sync_env_key FACE_MATCH_THRESHOLD_PARTNER
-  if ! grep -q '^UPLOADS_DIR=' backend-rust/.env 2>/dev/null; then
-    echo 'UPLOADS_DIR="/home/streakmeet/uploads"' >> backend-rust/.env
-  fi
 fi
 
-echo "==> Sync outbox migration (idempotent)..."
-if [ -f backend-rust/migrations/001_sync_outbox.sql ]; then
+echo "==> SQL migrations (idempotent)..."
+if [ -f backend-rust/.env ]; then
   set -a
   # shellcheck disable=SC1091
   source backend-rust/.env
   set +a
-  psql "$DATABASE_URL" -f backend-rust/migrations/001_sync_outbox.sql 2>/dev/null || true
+  for f in backend-rust/migrations/001_sync_outbox.sql backend-rust/migrations/002_media_objects.sql; do
+    [ -f "$f" ] || continue
+    psql "$DATABASE_URL" -f "$f" 2>/dev/null || true
+  done
 fi
 
 echo "==> Face service..."

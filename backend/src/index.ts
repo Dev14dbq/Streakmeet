@@ -19,6 +19,10 @@ import { start as startScheduler } from './jobs/scheduler.js'
 
 dotenv.config()
 
+if (process.env.MEMORIES_DEV_MODE === 'true') {
+  console.warn('[memories] DEV MODE enabled — GET /api/memories returns placeholder data')
+}
+
 const app = express()
 const httpServer = createServer(app)
 const port = process.env.PORT ?? 3000

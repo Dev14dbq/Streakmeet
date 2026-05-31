@@ -1,11 +1,11 @@
 //! JWT auth extractor for api-gateway routes.
 
 use axum::{
-    extract::{FromRequestParts, State},
-    http::{request::Parts, StatusCode},
     Json,
+    extract::{FromRequestParts, State},
+    http::{StatusCode, request::Parts},
 };
-use streakmeet_auth::{verify_auth_token, AuthTokenResult, DeletedAccountBody};
+use streakmeet_auth::{AuthTokenResult, DeletedAccountBody, verify_auth_token};
 use streakmeet_types::codes;
 
 use crate::AppState;
@@ -45,10 +45,9 @@ impl FromRequestParts<AppState> for AuthUser {
                 email_verified,
             }),
             AuthTokenResult::Invalid => Err(unauthorized(codes::INVALID_TOKEN)),
-            AuthTokenResult::Deleted {
-                email,
-                deleted_at,
-            } => Err(deleted_account(email, deleted_at)),
+            AuthTokenResult::Deleted { email, deleted_at } => {
+                Err(deleted_account(email, deleted_at))
+            }
         }
     }
 }
@@ -176,11 +175,11 @@ impl FromRequestParts<AppState> for OptionalAuthUser {
             return Ok(OptionalAuthUser { user_id: None });
         }
 
-        let user_id = match verify_auth_token(&state.pool, token, &state.auth_config.jwt_secret).await
-        {
-            AuthTokenResult::Ok { user_id, .. } => Some(user_id),
-            _ => None,
-        };
+        let user_id =
+            match verify_auth_token(&state.pool, token, &state.auth_config.jwt_secret).await {
+                AuthTokenResult::Ok { user_id, .. } => Some(user_id),
+                _ => None,
+            };
         Ok(OptionalAuthUser { user_id })
     }
 }

@@ -17,6 +17,8 @@ import {
   type MeetProofRow,
 } from './repository.js'
 import { findStreakForUser } from '../streaks/service.js'
+import { isMemoriesDevMode } from '../lib/memoriesDevMode.js'
+import { buildDevMemoriesFeed } from '../services/memoriesDevFeed.js'
 
 export type MemoryPartner = {
   id: string
@@ -134,6 +136,10 @@ export async function getMemoriesFeed(
   limit: number,
   streakId?: string
 ): Promise<MemoriesFeedResponse> {
+  if (isMemoriesDevMode()) {
+    return buildDevMemoriesFeed(userId, page, limit)
+  }
+
   if (streakId) {
     await findStreakForUser(streakId, userId)
   }

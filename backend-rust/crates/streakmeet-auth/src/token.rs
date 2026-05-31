@@ -4,7 +4,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::PgPool;
 
 use crate::jwt;
-use crate::models::{is_email_verified, UserRow};
+use crate::models::{UserRow, is_email_verified};
 
 #[derive(Debug)]
 pub enum AuthTokenResult {
@@ -27,11 +27,7 @@ struct AuthCheckRow {
     password_hash: String,
 }
 
-pub async fn verify_auth_token(
-    pool: &PgPool,
-    token: &str,
-    secret: &str,
-) -> AuthTokenResult {
+pub async fn verify_auth_token(pool: &PgPool, token: &str, secret: &str) -> AuthTokenResult {
     let user_id = match jwt::verify_access_token(token, secret) {
         Ok(id) => id,
         Err(_) => return AuthTokenResult::Invalid,

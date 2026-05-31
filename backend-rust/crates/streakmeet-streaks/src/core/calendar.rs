@@ -29,9 +29,15 @@ pub fn add_days_to_date_string(date_str: &str, days: i32) -> String {
     let y: i32 = parts[0].parse().unwrap_or(1970);
     let m: u32 = parts[1].parse().unwrap_or(1);
     let d: u32 = parts[2].parse().unwrap_or(1);
-    let naive = NaiveDate::from_ymd_opt(y, m, d).unwrap_or_else(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap());
+    let naive = NaiveDate::from_ymd_opt(y, m, d)
+        .unwrap_or_else(|| NaiveDate::from_ymd_opt(1970, 1, 1).unwrap());
     let shifted = naive + chrono::Duration::days(days as i64);
-    format!("{:04}-{:02}-{:02}", shifted.year(), shifted.month(), shifted.day())
+    format!(
+        "{:04}-{:02}-{:02}",
+        shifted.year(),
+        shifted.month(),
+        shifted.day()
+    )
 }
 
 /// UTC offset in minutes (positive = east of UTC).

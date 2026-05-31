@@ -3,10 +3,14 @@
 use chrono::Utc;
 use prost::Message;
 use sqlx::PgPool;
-use streakmeet_sync::{enqueue_outbox, notification_envelope, streak_burned_envelope, OutboxPublisher};
+use streakmeet_sync::{
+    OutboxPublisher, enqueue_outbox, notification_envelope, streak_burned_envelope,
+};
 
-use crate::calendar::{add_days_to_date_string, get_local_date_string, get_local_time_parts, normalize_timezone};
-use crate::service::StreakRow;
+use crate::core::calendar::{
+    add_days_to_date_string, get_local_date_string, get_local_time_parts, normalize_timezone,
+};
+use crate::ops::service::StreakRow;
 
 #[derive(Clone, Copy)]
 enum NotifyKind {
@@ -38,7 +42,10 @@ impl NotifyKind {
 }
 
 /// Every ~5 min: burn streaks at local 00:05 when lastMetDate != yesterday.
-pub async fn process_streak_burns(pool: &PgPool, publisher: &OutboxPublisher) -> Result<usize, anyhow::Error> {
+pub async fn process_streak_burns(
+    pool: &PgPool,
+    publisher: &OutboxPublisher,
+) -> Result<usize, anyhow::Error> {
     let rows = sqlx::query_as::<_, StreakRow>(
         r#"
         SELECT
@@ -67,7 +74,7 @@ pub async fn process_streak_burns(pool: &PgPool, publisher: &OutboxPublisher) ->
     for streak in rows {
         let tz = normalize_timezone(Some(&streak.timezone), "UTC");
         let (hour, minute) = get_local_time_parts(&tz, now);
-        if hour != 0 || minute < 5 || minute >= 10 {
+        if hour != 0 || !(5..10).contains(&minute) {
             continue;
         }
 
@@ -78,18 +85,23 @@ pub async fn process_streak_burns(pool: &PgPool, publisher: &OutboxPublisher) ->
         }
 
         let mut tx = pool.begin().await?;
-        sqlx::query(
-            r#"UPDATE streaks SET count = 0, "updatedAt" = NOW() WHERE id = $1"#,
-        )
-        .bind(&streak.id)
-        .execute(&mut *tx)
-        .await?;
+        sqlx::query(r#"UPDATE streaks SET count = 0, "updatedAt" = NOW() WHERE id = $1"#)
+            .bind(&streak.id)
+            .execute(&mut *tx)
+            .await?;
 
         let mut envelopes = Vec::with_capacity(2);
         for viewer_id in [&streak.user_a_id, &streak.user_b_id] {
             let envelope = streak_burned_envelope("system", &streak.id, 0);
             let bytes = streakmeet_proto::SyncEnvelope::encode_to_vec(&envelope);
-            enqueue_outbox(&mut tx, viewer_id, "streaks.burned", &envelope.event_id, &bytes).await?;
+            enqueue_outbox(
+                &mut tx,
+                viewer_id,
+                "streaks.burned",
+                &envelope.event_id,
+                &bytes,
+            )
+            .await?;
             envelopes.push((viewer_id.clone(), envelope));
         }
         tx.commit().await?;
@@ -143,7 +155,7 @@ pub async fn process_streak_warnings(
 
         let kind = if hour == 23 && minute < 5 && !met_today {
             Some(NotifyKind::Streak1h)
-        } else if hour == 23 && minute >= 30 && minute < 35 && !met_today {
+        } else if hour == 23 && (30..35).contains(&minute) && !met_today {
             Some(NotifyKind::Streak30m)
         } else {
             None
@@ -238,7 +250,7 @@ pub async fn process_remote_selfie_expiry(
     pool: &PgPool,
     publisher: &OutboxPublisher,
 ) -> Result<usize, anyhow::Error> {
-    use crate::remote_selfie::{expire_stale_remote_selfie_requests, REMOTE_SELFIE_TTL_MS};
+    use crate::ops::remote_selfie::{REMOTE_SELFIE_TTL_MS, expire_stale_remote_selfie_requests};
 
     let cutoff = chrono::Utc::now() - chrono::Duration::milliseconds(REMOTE_SELFIE_TTL_MS);
     let rows = sqlx::query_as::<_, (String,)>(

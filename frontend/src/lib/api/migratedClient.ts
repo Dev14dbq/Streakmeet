@@ -94,4 +94,7 @@ export function apiClientForPath(path: string): AxiosInstance {
   return migratedApi()
 }
 
-export const fetcher = (url: string) => apiClientForPath(url).get(url).then((res) => res.data)
+export const fetcher = (url: string) =>
+  apiClientForPath(url)
+    .get(url)
+    .then((res) => res.data)

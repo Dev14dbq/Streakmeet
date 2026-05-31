@@ -43,7 +43,11 @@ impl OutboxPublisher {
     }
 
     /// Publish to NATS and mark outbox row published (outbox row must already exist).
-    pub async fn publish_inline(&self, recipient_user_id: &str, envelope: &SyncEnvelope) -> Result<()> {
+    pub async fn publish_inline(
+        &self,
+        recipient_user_id: &str,
+        envelope: &SyncEnvelope,
+    ) -> Result<()> {
         publish_sync_envelope(&self.nats, recipient_user_id, envelope).await?;
         mark_published(&self.pool, &envelope.event_id).await
     }
@@ -83,7 +87,11 @@ async fn mark_published(pool: &PgPool, event_id: &str) -> Result<()> {
     Ok(())
 }
 
-pub async fn publish_pending_outbox(pool: &PgPool, nats: &Client, batch_size: i64) -> Result<usize> {
+pub async fn publish_pending_outbox(
+    pool: &PgPool,
+    nats: &Client,
+    batch_size: i64,
+) -> Result<usize> {
     let rows = sqlx::query_as::<_, OutboxRow>(
         r#"
         SELECT id, recipient_user_id, envelope_bytes

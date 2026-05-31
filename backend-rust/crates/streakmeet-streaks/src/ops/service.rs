@@ -3,13 +3,13 @@ use prost::Message;
 use sqlx::PgPool;
 use streakmeet_proto::{ListStreaksResponse, StreakListItem, StreakRecord};
 use streakmeet_sync::{
-    enqueue_outbox, notification_envelope, streak_created_envelope, streak_list_item_proto,
-    OutboxPublisher,
+    OutboxPublisher, enqueue_outbox, notification_envelope, streak_created_envelope,
+    streak_list_item_proto,
 };
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
-use crate::calendar::{generous_streak_timezone, get_local_date_string, normalize_timezone};
-use crate::helpers::partner_of;
+use crate::core::calendar::{generous_streak_timezone, get_local_date_string, normalize_timezone};
+use crate::core::helpers::partner_of;
 use crate::models::{
     StreakDetailDayJson, StreakDetailJson, StreakListItemJson, StreakPartnerJson, StreakRecordJson,
 };
@@ -45,7 +45,6 @@ struct TimezoneRow {
 
 #[derive(Debug, sqlx::FromRow)]
 struct StreakRemindRow {
-    id: String,
     last_met_date: Option<String>,
     timezone: String,
 }
@@ -92,7 +91,11 @@ fn to_proto_item(item: &StreakListItemJson) -> StreakListItem {
     )
 }
 
-async fn are_accepted_friends(pool: &PgPool, user_id: &str, partner_id: &str) -> Result<bool, ApiError> {
+async fn are_accepted_friends(
+    pool: &PgPool,
+    user_id: &str,
+    partner_id: &str,
+) -> Result<bool, ApiError> {
     let row: Option<(i32,)> = sqlx::query_as(
         r#"
         SELECT 1
@@ -113,22 +116,23 @@ async fn are_accepted_friends(pool: &PgPool, user_id: &str, partner_id: &str) ->
     Ok(row.is_some())
 }
 
-async fn partner_timezones(pool: &PgPool, user_id: &str, partner_id: &str) -> Result<String, ApiError> {
-    let self_tz = sqlx::query_as::<_, TimezoneRow>(
-        r#"SELECT timezone FROM users WHERE id = $1"#,
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+async fn partner_timezones(
+    pool: &PgPool,
+    user_id: &str,
+    partner_id: &str,
+) -> Result<String, ApiError> {
+    let self_tz = sqlx::query_as::<_, TimezoneRow>(r#"SELECT timezone FROM users WHERE id = $1"#)
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
-    let partner_tz = sqlx::query_as::<_, TimezoneRow>(
-        r#"SELECT timezone FROM users WHERE id = $1"#,
-    )
-    .bind(partner_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let partner_tz =
+        sqlx::query_as::<_, TimezoneRow>(r#"SELECT timezone FROM users WHERE id = $1"#)
+            .bind(partner_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let self_tz_str = self_tz.and_then(|r| r.timezone);
     let partner_tz_str = partner_tz.and_then(|r| r.timezone);
@@ -187,7 +191,10 @@ const STREAK_LIST_SQL: &str = r#"
     JOIN users ub ON ub.id = s."userBId"
 "#;
 
-pub async fn list_streaks(pool: &PgPool, user_id: &str) -> Result<Vec<StreakListItemJson>, ApiError> {
+pub async fn list_streaks(
+    pool: &PgPool,
+    user_id: &str,
+) -> Result<Vec<StreakListItemJson>, ApiError> {
     let sql = format!(
         r#"{STREAK_LIST_SQL}
         WHERE (s."userAId" = $1 OR s."userBId" = $1) AND s.active = true
@@ -209,9 +216,9 @@ pub async fn create_streak(
     user_id: &str,
     partner_id: Option<&str>,
 ) -> Result<StreakRecordJson, ApiError> {
-    let partner_id = partner_id.filter(|s| !s.trim().is_empty()).ok_or_else(|| {
-        ApiError::new(400, codes::MISSING_FIELD, None)
-    })?;
+    let partner_id = partner_id
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| ApiError::new(400, codes::MISSING_FIELD, None))?;
 
     if user_id == partner_id {
         return Err(ApiError::new(400, codes::CANNOT_ADD_SELF, None));
@@ -253,7 +260,10 @@ pub async fn create_streak(
 
     let timezone = partner_timezones(pool, user_id, partner_id).await?;
 
-    let mut tx = pool.begin().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let created = sqlx::query_as::<_, StreakIdRow>(
         r#"
@@ -281,7 +291,9 @@ pub async fn create_streak(
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let envelopes = enqueue_streak_created(&mut tx, user_id, &with_users).await?;
-    tx.commit().await.map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    tx.commit()
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     publish_envelopes(publisher, &with_users, envelopes).await?;
 
@@ -402,10 +414,13 @@ pub async fn get_streak_detail(
     })
 }
 
-pub async fn list_streaks_proto(pool: &PgPool, user_id: &str) -> Result<ListStreaksResponse, ApiError> {
+pub async fn list_streaks_proto(
+    pool: &PgPool,
+    user_id: &str,
+) -> Result<ListStreaksResponse, ApiError> {
     let streaks = list_streaks(pool, user_id).await?;
     Ok(ListStreaksResponse {
-        streaks: streaks.iter().map(|s| to_proto_item(s)).collect(),
+        streaks: streaks.iter().map(to_proto_item).collect(),
     })
 }
 
@@ -450,7 +465,7 @@ pub async fn remind_partner(
 
     let streak = sqlx::query_as::<_, StreakRemindRow>(
         r#"
-        SELECT s.id, s."lastMetDate" AS last_met_date, s.timezone
+        SELECT s."lastMetDate" AS last_met_date, s.timezone
         FROM streaks s
         WHERE s.active = true
           AND (
@@ -467,14 +482,12 @@ pub async fn remind_partner(
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
     .ok_or_else(|| ApiError::new(404, codes::STREAK_NOT_FOUND, None))?;
 
-    let sender = sqlx::query_as::<_, NicknameRow>(
-        r#"SELECT nickname FROM users WHERE id = $1"#,
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
-    .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
+    let sender = sqlx::query_as::<_, NicknameRow>(r#"SELECT nickname FROM users WHERE id = $1"#)
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+        .ok_or_else(|| ApiError::new(404, codes::USER_NOT_FOUND, None))?;
 
     let tz = normalize_timezone(Some(&streak.timezone), "UTC");
     let today = get_local_date_string(&tz, Utc::now());

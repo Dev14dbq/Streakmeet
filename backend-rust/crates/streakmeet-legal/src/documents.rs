@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::PgPool;
-use streakmeet_types::{codes, ApiError};
+use streakmeet_types::{ApiError, codes};
 
 struct DefaultDoc {
     slug: &'static str,
@@ -66,12 +66,11 @@ pub async fn ensure_legal_documents(pool: &PgPool) -> Result<(), ApiError> {
 }
 
 async fn get_current_legal_versions(pool: &PgPool) -> Result<(i32, i32), ApiError> {
-    let rows = sqlx::query_as::<_, (String, i32)>(
-        r#"SELECT slug::text, version FROM legal_documents"#,
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
+    let rows =
+        sqlx::query_as::<_, (String, i32)>(r#"SELECT slug::text, version FROM legal_documents"#)
+            .fetch_all(pool)
+            .await
+            .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let terms = rows
         .iter()

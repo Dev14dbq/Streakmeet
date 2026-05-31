@@ -74,7 +74,8 @@ function parsePendingRemoteSelfie(raw: unknown): PendingRemoteSelfieSync | null 
   if (!raw || typeof raw !== 'object') return null
   const p = raw as Record<string, unknown>
   const id = typeof p.id === 'string' ? p.id : ''
-  const senderId = typeof p.senderId === 'string' ? p.senderId : typeof p.sender_id === 'string' ? p.sender_id : ''
+  const senderId =
+    typeof p.senderId === 'string' ? p.senderId : typeof p.sender_id === 'string' ? p.sender_id : ''
   const receiverId =
     typeof p.receiverId === 'string'
       ? p.receiverId

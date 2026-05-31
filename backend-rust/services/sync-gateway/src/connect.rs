@@ -3,14 +3,14 @@
 use std::convert::Infallible;
 use std::time::Duration;
 
+use async_stream::stream;
 use axum::{
+    Json,
     body::Body,
     extract::State,
-    http::{header, HeaderMap, StatusCode},
+    http::{HeaderMap, StatusCode, header},
     response::Response,
-    Json,
 };
-use async_stream::stream;
 use chrono::Utc;
 use futures::StreamExt;
 use prost_types::Timestamp;
@@ -21,7 +21,7 @@ use streakmeet_types::codes;
 use tokio_stream::wrappers::IntervalStream;
 use uuid::Uuid;
 
-use crate::{catchup, AppState};
+use crate::{AppState, catchup};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -120,7 +120,9 @@ pub async fn connect_catch_up(
         .map_err(|_| api_error(StatusCode::INTERNAL_SERVER_ERROR, codes::INTERNAL_ERROR))
 }
 
-fn extract_bearer_user_id(headers: &HeaderMap) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
+fn extract_bearer_user_id(
+    headers: &HeaderMap,
+) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
     let auth = headers
         .get(header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
@@ -222,7 +224,7 @@ pub fn envelope_to_connect_json(envelope: &SyncEnvelope) -> Option<String> {
                     "streakId": ev.streak_id,
                     "count": ev.count,
                     "lastMetDate": null_if_empty_str(&ev.last_met_date),
-                    "partner": partner.map(|p| user_summary_json(p)),
+                    "partner": partner.map(user_summary_json),
                 }),
             );
         }
@@ -321,7 +323,10 @@ pub fn envelope_to_connect_json(envelope: &SyncEnvelope) -> Option<String> {
             );
         }
         Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::Heartbeat(hb)) => {
-            root.insert("heartbeat".into(), serde_json::json!({ "message": hb.message }));
+            root.insert(
+                "heartbeat".into(),
+                serde_json::json!({ "message": hb.message }),
+            );
         }
         _ => return None,
     }
@@ -361,4 +366,3 @@ fn null_if_empty(value: &str) -> serde_json::Value {
         serde_json::Value::String(value.to_string())
     }
 }
-

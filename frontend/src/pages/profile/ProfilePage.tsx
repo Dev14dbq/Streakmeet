@@ -108,7 +108,10 @@ export default function ProfilePage({ user: initialUser }: Props) {
     setAvatarSheetPhase('uploading')
     const previousAvatar = user.avatarUrl
     try {
-      const prepared = await prepareImageDataUrlForUpload(base64)
+      const prepared = await prepareImageDataUrlForUpload(base64, {
+        maxEdge: 512,
+        quality: 0.8,
+      })
       const { data: res } = await uploadAvatar(prepared)
       await invalidateCachedImage(previousAvatar)
       const updatedUser = { ...user, avatarUrl: res.avatarUrl }

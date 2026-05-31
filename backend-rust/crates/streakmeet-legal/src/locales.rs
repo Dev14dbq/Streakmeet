@@ -86,11 +86,6 @@ pub fn get_localized_legal(
 
     let content = if locale == "ru" {
         fallback_content.to_string()
-    } else if locale == "en" {
-        match slug {
-            LegalSlug::Terms => TERMS_EN.to_string(),
-            LegalSlug::Privacy => PRIVACY_EN.to_string(),
-        }
     } else {
         match slug {
             LegalSlug::Terms => TERMS_EN.to_string(),

@@ -1,6 +1,6 @@
 //! Face candidate pool for magic meet — parity with `backend/src/face/matching.ts`.
 
-use crate::service::{detect_faces_from_base64, FaceQuality};
+use crate::service::{FaceQuality, detect_faces_from_base64};
 use streakmeet_types::ApiError;
 
 pub const MAGIC_MEET_MAX_FRAMES: usize = 5;
@@ -14,7 +14,11 @@ pub struct FaceCandidate {
     pub bbox_area: f64,
 }
 
-fn face_to_candidate(frame_index: usize, face_index_in_frame: usize, d: &FaceQuality) -> FaceCandidate {
+fn face_to_candidate(
+    frame_index: usize,
+    face_index_in_frame: usize,
+    d: &FaceQuality,
+) -> FaceCandidate {
     let bbox_area = if d.bbox.len() >= 4 {
         let x1 = d.bbox[0];
         let y1 = d.bbox[1];
@@ -50,14 +54,15 @@ pub fn pick_best_frame(pool: &[FaceCandidate], user_candidate_idx: usize) -> Opt
         return None;
     }
     let user_frame = pool.get(user_candidate_idx).map(|c| c.frame_index);
-    let mut score_by_frame: std::collections::HashMap<usize, f64> = std::collections::HashMap::new();
+    let mut score_by_frame: std::collections::HashMap<usize, f64> =
+        std::collections::HashMap::new();
     for c in pool {
         *score_by_frame.entry(c.frame_index).or_insert(0.0) += c.det_score;
     }
-    if let Some(f) = user_frame {
-        if score_by_frame.contains_key(&f) {
-            return Some(f);
-        }
+    if let Some(f) = user_frame
+        && score_by_frame.contains_key(&f)
+    {
+        return Some(f);
     }
     score_by_frame
         .into_iter()
