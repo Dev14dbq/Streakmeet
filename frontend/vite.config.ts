@@ -46,6 +46,12 @@ export default defineConfig({
       workbox: {
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         navigateFallbackDenylist: [/^\/api/, /^\/connect/, /^\/uploads/, /^\/health/],
+        runtimeCaching: [
+          {
+            urlPattern: /\/uploads\/.+\.(avif|jpe?g|png|webp)$/i,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
       manifest: {
         name: 'StreakMeet',

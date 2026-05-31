@@ -1,5 +1,7 @@
+import { Capacitor } from '@capacitor/core'
 import { createConnectTransport, type ConnectTransportOptions } from '@connectrpc/connect-web'
 import { getAccessToken } from '../../context/AuthContext'
+import { getApiOrigin } from '../apiOrigin'
 export { initSyncMode, isSyncModeResolved, isSyncStreamEnabled, onSyncModeReady } from './syncMode'
 
 /** Base URL for Connect/gRPC services (sync-gateway). Vite proxies `/connect` in dev. */
@@ -16,6 +18,8 @@ export function getConnectBaseUrl(): string {
 export function getRustGatewayUrl(): string {
   const configured = import.meta.env.VITE_RUST_GATEWAY_URL as string | undefined
   if (configured?.trim()) return configured.replace(/\/$/, '')
+  // Native app has no same-origin /api — use VITE_API_URL (spectrmod.com).
+  if (Capacitor.isNativePlatform()) return getApiOrigin()
   return ''
 }
 

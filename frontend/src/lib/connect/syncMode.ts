@@ -44,6 +44,8 @@ function writeProbeCache(ok: boolean): void {
 function rustApiHealthUrl(): string | null {
   const gateway = import.meta.env.VITE_RUST_GATEWAY_URL as string | undefined
   if (gateway?.trim()) return `${gateway.replace(/\/$/, '')}/health`
+  const api = import.meta.env.VITE_API_URL as string | undefined
+  if (api?.trim()) return `${api.replace(/\/$/, '')}/health`
   if (import.meta.env.DEV) return 'http://127.0.0.1:8080/health'
   return '/health'
 }
@@ -51,6 +53,8 @@ function rustApiHealthUrl(): string | null {
 function syncGatewayHealthUrl(): string | null {
   const connect = import.meta.env.VITE_CONNECT_URL as string | undefined
   if (connect?.startsWith('http')) return `${connect.replace(/\/$/, '')}/health`
+  const api = import.meta.env.VITE_API_URL as string | undefined
+  if (api?.trim()) return `${api.replace(/\/$/, '')}/connect-health`
   if (import.meta.env.DEV) return 'http://127.0.0.1:8081/health'
   return '/connect-health'
 }
