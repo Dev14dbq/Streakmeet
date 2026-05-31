@@ -4,12 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { Flame, ArrowLeft, Bell, Camera, Image as ImageIcon, Smartphone } from 'lucide-react'
 import useSWRInfinite from 'swr/infinite'
 import {
-  fetcher,
   remindStreak,
   initRemoteSelfie,
   replyRemoteSelfie,
   getApiErrorMessage,
 } from '../../lib/api'
+import { migratedApi } from '../../lib/api/migratedClient'
+import { useSyncModeReady } from '../../hooks/useSyncModeReady'
 import CachedImage from '../../components/CachedImage'
 import { avatarInitial } from '../../lib/avatarInitial'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
@@ -42,7 +43,31 @@ interface MeetProof {
 interface StreakDay {
   id: string
   date: string
-  meetProofs: MeetProof[]
+  meetProofs?: MeetProof[]
+}
+
+interface StreakPartner {
+  id: string
+  nickname: string
+  avatarUrl?: string | null
+}
+
+interface StreakDetailPage {
+  id: string
+  count: number
+  lastMetDate?: string | null
+  timezone: string
+  userA: StreakPartner
+  userB: StreakPartner
+  remoteSelfies?: {
+    id: string
+    senderId: string
+    receiverId: string
+    senderPhotoUrl: string
+    needsReply?: boolean
+    sender?: { id: string; nickname: string }
+  }[]
+  streakDays?: StreakDay[]
 }
 
 function getRemindLabel(combo: number, t: (key: string) => string) {
@@ -104,22 +129,38 @@ export default function StreakDetailsPage() {
   const { t } = useTranslation()
   const { nickname = '' } = useParams()
   const navigate = useNavigate()
+  const syncReady = useSyncModeReady()
 
   const { user: me } = useAuth()
+  const partnerSlug = nickname.trim().toLowerCase()
 
-  const getKey = (pageIndex: number, previousPageData: { streakDays?: StreakDay[] } | null) => {
-    if (!me || !nickname) return null
-    if (previousPageData && !previousPageData.streakDays?.length) return null
-    return `/api/streaks/${encodeURIComponent(nickname.toLowerCase())}?page=${pageIndex + 1}&limit=10`
-  }
+  const detailFetcher = useCallback(
+    (url: string) =>
+      migratedApi()
+        .get<StreakDetailPage>(url)
+        .then((res) => res.data),
+    []
+  )
 
-  const { data, size, setSize, error, isLoading, mutate } = useSWRInfinite(getKey, fetcher)
+  const getKey = useCallback(
+    (pageIndex: number, previousPageData: StreakDetailPage | null) => {
+      if (!syncReady || !me || !partnerSlug) return null
+      if (previousPageData && !(previousPageData.streakDays?.length ?? 0)) return null
+      return `/api/streaks/${encodeURIComponent(partnerSlug)}?page=${pageIndex + 1}&limit=10`
+    },
+    [syncReady, me, partnerSlug]
+  )
+
+  const { data, size, setSize, error, isLoading, mutate } = useSWRInfinite(getKey, detailFetcher, {
+    revalidateOnMount: true,
+    revalidateFirstPage: true,
+  })
 
   const loading = isLoading
   const streakMeta = data?.[0]
-  const streakDays: StreakDay[] = data ? data.flatMap((page) => page.streakDays) : []
-  const isReachingEnd = data && data[data.length - 1]?.streakDays.length < 10
-  const coverPhoto = streakDays[0]?.meetProofs[0]?.photoUrl ?? null
+  const streakDays: StreakDay[] = data ? data.flatMap((page) => page.streakDays ?? []) : []
+  const isReachingEnd = data != null && (data[data.length - 1]?.streakDays?.length ?? 0) < 10
+  const coverPhoto = streakDays[0]?.meetProofs?.[0]?.photoUrl ?? null
 
   const [combo, setCombo] = useState(0)
   const [totalPings, setTotalPings] = useState(0)
@@ -160,7 +201,7 @@ export default function StreakDetailsPage() {
   useEffect(() => {
     if (!me || !streakMeta || !nickname) return
     if (!/^c[a-z0-9]{20,}$/i.test(nickname)) return
-    const partner = streakMeta.userAId === me.id ? streakMeta.userB : streakMeta.userA
+    const partner = streakMeta.userA.id === me.id ? streakMeta.userB : streakMeta.userA
     if (partner?.nickname) {
       navigate(`/streaks/${partner.nickname}`, { replace: true })
     }
@@ -191,7 +232,7 @@ export default function StreakDetailsPage() {
   }, [])
 
   const handleRemind = useCallback(async () => {
-    if (!nickname) return
+    if (!partnerSlug) return
 
     setCombo((c) => {
       const next = c + 1
@@ -207,11 +248,11 @@ export default function StreakDetailsPage() {
     comboTimer.current = setTimeout(() => setCombo(0), 1800)
 
     try {
-      await remindStreak(nickname)
+      await remindStreak(partnerSlug)
     } catch {
       /* визуал работает даже если офлайн */
     }
-  }, [nickname, spawnParticles, triggerScreenShake])
+  }, [partnerSlug, spawnParticles, triggerScreenShake])
 
   const handleSendRemoteSelfie = useCallback(
     async (photoBase64: string): Promise<boolean> => {
@@ -258,7 +299,7 @@ export default function StreakDetailsPage() {
 
   if (!me) return null
 
-  if (loading && !streakMeta) {
+  if (!syncReady || (loading && !streakMeta)) {
     return null
   }
 
@@ -274,7 +315,7 @@ export default function StreakDetailsPage() {
     )
   }
 
-  const partner = streakMeta.userAId === me.id ? streakMeta.userB : streakMeta.userA
+  const partner = streakMeta.userA.id === me.id ? streakMeta.userB : streakMeta.userA
   const metToday = isStreakMetToday(streakMeta)
   const count = streakMeta.count
 
@@ -418,7 +459,7 @@ export default function StreakDetailsPage() {
             className="btn btn--lg w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-on-surface shadow-[0_8px_30px_rgba(139,92,246,0.4)]"
           >
             <Camera size={20} />
-            {t('camera.sendReply')} @{pendingRemoteSelfie.sender.nickname}
+            {t('camera.sendReply')} @{pendingRemoteSelfie.sender?.nickname ?? partner.nickname}
           </button>
         ) : pendingRemoteSelfie && isMyRequest ? (
           <div className="w-full rounded-full py-4 bg-white/5 border border-white/10 text-[var(--color-on-surface-variant)] font-medium text-sm text-center flex items-center justify-center gap-2">
@@ -462,7 +503,7 @@ export default function StreakDetailsPage() {
                         })}
                       </p>
                       <div className="grid grid-cols-2 gap-3">
-                        {day.meetProofs.map((proof) => (
+                        {(day.meetProofs ?? []).map((proof) => (
                           <button
                             key={proof.id}
                             type="button"
@@ -517,7 +558,7 @@ export default function StreakDetailsPage() {
         open={showRemoteSelfieCamera}
         mode={remoteSelfieMode}
         friendPhotoUrl={pendingRemoteSelfie?.senderPhotoUrl}
-        friendNickname={pendingRemoteSelfie?.sender.nickname}
+        friendNickname={pendingRemoteSelfie?.sender?.nickname}
         uploading={remoteSelfieUploading}
         onClose={() => {
           if (remoteSelfieUploading) return

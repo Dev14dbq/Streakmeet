@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Capacitor } from '@capacitor/core'
 import { Geolocation } from '@capacitor/geolocation'
@@ -8,7 +9,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
 import CachedImage from '../../components/CachedImage'
-import { Locate, MapPin, Navigation, Radio, Smartphone, Users, X } from 'lucide-react'
+import { Locate, MapPin, Navigation, Radio, Smartphone, Users } from 'lucide-react'
 import {
   fetcher,
   getApiErrorMessage,
@@ -24,7 +25,10 @@ import {
   startLocationSharing,
   stopLocationSharing,
 } from '../../lib/locationSharing'
-import { promptAlwaysLocationAccess } from '../../lib/alwaysLocationPermission'
+import {
+  promptAlwaysLocationAccess,
+  waitForAlwaysLocationAfterSettings,
+} from '../../lib/alwaysLocationPermission'
 import {
   distanceMeters,
   formatCoords,
@@ -408,6 +412,13 @@ export default function MapPage() {
       })
       if (result === 'granted') {
         await setSharingEnabled(true)
+        return
+      }
+      if (result === 'settings') {
+        const granted = await waitForAlwaysLocationAfterSettings()
+        if (granted) {
+          await setSharingEnabled(true)
+        }
       }
     } catch (e) {
       toastError(getApiErrorMessage(e, t('map.toggleFailed')))
@@ -465,6 +476,10 @@ export default function MapPage() {
     }
   }
 
+  function closeFriendSheet() {
+    setSelected(null)
+  }
+
   if (!isNative) return <NativeAppGate />
   if (!me) return null
 
@@ -490,83 +505,93 @@ export default function MapPage() {
         </div>
       </div>
 
-      {selected && (
-        <div className="absolute inset-x-4 bottom-[calc(9.5rem+env(safe-area-inset-bottom))] z-20">
-          <div className="glass-card rounded-[28px] border border-subtle p-4 shadow-[0_20px_50px_rgba(0,0,0,0.55)]">
-            <div className="mb-3 flex items-start gap-3">
-              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-container-high)] ring-2 ring-[var(--color-brand-primary)]">
-                {selected.avatarUrl ? (
-                  <CachedImage
-                    path={selected.avatarUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xl font-bold text-on-surface">
-                    {selected.nickname.slice(0, 1).toUpperCase()}
+      {selected &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex flex-col justify-end backdrop-blur-sm"
+            style={{ background: 'var(--map-modal-scrim)' }}
+            onClick={closeFriendSheet}
+          >
+            <div
+              className="bg-[var(--color-surface-container-high)] rounded-t-3xl px-6 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-overlay-scrim" />
+
+              <div className="mb-4 flex items-center gap-3">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-container-highest)] ring-2 ring-[var(--color-brand-primary)]">
+                  {selected.avatarUrl ? (
+                    <CachedImage
+                      path={selected.avatarUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xl font-bold text-on-surface">
+                      {selected.nickname.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-lg font-bold text-on-surface">@{selected.nickname}</p>
+                  <p className="mt-0.5 text-xs text-[var(--color-on-surface-variant)]">
+                    {formatRelativeTime(selected.updatedAt)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-4 space-y-2 rounded-2xl bg-overlay-scrim px-4 py-3">
+                <div className="flex items-start gap-2">
+                  <MapPin size={16} className="mt-0.5 shrink-0 text-[var(--color-brand-primary)]" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)]">
+                      {t('map.locationLabel')}
+                    </p>
+                    <p className="text-sm leading-snug text-on-surface">
+                      {addressLoading ? t('map.resolving') : (selectedAddress ?? '—')}
+                    </p>
                   </div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="truncate text-lg font-black text-on-surface">
-                    @{selected.nickname}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(null)}
-                    className="shrink-0 rounded-full p-1.5 text-[var(--color-on-surface-variant)]"
-                    aria-label={t('common.close')}
-                  >
-                    <X size={18} />
-                  </button>
                 </div>
-                <p className="mt-0.5 text-xs text-[var(--color-on-surface-variant)]">
-                  {formatRelativeTime(selected.updatedAt)}
-                </p>
-              </div>
-            </div>
-
-            <div className="mb-3 space-y-2 rounded-2xl bg-overlay-scrim px-3 py-3">
-              <div className="flex items-start gap-2">
-                <MapPin size={15} className="mt-0.5 shrink-0 text-[var(--color-brand-primary)]" />
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-on-surface-variant)]">
-                    {t('map.locationLabel')}
-                  </p>
-                  <p className="text-sm leading-snug text-on-surface">
-                    {addressLoading ? t('map.resolving') : (selectedAddress ?? '—')}
-                  </p>
+                <div className="flex items-center justify-between gap-3 border-t border-subtle pt-2 text-xs">
+                  <span className="text-[var(--color-on-surface-variant)]">
+                    {formatCoords(selected.latitude, selected.longitude)}
+                  </span>
+                  <span className="font-semibold text-on-surface">
+                    {selectedDistance
+                      ? t('map.distanceFromYou', { distance: selectedDistance })
+                      : t('map.distanceUnknown')}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-3 border-t border-subtle pt-2 text-xs">
-                <span className="text-[var(--color-on-surface-variant)]">
-                  {formatCoords(selected.latitude, selected.longitude)}
-                </span>
-                <span className="font-semibold text-on-surface">
-                  {selectedDistance
-                    ? t('map.distanceFromYou', { distance: selectedDistance })
-                    : t('map.distanceUnknown')}
-                </span>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => void openRouteToSelected()}
+                  className="btn btn--primary btn--lg w-full rounded-[1.25rem]"
+                >
+                  <Navigation size={18} />
+                  {t('map.route')}
+                </button>
+                <Link
+                  to={`/${selected.nickname}`}
+                  onClick={closeFriendSheet}
+                  className="btn btn--secondary btn--lg w-full rounded-[1.25rem]"
+                >
+                  {t('nav.profile')}
+                </Link>
+                <button
+                  type="button"
+                  onClick={closeFriendSheet}
+                  className="btn btn--ghost btn--lg w-full"
+                >
+                  {t('common.close')}
+                </button>
               </div>
             </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => void openRouteToSelected()}
-                className="btn btn--primary flex-1"
-              >
-                <Navigation size={18} />
-                {t('map.route')}
-              </button>
-              <Link to={`/${selected.nickname}`} className="btn btn--secondary">
-                {t('nav.profile')}
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {compactShareUi && (
         <div className="map-map-control map-map-control--share pointer-events-auto">

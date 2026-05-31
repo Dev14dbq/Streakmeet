@@ -1,5 +1,5 @@
 import type { MagicMeetResponse, StreakDetail, StreakListItem } from '@streakmeet/api-spec'
-import { migratedApi, nodeApi } from './migratedClient'
+import { migratedApi } from './migratedClient'
 
 const streaksApi = () => migratedApi()
 
@@ -10,7 +10,7 @@ export const getStreak = (partnerNickname: string) =>
   )
 export const createStreak = (partnerId: string) => streaksApi().post('/api/streaks', { partnerId })
 export const remindStreak = (partnerNickname: string) =>
-  nodeApi().post<{ ok: true }>(
+  streaksApi().post<{ ok: true }>(
     `/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}/remind`
   )
 

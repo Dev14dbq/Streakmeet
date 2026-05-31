@@ -61,6 +61,14 @@ struct StreakDayRow {
     status: String,
 }
 
+/// CUID streak/user ids (Node: `/^c[a-z0-9]{20,}$/i`).
+fn is_legacy_streak_id_param(param: &str) -> bool {
+    let Some(rest) = param.strip_prefix('c').or_else(|| param.strip_prefix('C')) else {
+        return false;
+    };
+    rest.len() >= 20 && rest.chars().all(|c| c.is_ascii_alphanumeric())
+}
+
 fn row_to_list_item(row: &StreakRow, viewer_id: &str) -> StreakListItemJson {
     StreakListItemJson {
         id: row.id.clone(),
@@ -319,12 +327,12 @@ pub async fn get_streak_detail(
     let limit = limit.clamp(1, 30);
     let offset = (page - 1) * limit;
 
-    let streak_id = if param.starts_with('c') && param.len() > 20 {
+    let streak_id = if is_legacy_streak_id_param(param) {
         Some(param.to_string())
     } else {
         let nickname = param.to_lowercase();
         let partner = sqlx::query_as::<_, UserIdRow>(
-            r#"SELECT id FROM users WHERE nickname = $1 AND "deletedAt" IS NULL LIMIT 1"#,
+            r#"SELECT id FROM users WHERE LOWER(nickname) = $1 AND "deletedAt" IS NULL LIMIT 1"#,
         )
         .bind(&nickname)
         .fetch_optional(pool)
@@ -455,7 +463,7 @@ pub async fn remind_partner(
 ) -> Result<serde_json::Value, ApiError> {
     let nickname = partner_nickname.to_lowercase();
     let partner = sqlx::query_as::<_, UserIdRow>(
-        r#"SELECT id FROM users WHERE nickname = $1 AND "deletedAt" IS NULL LIMIT 1"#,
+        r#"SELECT id FROM users WHERE LOWER(nickname) = $1 AND "deletedAt" IS NULL LIMIT 1"#,
     )
     .bind(&nickname)
     .fetch_optional(pool)

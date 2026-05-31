@@ -16,6 +16,8 @@ pub struct SaveImageOptions {
     pub quality: f32,
     /// ravif speed 1–10 (10 = fastest encode, slightly larger files).
     pub speed: u8,
+    /// Center square crop before resize (profile avatars).
+    pub square_crop: bool,
 }
 
 impl SaveImageOptions {
@@ -24,6 +26,7 @@ impl SaveImageOptions {
             max_edge: DEFAULT_MAX_EDGE,
             quality: 65.0,
             speed: 10,
+            square_crop: false,
         }
     }
 
@@ -32,8 +35,17 @@ impl SaveImageOptions {
             max_edge: AVATAR_MAX_EDGE,
             quality: 60.0,
             speed: 10,
+            square_crop: true,
         }
     }
+}
+
+fn crop_center_square(img: image::DynamicImage) -> image::DynamicImage {
+    let (w, h) = img.dimensions();
+    let side = w.min(h);
+    let x = (w - side) / 2;
+    let y = (h - side) / 2;
+    img.crop_imm(x, y, side, side)
 }
 
 fn resize_to_max_edge(img: image::DynamicImage, max_edge: u32) -> image::DynamicImage {
@@ -70,7 +82,10 @@ fn save_base64_image_as_avif_sync(
         return Err(anyhow!("invalid image format"));
     }
 
-    let img = load_image(photo_base64)?;
+    let mut img = load_image(photo_base64)?;
+    if opts.square_crop {
+        img = crop_center_square(img);
+    }
     let img = resize_to_max_edge(img, opts.max_edge);
     let rgb = img.to_rgb8();
     let encoded = encode_rgb_as_avif(&rgb, opts)?;

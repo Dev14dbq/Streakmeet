@@ -203,23 +203,28 @@ function patchStreakDetailRemoteSelfie(
   streakId: string,
   pending: PendingRemoteSelfieSync | null
 ): void {
+  const patchPage = (page: { id?: string; remoteSelfies?: unknown[] } | null | undefined) => {
+    if (!page || page.id !== streakId) return page
+    if (!pending) return { ...page, remoteSelfies: [] }
+    return {
+      ...page,
+      remoteSelfies: [
+        {
+          id: pending.id,
+          senderId: pending.senderId,
+          receiverId: pending.receiverId,
+          senderPhotoUrl: pending.senderPhotoUrl,
+          sender: { id: pending.senderId, nickname: pending.senderNickname },
+        },
+      ],
+    }
+  }
+
   void mutate(
-    (key) => typeof key === 'string' && key.startsWith('/api/streaks/'),
-    (current: { id?: string; remoteSelfies?: unknown[] } | undefined) => {
-      if (!current || current.id !== streakId) return current
-      if (!pending) return { ...current, remoteSelfies: [] }
-      return {
-        ...current,
-        remoteSelfies: [
-          {
-            id: pending.id,
-            senderId: pending.senderId,
-            receiverId: pending.receiverId,
-            senderPhotoUrl: pending.senderPhotoUrl,
-            sender: { id: pending.senderId, nickname: pending.senderNickname },
-          },
-        ],
-      }
+    (key) => typeof key === 'string' && key.startsWith('/api/streaks/') && key.includes('?page='),
+    (current: unknown) => {
+      if (Array.isArray(current)) return current.map((page) => patchPage(page as { id?: string }))
+      return patchPage(current as { id?: string } | undefined)
     },
     { revalidate: false }
   )

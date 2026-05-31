@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import androidx.appcompat.app.AlertDialog;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -34,14 +35,19 @@ public class StreakLocationPermissionPlugin extends Plugin {
 
     @PluginMethod
     public void checkAlways(PluginCall call) {
-        boolean foreground = getPermissionState("location") == PermissionState.GRANTED;
+        PermissionState locState = getPermissionState("location");
+        boolean foreground = locState == PermissionState.GRANTED;
         boolean background = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
             || getPermissionState("backgroundLocation") == PermissionState.GRANTED;
+        boolean denied = locState == PermissionState.DENIED
+            || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                && getPermissionState("backgroundLocation") == PermissionState.DENIED);
 
         JSObject ret = new JSObject();
         ret.put("granted", foreground && background);
         ret.put("foreground", foreground);
         ret.put("background", background);
+        ret.put("denied", denied);
         call.resolve(ret);
     }
 
@@ -91,10 +97,71 @@ public class StreakLocationPermissionPlugin extends Plugin {
 
     @PluginMethod
     public void openSettings(PluginCall call) {
+        openAppSettings();
+        call.resolve();
+    }
+
+    /**
+     * Custom explanatory dialog (Android). On confirm opens app settings for «Allow all the time».
+     * Returns { action: "continue" | "settings" | "cancel" } — same contract as iOS.
+     */
+    @PluginMethod
+    public void showAlwaysPrompt(PluginCall call) {
+        String title = call.getString("title");
+        if (title == null || title.isEmpty()) {
+            title = "Location";
+        }
+        String message = call.getString("message");
+        if (message == null) {
+            message = "";
+        }
+        String cancelLabel = call.getString("cancelLabel");
+        if (cancelLabel == null || cancelLabel.isEmpty()) {
+            cancelLabel = "Cancel";
+        }
+        String actionLabel = call.getString("actionLabel");
+        if (actionLabel == null || actionLabel.isEmpty()) {
+            actionLabel = "Settings";
+        }
+        String actionType = call.getString("actionType");
+        if (actionType == null || actionType.isEmpty()) {
+            actionType = "settings";
+        }
+        final String resolvedActionType = actionType;
+
+        getActivity().runOnUiThread(() -> {
+            AlertDialog dialog = new AlertDialog.Builder(getContext())
+                .setTitle(title)
+                .setMessage(message)
+                .setCancelable(true)
+                .setNegativeButton(cancelLabel, (d, which) -> {
+                    JSObject ret = new JSObject();
+                    ret.put("action", "cancel");
+                    call.resolve(ret);
+                })
+                .setPositiveButton(actionLabel, (d, which) -> {
+                    if ("settings".equals(resolvedActionType)) {
+                        openAppSettings();
+                    }
+                    JSObject ret = new JSObject();
+                    ret.put("action", resolvedActionType);
+                    call.resolve(ret);
+                })
+                .create();
+            dialog.setOnCancelListener(d -> {
+                JSObject ret = new JSObject();
+                ret.put("action", "cancel");
+                call.resolve(ret);
+            });
+            dialog.show();
+        });
+    }
+
+    private void openAppSettings() {
         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         intent.setData(Uri.fromParts("package", getContext().getPackageName(), null));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(intent);
-        call.resolve();
     }
 
     @PluginMethod

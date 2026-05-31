@@ -2,6 +2,49 @@
 const DEFAULT_MAX_EDGE = 1600
 const DEFAULT_QUALITY = 0.85
 
+/** Center square crop (profile avatar), then downscale. */
+export function prepareSquareAvatarForUpload(
+  dataUrl: string,
+  opts?: { maxEdge?: number; quality?: number }
+): Promise<string> {
+  if (!dataUrl.startsWith('data:image/')) {
+    return Promise.resolve(dataUrl)
+  }
+
+  const maxEdge = opts?.maxEdge ?? 512
+  const quality = opts?.quality ?? 0.8
+
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const sw = img.naturalWidth
+      const sh = img.naturalHeight
+      if (!sw || !sh) {
+        reject(new Error('invalid_image_dimensions'))
+        return
+      }
+
+      const side = Math.min(sw, sh)
+      const sx = Math.floor((sw - side) / 2)
+      const sy = Math.floor((sh - side) / 2)
+      const out = side > maxEdge ? maxEdge : side
+
+      const canvas = document.createElement('canvas')
+      canvas.width = out
+      canvas.height = out
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('canvas_unavailable'))
+        return
+      }
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, out, out)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => reject(new Error('image_load_failed'))
+    img.src = dataUrl
+  })
+}
+
 /**
  * Downscale and re-encode as JPEG so base64 payloads fit server limits (avatar, meet, etc.).
  */

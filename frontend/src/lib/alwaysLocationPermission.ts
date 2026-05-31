@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
+import { App as CapApp } from '@capacitor/app'
 
 export interface AlwaysLocationStatus {
   granted: boolean
@@ -25,12 +26,22 @@ const StreakLocationPermission = registerPlugin<StreakLocationPermissionPlugin>(
   'StreakLocationPermission'
 )
 
+function isAndroid(): boolean {
+  return Capacitor.getPlatform() === 'android'
+}
+
 /** Проверяет, что выдано «всегда», а не только «при использовании». */
 export async function checkAlwaysLocationPermission(): Promise<AlwaysLocationStatus> {
   if (!Capacitor.isNativePlatform()) {
     return { granted: false, foreground: false, background: false, denied: false }
   }
-  return StreakLocationPermission.checkAlways()
+  const status = await StreakLocationPermission.checkAlways()
+  return {
+    granted: !!status.granted,
+    foreground: !!status.foreground,
+    background: !!status.background,
+    denied: !!status.denied,
+  }
 }
 
 /** Запрашивает «Разрешить всегда» (Android: два шага, iOS: Always). */
@@ -80,8 +91,76 @@ export async function showNativeAlwaysPrompt(options: {
 
 export type AlwaysLocationPromptResult = 'granted' | 'cancelled' | 'settings'
 
-/** Native alert → system dialog or Settings for «Always» location. */
-export async function promptAlwaysLocationAccess(options: {
+/** After returning from system Settings, wait until «Always» is granted (Android). */
+export async function waitForAlwaysLocationAfterSettings(timeoutMs = 120_000): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false
+
+  const check = async () => (await checkAlwaysLocationPermission()).granted
+
+  if (await check()) return true
+
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (ok: boolean) => {
+      if (settled) return
+      settled = true
+      void listener?.remove()
+      clearTimeout(timer)
+      resolve(ok)
+    }
+
+    let listener: { remove: () => Promise<void> } | undefined
+    void CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (!isActive) return
+      void check().then((ok) => {
+        if (ok) finish(true)
+      })
+    }).then((h) => {
+      listener = h
+    })
+
+    const timer = window.setTimeout(() => finish(false), timeoutMs)
+  })
+}
+
+/** Android: custom dialog → open app settings for background «Always». */
+async function promptAlwaysLocationAccessAndroid(options: {
+  title: string
+  message: string
+  settingsMessage: string
+  cancelLabel: string
+  settingsLabel: string
+}): Promise<AlwaysLocationPromptResult> {
+  const status = await checkAlwaysLocationPermission()
+  if (status.granted) return 'granted'
+
+  // Foreground first (system sheet), then settings for «Всегда» / background.
+  if (!status.foreground) {
+    try {
+      await StreakLocationPermission.requestAlways()
+    } catch {
+      /* user denied foreground — still offer settings below */
+    }
+    const afterForeground = await checkAlwaysLocationPermission()
+    if (afterForeground.granted) return 'granted'
+  }
+
+  const action = await showNativeAlwaysPrompt({
+    title: options.title,
+    message: `${options.message}\n\n${options.settingsMessage}`,
+    cancelLabel: options.cancelLabel,
+    actionLabel: options.settingsLabel,
+    actionType: 'settings',
+  })
+
+  if (action === 'cancel') return 'cancelled'
+
+  // Settings already opened from the native dialog confirm button.
+  return 'settings'
+}
+
+/** iOS: native alert → system Always dialog or Settings (unchanged). */
+async function promptAlwaysLocationAccessIos(options: {
   title: string
   message: string
   settingsMessage: string
@@ -89,8 +168,6 @@ export async function promptAlwaysLocationAccess(options: {
   continueLabel: string
   settingsLabel: string
 }): Promise<AlwaysLocationPromptResult> {
-  if (!Capacitor.isNativePlatform()) return 'cancelled'
-
   const status = await checkAlwaysLocationPermission()
   if (status.granted) return 'granted'
 
@@ -123,6 +200,27 @@ export async function promptAlwaysLocationAccess(options: {
     })
     return followUp === 'cancel' ? 'cancelled' : 'settings'
   }
+}
+
+/** Native prompt for background «Always» location — platform-specific flow. */
+export async function promptAlwaysLocationAccess(options: {
+  title: string
+  message: string
+  settingsMessage: string
+  cancelLabel: string
+  continueLabel: string
+  settingsLabel: string
+}): Promise<AlwaysLocationPromptResult> {
+  if (!Capacitor.isNativePlatform()) return 'cancelled'
+
+  const status = await checkAlwaysLocationPermission()
+  if (status.granted) return 'granted'
+
+  if (isAndroid()) {
+    return promptAlwaysLocationAccessAndroid(options)
+  }
+
+  return promptAlwaysLocationAccessIos(options)
 }
 
 export async function openExternalUrl(url: string): Promise<void> {
