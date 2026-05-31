@@ -19,9 +19,10 @@ export default function EmailAuthPage({ onAuth }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo
+  const navState = location.state as { returnTo?: string; email?: string } | null
+  const returnTo = navState?.returnTo
   const [step, setStep] = useState<Step>('email')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(navState?.email?.trim() ?? '')
   const [password, setPassword] = useState('')
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
@@ -110,30 +111,46 @@ export default function EmailAuthPage({ onAuth }: Props) {
         }}
       >
         <div className="flex flex-col gap-6">
-          <div>
-            <label htmlFor="login-email" className="sr-only">
-              Email
-            </label>
-            <input
-              id="login-email"
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="Email"
-              value={email}
-              autoFocus
-              disabled={step === 'password'}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                setEmailError('')
-              }}
-              className="field"
-            />
-            {emailError && (
-              <p className="mt-2 text-sm text-[var(--color-error)] pl-4">{emailError}</p>
-            )}
-          </div>
+          {step === 'email' ? (
+            <div>
+              <label htmlFor="login-email" className="sr-only">
+                Email
+              </label>
+              <input
+                id="login-email"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="Email"
+                value={email}
+                autoFocus
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  setEmailError('')
+                }}
+                className="field"
+              />
+              {emailError && (
+                <p className="mt-2 text-sm text-[var(--color-error)] pl-4">{emailError}</p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-2xl bg-[var(--color-surface-container-high)] px-4 py-3">
+              <p className="truncate text-sm text-on-surface">{email}</p>
+              <button
+                type="button"
+                className="shrink-0 text-sm text-[var(--color-brand-primary)]"
+                onClick={() => {
+                  setStep('email')
+                  setPassword('')
+                  setPasswordError('')
+                }}
+              >
+                {t('common.change')}
+              </button>
+            </div>
+          )}
 
           {step === 'password' && (
             <div>

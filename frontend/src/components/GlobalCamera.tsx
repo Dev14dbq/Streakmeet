@@ -15,6 +15,7 @@ import CameraRemotePartnerPicker, { type StreakPartnerOption } from './CameraRem
 import CachedImage from './CachedImage'
 import { useAuth } from '../context/AuthContext'
 import { getNotificationPrefs } from '../lib/userPreferences'
+import { prepareImageDataUrlForUpload } from '../lib/prepareImageUpload'
 
 function logCapture(step: string, detail?: unknown) {
   if (import.meta.env.DEV) {
@@ -192,9 +193,13 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
       logCapture('POST /api/streaks/magic-meet', { frames: burst?.length ?? 1 })
 
       try {
-        const photosBase64 = burst && burst.length > 1 ? burst : undefined
+        const photoBase64 = await prepareImageDataUrlForUpload(imageSrc)
+        const photosBase64 =
+          burst && burst.length > 1
+            ? await Promise.all(burst.map((frame) => prepareImageDataUrlForUpload(frame)))
+            : undefined
         const { data } = await magicMeet({
-          photoBase64: imageSrc,
+          photoBase64,
           photosBase64,
           location,
         })

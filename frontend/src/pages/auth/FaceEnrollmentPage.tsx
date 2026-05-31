@@ -5,6 +5,7 @@ import Webcam from 'react-webcam'
 import * as faceapi from '@vladmandic/face-api'
 import CameraGate from '../../components/CameraGate'
 import { enrollFace } from '../../lib/api'
+import { prepareImageDataUrlForUpload } from '../../lib/prepareImageUpload'
 import { useAuth } from '../../context/AuthContext'
 import { clearFaceEnrollmentDefer, deferFaceEnrollment } from '../../lib/faceEnrollmentDefer'
 import { captureVideoFrame } from '../../lib/captureVideoFrame'
@@ -488,7 +489,12 @@ export default function FaceEnrollmentPage() {
       if (photosRef.current.length < 3) {
         throw new Error(t('face.saveFailed'))
       }
-      await enrollFace(photosRef.current)
+      const prepared = await Promise.all(
+        photosRef.current.map((p) =>
+          prepareImageDataUrlForUpload(p, { maxEdge: 1280, quality: 0.82 })
+        )
+      )
+      await enrollFace(prepared)
       clearFaceEnrollmentDefer()
       if (user) setUser({ ...user, faceEnrolled: true })
       setPhase('done')

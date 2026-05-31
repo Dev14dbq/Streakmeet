@@ -45,6 +45,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        navigateFallbackDenylist: [/^\/api/, /^\/connect/, /^\/uploads/, /^\/health/],
       },
       manifest: {
         name: 'StreakMeet',

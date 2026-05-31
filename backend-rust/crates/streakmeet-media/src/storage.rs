@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use s3::bucket::Bucket;
 use s3::creds::Credentials;
+use s3::request::ResponseData;
 use s3::Region;
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -18,7 +19,7 @@ pub fn is_media_url(path: &str) -> bool {
 fn local_uploads_dir() -> PathBuf {
     std::env::var("UPLOADS_DIR")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/tmp/streakmeet-uploads"))
+        .unwrap_or_else(|_| PathBuf::from("/home/streakmeet/uploads"))
 }
 
 fn local_path(relative_url: &str) -> PathBuf {
@@ -72,34 +73,13 @@ fn s3_bucket() -> Option<&'static Bucket> {
 }
 
 pub async fn ensure_bucket() -> Result<()> {
-    if !use_s3() {
-        tokio::fs::create_dir_all(local_uploads_dir())
-            .await
-            .context("create uploads dir")?;
-        return Ok(());
-    }
-
-    let bucket = s3_bucket().context("S3 bucket init failed")?;
-    if bucket.head_object("/").await.is_err() {
-        // MinIO creates bucket on first put; ignore head failures for empty bucket.
-    }
+    tokio::fs::create_dir_all(local_uploads_dir())
+        .await
+        .context("create uploads dir")?;
     Ok(())
 }
 
-/// Write AVIF bytes to S3 or local uploads dir.
-pub async fn upload_avif(relative_url: &str, buffer: &[u8]) -> Result<()> {
-    ensure_bucket().await?;
-
-    if use_s3() {
-        let bucket = s3_bucket().context("S3 bucket init failed")?;
-        let key = url_to_key(relative_url);
-        bucket
-            .put_object_with_content_type(&key, buffer, "image/avif")
-            .await
-            .context("S3 put object")?;
-        return Ok(());
-    }
-
+async fn write_local_upload(relative_url: &str, buffer: &[u8]) -> Result<()> {
     let file_path = local_path(relative_url);
     if let Some(parent) = file_path.parent() {
         tokio::fs::create_dir_all(parent).await.ok();
@@ -110,18 +90,81 @@ pub async fn upload_avif(relative_url: &str, buffer: &[u8]) -> Result<()> {
     Ok(())
 }
 
-pub async fn get_object_buffer(relative_url: &str) -> Result<Vec<u8>> {
-    if use_s3() {
-        let bucket = s3_bucket().context("S3 bucket init failed")?;
-        let key = url_to_key(relative_url);
-        let response = bucket
-            .get_object(&key)
-            .await
-            .context("S3 get object")?;
-        return Ok(response.bytes().to_vec());
+fn s3_put_ok(response: &ResponseData) -> bool {
+    response.status_code() == 200 && !looks_like_s3_error_xml(response.as_slice())
+}
+
+async fn mirror_to_s3(relative_url: String, buffer: Vec<u8>) {
+    if !use_s3() {
+        return;
+    }
+    let Some(bucket) = s3_bucket() else {
+        return;
+    };
+    let key = url_to_key(&relative_url);
+    match bucket
+        .put_object_with_content_type(&key, &buffer, "image/avif")
+        .await
+    {
+        Ok(resp) if s3_put_ok(&resp) => {}
+        Ok(resp) => tracing::warn!(
+            %relative_url,
+            status = resp.status_code(),
+            "S3 mirror returned error body; file kept on disk"
+        ),
+        Err(e) => tracing::warn!(%relative_url, error = %e, "S3 mirror failed; file kept on disk"),
+    }
+}
+
+/// Writes to disk immediately; MinIO mirror runs in the background (does not block the API).
+pub async fn upload_avif(relative_url: &str, buffer: &[u8]) -> Result<()> {
+    ensure_bucket().await?;
+    write_local_upload(relative_url, buffer).await?;
+
+    if use_s3() && std::env::var("S3_MIRROR_UPLOADS")
+        .map(|v| v != "false" && v != "0")
+        .unwrap_or(true)
+    {
+        let url = relative_url.to_string();
+        let bytes = buffer.to_vec();
+        tokio::spawn(async move {
+            mirror_to_s3(url, bytes).await;
+        });
     }
 
-    tokio::fs::read(local_path(relative_url))
+    Ok(())
+}
+
+fn looks_like_s3_error_xml(bytes: &[u8]) -> bool {
+    bytes.starts_with(b"<?xml") || bytes.starts_with(b"<Error")
+}
+
+pub async fn get_object_buffer(relative_url: &str) -> Result<Vec<u8>> {
+    let local_file = local_path(relative_url);
+    if local_file.is_file() {
+        return tokio::fs::read(&local_file)
+            .await
+            .with_context(|| format!("read local upload {relative_url}"));
+    }
+
+    if use_s3() {
+        if let Some(bucket) = s3_bucket() {
+            let key = url_to_key(relative_url);
+            match bucket.get_object(&key).await {
+                Ok(response) if response.status_code() == 200 => {
+                    let bytes = response.bytes().to_vec();
+                    if !bytes.is_empty() && !looks_like_s3_error_xml(&bytes) {
+                        return Ok(bytes);
+                    }
+                    tracing::warn!(%relative_url, "S3 get returned non-object body");
+                }
+                Ok(_) => tracing::warn!(%relative_url, "S3 get non-200 status"),
+                Err(e) => tracing::warn!(%relative_url, error = %e, "S3 get failed"),
+            }
+        }
+    }
+
+    tokio::fs::read(local_file)
         .await
         .with_context(|| format!("read local upload {relative_url}"))
 }

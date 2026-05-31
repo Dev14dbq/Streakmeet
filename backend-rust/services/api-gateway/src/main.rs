@@ -11,6 +11,7 @@ mod streaks;
 mod users;
 
 use axum::{
+    extract::DefaultBodyLimit,
     middleware,
     routing::{delete, get, patch, post},
     Router,
@@ -68,6 +69,13 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    // Axum default is 2MB; photo uploads are base64 JSON and need more headroom.
+    let max_body: usize = std::env::var("API_MAX_BODY_BYTES")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(32 * 1024 * 1024);
+    tracing::info!(max_body_bytes = max_body, "api-gateway request body limit");
+
     let state = AppState {
         pool,
         auth_config,
@@ -95,6 +103,7 @@ async fn main() -> anyhow::Result<()> {
             "/api/auth/restore-account",
             post(auth_routes::restore_account_handler),
         )
+        .route("/api/friends", get(friends::list_friends_handler))
         .route("/api/friends/", get(friends::list_friends_handler))
         .route("/api/friends/request", post(friends::request_friend_handler))
         .route("/api/friends/accept", post(friends::accept_friend_handler))
@@ -120,6 +129,7 @@ async fn main() -> anyhow::Result<()> {
             "/api/public/users/{nickname}/photos",
             get(users::public_photos_handler),
         )
+        .route("/api/memories", get(memories::list_memories_handler))
         .route("/api/memories/", get(memories::list_memories_handler))
         .route("/api/legal/status/me", get(legal::legal_status_handler))
         .route("/api/legal/accept", post(legal::legal_accept_handler))
@@ -127,6 +137,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/uploads/{filename}", get(media::serve_upload_handler))
         .route("/api/streaks/meet", post(streaks::record_meet_handler))
         .route("/api/streaks/magic-meet", post(streaks::magic_meet_handler))
+        .route("/api/streaks", get(streaks::list_streaks_handler))
+        .route("/api/streaks", post(streaks::create_streak_handler))
         .route("/api/streaks/", get(streaks::list_streaks_handler))
         .route("/api/streaks/", post(streaks::create_streak_handler))
         .route(
@@ -150,6 +162,7 @@ async fn main() -> anyhow::Result<()> {
             idempotency::idempotency_middleware,
         ))
         .with_state(state)
+        .layer(DefaultBodyLimit::max(max_body))
         .layer(cors);
 
     let port: u16 = std::env::var("API_GATEWAY_PORT")

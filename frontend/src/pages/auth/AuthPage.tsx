@@ -207,7 +207,6 @@ function WebGoogleSignInButton({
           'absolute inset-0 z-20 flex items-center justify-center overflow-hidden',
           disabled ? 'pointer-events-none opacity-50' : '',
         ].join(' ')}
-        aria-hidden={disabled}
       >
         <div className="w-full opacity-[0.011] scale-[1.02]">
           <GoogleLogin

@@ -18,6 +18,7 @@ import { vibrateRemind } from '../../lib/haptics'
 import { isStreakMetToday } from '../../lib/streakCalendar'
 import { formatDate, formatMonthYear } from '../../i18n/format'
 import { toastError, toastSuccess } from '../../lib/toast'
+import { prepareImageDataUrlForUpload } from '../../lib/prepareImageUpload'
 import { useAuth } from '../../context/AuthContext'
 
 const PARTICLE_EMOJIS = ['🔔', '🔥', '⚡', '💥', '📣', '👋', '❗', '💫']
@@ -218,14 +219,15 @@ export default function StreakDetailsPage() {
 
       setRemoteSelfieUploading(true)
       try {
+        const prepared = await prepareImageDataUrlForUpload(photoBase64)
         if (replyingToRequest) {
-          const { data } = await replyRemoteSelfie(streakMeta.id, replyingToRequest, photoBase64)
+          const { data } = await replyRemoteSelfie(streakMeta.id, replyingToRequest, prepared)
           if (data.success) {
             toastSuccess(t('streak.selfieMerged'))
             setSize(1)
           }
         } else {
-          await initRemoteSelfie(streakMeta.id, photoBase64)
+          await initRemoteSelfie(streakMeta.id, prepared)
           toastSuccess(t('streak.selfieRequestSent'))
           setSize(1)
         }

@@ -13,6 +13,7 @@ import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerMo
 import { uploadAvatar, getApiErrorMessage, type AuthUser } from '../../lib/api'
 import { avatarInitial } from '../../lib/avatarInitial'
 import { captureVideoFrame } from '../../lib/captureVideoFrame'
+import { prepareImageDataUrlForUpload } from '../../lib/prepareImageUpload'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { invalidateCachedImage } from '../../lib/remoteImageCache'
 import { useCameraGate } from '../../lib/useCameraGate'
@@ -107,7 +108,8 @@ export default function ProfilePage({ user: initialUser }: Props) {
     setAvatarSheetPhase('uploading')
     const previousAvatar = user.avatarUrl
     try {
-      const { data: res } = await uploadAvatar(base64)
+      const prepared = await prepareImageDataUrlForUpload(base64)
+      const { data: res } = await uploadAvatar(prepared)
       await invalidateCachedImage(previousAvatar)
       const updatedUser = { ...user, avatarUrl: res.avatarUrl }
       authSetUser(updatedUser)
