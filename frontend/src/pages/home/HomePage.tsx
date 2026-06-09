@@ -5,11 +5,15 @@ import ProfileQrModal from '../../components/ProfileQrModal'
 import Avatar from '../../components/Avatar'
 import { Flame, Search, UserPlus, Clock, QrCode } from 'lucide-react'
 import useSWR from 'swr'
-import { type AuthUser, fetcher } from '../../lib/api'
+import { type AuthUser, fetcher, getApiErrorMessage } from '../../lib/api'
+import { asArray } from '../../lib/asArray'
+import { formatNickname } from '../../lib/displayUser'
+import ConnectionErrorState from '../../components/ConnectionErrorState'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { isStreakMetToday } from '../../lib/streakCalendar'
 import { useFriendSearch } from '../../hooks/useFriendSearch'
 import type { StreakListItem, FriendListItem } from '@streakmeet/api-spec'
+import { syncStreakWidget } from '../../lib/widgetSync'
 
 interface Props {
   user: AuthUser
@@ -26,24 +30,48 @@ export default function HomePage({ user }: Props) {
     error: streaksError,
     mutate: mutateStreaks,
   } = useSWR<StreakListItem[]>(SWR_KEYS.streaks, fetcher)
-  const streaks = data ?? []
+  const streaks = asArray<StreakListItem>(data)
+  const streaksInvalid = data != null && !Array.isArray(data)
 
   const {
     query,
     setQuery,
     searchResults,
     loadingSearch,
+    friendsData,
+    friendsError,
+    friendsInvalid,
+    mutateFriends,
     partition,
     handleAdd: doHandleAdd,
     handleAccept,
     handleStartStreak: doHandleStartStreak,
   } = useFriendSearch()
 
+  const hasStreaksCache = Array.isArray(data)
+  const hasFriendsCache = Array.isArray(friendsData)
+  const streaksUnavailable = streaksInvalid || (!!streaksError && !hasStreaksCache)
+  const friendsUnavailable = friendsInvalid || (!!friendsError && !hasFriendsCache)
+  const showConnectionError = streaksUnavailable && friendsUnavailable
+  const loadError = streaksError ?? friendsError
+  const loadErrorMessage = loadError
+    ? getApiErrorMessage(loadError, t('errors.noConnection'))
+    : t('errors.noConnection')
+
+  function retryLoad() {
+    void mutateStreaks()
+    void mutateFriends()
+  }
+
   const { incoming, accepted, pendingOut } = partition
 
   useEffect(() => {
     if (showSearch) searchInputRef.current?.focus()
   }, [showSearch])
+
+  useEffect(() => {
+    if (hasStreaksCache) void syncStreakWidget(streaks)
+  }, [streaks, hasStreaksCache])
 
   async function handleAdd(id: string) {
     await doHandleAdd(id)
@@ -75,7 +103,7 @@ export default function HomePage({ user }: Props) {
             <Avatar path={s.partner.avatarUrl} name={s.partner.nickname} />
             <div className="min-w-0">
               <h3 className="font-bold text-on-surface text-base tracking-tight truncate">
-                @{s.partner.nickname}
+                {formatNickname(s.partner.nickname, t('common.unknownUser'))}
               </h3>
             </div>
           </div>
@@ -206,7 +234,9 @@ export default function HomePage({ user }: Props) {
                     className="flex items-center gap-3 min-w-0 flex-1 active:opacity-80"
                   >
                     <Avatar path={u.avatarUrl} name={u.nickname} size="sm" />
-                    <span className="font-bold text-on-surface truncate">@{u.nickname}</span>
+                    <span className="font-bold text-on-surface truncate">
+                      {formatNickname(u.nickname, t('common.unknownUser'))}
+                    </span>
                   </Link>
                   <button
                     type="button"
@@ -222,17 +252,8 @@ export default function HomePage({ user }: Props) {
         )}
       </div>
 
-      {streaksError ? (
-        <div className="glass-card rounded-3xl p-8 text-center border border-subtle">
-          <p className="text-on-surface font-semibold mb-2">{t('home.loadFailed')}</p>
-          <button
-            type="button"
-            onClick={() => mutateStreaks()}
-            className="text-sm font-bold text-[var(--color-brand-primary)]"
-          >
-            {t('common.retry')}
-          </button>
-        </div>
+      {showConnectionError ? (
+        <ConnectionErrorState message={loadErrorMessage} onRetry={retryLoad} />
       ) : (
         <>
           {incoming.length > 0 && (
@@ -249,7 +270,7 @@ export default function HomePage({ user }: Props) {
                     <div className="flex items-center gap-3 min-w-0">
                       <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
                       <span className="font-bold text-on-surface truncate">
-                        @{f.friend.nickname}
+                        {formatNickname(f.friend.nickname, t('common.unknownUser'))}
                       </span>
                     </div>
                     <button
@@ -307,7 +328,7 @@ export default function HomePage({ user }: Props) {
                     <div className="flex items-center gap-3 min-w-0">
                       <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
                       <span className="font-bold text-on-surface truncate">
-                        @{f.friend.nickname}
+                        {formatNickname(f.friend.nickname, t('common.unknownUser'))}
                       </span>
                     </div>
                     <button
@@ -337,7 +358,9 @@ export default function HomePage({ user }: Props) {
                   >
                     <div className="flex items-center gap-3">
                       <Avatar path={f.friend.avatarUrl} name={f.friend.nickname} size="sm" />
-                      <span className="font-bold text-on-surface">@{f.friend.nickname}</span>
+                      <span className="font-bold text-on-surface">
+                        {formatNickname(f.friend.nickname, t('common.unknownUser'))}
+                      </span>
                     </div>
                     <span className="text-xs text-[var(--color-on-surface-variant)] flex items-center gap-1">
                       <Clock size={14} /> {t('home.waiting')}

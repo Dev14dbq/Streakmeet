@@ -17,6 +17,7 @@ import {
 import { toastError, toastSuccess } from '../../lib/toast'
 import CachedImage from '../../components/CachedImage'
 import { avatarInitial } from '../../lib/avatarInitial'
+import { User } from 'lucide-react'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 
 const NICKNAME_RE = /^[a-z0-9_]{3,20}$/
@@ -201,10 +202,16 @@ export default function PublicProfilePage({ currentUser }: Props) {
             <div className="relative z-10 w-28 h-28 rounded-full bg-[var(--color-surface-container-high)] border-2 border-subtle overflow-hidden flex items-center justify-center">
               {user.avatarUrl ? (
                 <CachedImage path={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
+              ) : avatarInitial(user.nickname) ? (
                 <span className="text-4xl font-bold text-[var(--color-brand-primary)] leading-none select-none">
                   {avatarInitial(user.nickname)}
                 </span>
+              ) : (
+                <User
+                  size={40}
+                  className="text-[var(--color-on-surface-variant)] opacity-70"
+                  aria-hidden
+                />
               )}
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Flame, ArrowLeft, Bell, Camera, Image as ImageIcon, Smartphone } from 'lucide-react'
+import { Flame, ArrowLeft, Bell, Camera, Image as ImageIcon, Smartphone, User } from 'lucide-react'
 import useSWRInfinite from 'swr/infinite'
 import {
   remindStreak,
@@ -13,6 +13,8 @@ import { migratedApi } from '../../lib/api/migratedClient'
 import { useSyncModeReady } from '../../hooks/useSyncModeReady'
 import CachedImage from '../../components/CachedImage'
 import { avatarInitial } from '../../lib/avatarInitial'
+import { formatNickname } from '../../lib/displayUser'
+import { useCachedImageSrc } from '../../lib/useCachedImageSrc'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 import RemoteSelfieCameraModal from '../../components/RemoteSelfieCameraModal'
 import { vibrateRemind } from '../../lib/haptics'
@@ -98,13 +100,30 @@ function DuoAvatar({
   label?: string
   onClick?: () => void
 }) {
-  const inner = path ? (
-    <CachedImage path={path} alt="" className="w-full h-full object-cover" />
-  ) : (
-    <span className="text-2xl font-bold text-[var(--color-brand-primary)] leading-none select-none">
-      {avatarInitial(name)}
-    </span>
-  )
+  const [imgFailed, setImgFailed] = useState(false)
+  const initial = avatarInitial(name)
+  const showImage = Boolean(path) && !imgFailed
+  const src = useCachedImageSrc(showImage ? path : null)
+
+  useEffect(() => {
+    setImgFailed(false)
+  }, [path])
+
+  const inner =
+    showImage && src ? (
+      <img
+        src={src}
+        alt=""
+        className="w-full h-full object-cover"
+        onError={() => setImgFailed(true)}
+      />
+    ) : initial ? (
+      <span className="text-2xl font-bold text-[var(--color-brand-primary)] leading-none select-none">
+        {initial}
+      </span>
+    ) : (
+      <User size={28} className="text-[var(--color-on-surface-variant)] opacity-70" aria-hidden />
+    )
 
   const cls =
     'relative w-[72px] h-[72px] rounded-full border-[3px] border-black/80 overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_8px_24px_rgba(0,0,0,0.45)]'
@@ -332,11 +351,13 @@ export default function StreakDetailsPage() {
               <CachedImage
                 path={coverPhoto}
                 alt=""
+                fallback="empty"
                 className="w-full h-full object-cover scale-110 blur-2xl opacity-50"
               />
               <CachedImage
                 path={coverPhoto}
                 alt=""
+                fallback="empty"
                 className="absolute inset-0 w-full h-full object-cover opacity-30"
               />
             </>
@@ -361,7 +382,7 @@ export default function StreakDetailsPage() {
               to={`/${partner.nickname}`}
               className="btn btn--sm bg-black/40 text-on-surface/90 backdrop-blur-md border border-white/10 hover:text-[var(--color-brand-primary)]"
             >
-              @{partner.nickname}
+              {formatNickname(partner.nickname, t('common.unknownUser'))}
             </Link>
           </div>
 
@@ -459,12 +480,16 @@ export default function StreakDetailsPage() {
             className="btn btn--lg w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-on-surface shadow-[0_8px_30px_rgba(139,92,246,0.4)]"
           >
             <Camera size={20} />
-            {t('camera.sendReply')} @{pendingRemoteSelfie.sender?.nickname ?? partner.nickname}
+            {t('camera.sendReply')}{' '}
+            {formatNickname(
+              pendingRemoteSelfie.sender?.nickname ?? partner.nickname,
+              t('common.unknownUser')
+            )}
           </button>
         ) : pendingRemoteSelfie && isMyRequest ? (
           <div className="w-full rounded-full py-4 bg-white/5 border border-white/10 text-[var(--color-on-surface-variant)] font-medium text-sm text-center flex items-center justify-center gap-2">
             <Smartphone size={18} />
-            {t('common.loading')} @{partner.nickname}...
+            {t('common.loading')} {formatNickname(partner.nickname, t('common.unknownUser'))}...
           </div>
         ) : !metToday ? (
           <button

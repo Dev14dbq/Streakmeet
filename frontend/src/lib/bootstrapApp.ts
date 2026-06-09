@@ -11,6 +11,8 @@ import {
 import { initGoogleAuth } from './googleAuth'
 import { pruneStaleImageCache } from './remoteImageCache'
 import { SWR_KEYS } from './swrKeys'
+import { syncStreakWidget } from './widgetSync'
+import type { StreakListItem } from '@streakmeet/api-spec'
 
 export interface DeletedAccountRedirect {
   email: string
@@ -63,16 +65,17 @@ export async function bootstrapSession(): Promise<BootstrapSessionResult> {
       dataApi.get(SWR_KEYS.photosPage(1)),
     ])
 
-    if (streaks.status === 'fulfilled') {
+    if (streaks.status === 'fulfilled' && Array.isArray(streaks.value.data)) {
       void mutate(SWR_KEYS.streaks, streaks.value.data, { revalidate: false })
+      void syncStreakWidget(streaks.value.data as StreakListItem[])
     }
-    if (friends.status === 'fulfilled') {
+    if (friends.status === 'fulfilled' && Array.isArray(friends.value.data)) {
       void mutate(SWR_KEYS.friends, friends.value.data, { revalidate: false })
     }
     if (location.status === 'fulfilled') {
       void mutate(SWR_KEYS.locationMe, location.value.data, { revalidate: false })
     }
-    if (friendLocations.status === 'fulfilled') {
+    if (friendLocations.status === 'fulfilled' && Array.isArray(friendLocations.value.data)) {
       void mutate(SWR_KEYS.friendLocations, friendLocations.value.data, { revalidate: false })
     }
     if (photos.status === 'fulfilled') {

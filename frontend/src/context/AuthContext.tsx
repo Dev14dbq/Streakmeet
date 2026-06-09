@@ -15,6 +15,7 @@ import { initSyncMode } from '../lib/connect/client'
 import { bootstrapSession } from '../lib/bootstrapApp'
 import { clearFaceEnrollmentDefer, isFaceEnrollmentDeferred } from '../lib/faceEnrollmentDefer'
 import { stopLocationSharing } from '../lib/locationSharing'
+import { clearStreakWidget } from '../lib/widgetSync'
 
 export type BootstrapPhase = 'hidden' | 'loading' | 'leaving'
 
@@ -105,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logoutInFlightRef.current = true
     try {
       await stopLocationSharing().catch(() => {})
+      await clearStreakWidget().catch(() => {})
       clearFaceEnrollmentDefer()
       localStorage.removeItem('accessToken')
       localStorage.removeItem('user')

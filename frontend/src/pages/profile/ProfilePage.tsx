@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { QrCode, Image as ImageIcon, Settings, X, MapPin, Camera } from 'lucide-react'
+import { QrCode, Image as ImageIcon, Settings, X, MapPin, Camera, User } from 'lucide-react'
 import Webcam from 'react-webcam'
 import useSWRInfinite from 'swr/infinite'
 import { mutate } from 'swr'
@@ -235,10 +235,16 @@ export default function ProfilePage({ user: initialUser }: Props) {
               <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
             ) : user.avatarUrl ? (
               <CachedImage path={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
+            ) : avatarInitial(user.nickname) ? (
               <span className="text-4xl font-bold text-[var(--color-brand-primary)] leading-none select-none">
                 {avatarInitial(user.nickname)}
               </span>
+            ) : (
+              <User
+                size={40}
+                className="text-[var(--color-on-surface-variant)] opacity-70"
+                aria-hidden
+              />
             )}
             {uploading ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55">

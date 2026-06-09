@@ -51,6 +51,7 @@ export interface SyncStreamHandlers {
 }
 
 const BACKOFF_MS = [1_000, 2_000, 5_000, 10_000, 30_000]
+const RECONNECT_DELAY_MS = 2_000
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -594,7 +595,14 @@ export async function runSyncStream(
   while (!signal.aborted) {
     try {
       await openSubscribeOnce(handlers, signal)
+      // Server closed the stream cleanly — wait before reconnecting
+      // to avoid a tight reconnect loop.
       attempt = 0
+      try {
+        await sleep(RECONNECT_DELAY_MS, signal)
+      } catch {
+        return
+      }
     } catch (err) {
       if (signal.aborted) return
       handlers.onError?.(err)

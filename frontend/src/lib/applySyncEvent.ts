@@ -3,6 +3,7 @@ import type { FriendListItem, StreakListItem } from '@streakmeet/api-spec'
 import { SWR_KEYS } from './swrKeys'
 import type { SyncEnvelope } from './connect/syncStream'
 import { invalidateAfterNotification } from './swrInvalidation'
+import { syncStreakWidget } from './widgetSync'
 
 /** Pending remote selfie on streak list (Connect + Node list shape). */
 export interface PendingRemoteSelfieSync {
@@ -162,36 +163,42 @@ function applySyncNotification(payload: SyncNotificationPayload): void {
   invalidateAfterNotification(payload.type)
 }
 
+function mutateStreaks(updater: (current: StreakListItem[]) => StreakListItem[]): void {
+  void mutate<StreakListItem[]>(
+    SWR_KEYS.streaks,
+    (current = []) => {
+      const next = updater(current)
+      void syncStreakWidget(next)
+      return next
+    },
+    { revalidate: false }
+  )
+}
+
 function patchRemoteSelfiePending(update: RemoteSelfiePendingPayload): void {
   const pending = update.pendingRemoteSelfie
   if (!pending) return
 
-  void mutate<StreakListItem[]>(
-    SWR_KEYS.streaks,
-    (current = []) =>
-      current.map((s) =>
-        s.id === update.streakId
-          ? ({ ...s, pendingRemoteSelfie: pending } as StreakListItem & {
-              pendingRemoteSelfie: PendingRemoteSelfieSync
-            })
-          : s
-      ),
-    { revalidate: false }
+  mutateStreaks((current) =>
+    current.map((s) =>
+      s.id === update.streakId
+        ? ({ ...s, pendingRemoteSelfie: pending } as StreakListItem & {
+            pendingRemoteSelfie: PendingRemoteSelfieSync
+          })
+        : s
+    )
   )
 
   patchStreakDetailRemoteSelfie(update.streakId, pending)
 }
 
 function patchRemoteSelfieCleared(update: RemoteSelfieClearedPayload): void {
-  void mutate<StreakListItem[]>(
-    SWR_KEYS.streaks,
-    (current = []) =>
-      current.map((s) =>
-        s.id === update.streakId
-          ? ({ ...s, pendingRemoteSelfie: null } as StreakListItem & { pendingRemoteSelfie: null })
-          : s
-      ),
-    { revalidate: false }
+  mutateStreaks((current) =>
+    current.map((s) =>
+      s.id === update.streakId
+        ? ({ ...s, pendingRemoteSelfie: null } as StreakListItem & { pendingRemoteSelfie: null })
+        : s
+    )
   )
 
   patchStreakDetailRemoteSelfie(update.streakId, null)
@@ -274,33 +281,26 @@ function patchFriendsCache(event: FriendSyncPayload): void {
 }
 
 function patchStreaksCacheInsert(streak: StreakListItem): void {
-  void mutate<StreakListItem[]>(
-    SWR_KEYS.streaks,
-    (current = []) => {
-      if (current.some((s) => s.id === streak.id)) {
-        return current.map((s) => (s.id === streak.id ? streak : s))
-      }
-      return [streak, ...current]
-    },
-    { revalidate: false }
-  )
+  mutateStreaks((current) => {
+    if (current.some((s) => s.id === streak.id)) {
+      return current.map((s) => (s.id === streak.id ? streak : s))
+    }
+    return [streak, ...current]
+  })
 }
 
 function patchStreaksCacheMeet(update: StreakMeetPayload): void {
-  void mutate<StreakListItem[]>(
-    SWR_KEYS.streaks,
-    (current = []) =>
-      current.map((s) =>
-        s.id === update.streakId
-          ? {
-              ...s,
-              count: update.count,
-              lastMetDate: update.lastMetDate ?? s.lastMetDate,
-              partner: update.partner ?? s.partner,
-            }
-          : s
-      ),
-    { revalidate: false }
+  mutateStreaks((current) =>
+    current.map((s) =>
+      s.id === update.streakId
+        ? {
+            ...s,
+            count: update.count,
+            lastMetDate: update.lastMetDate ?? s.lastMetDate,
+            partner: update.partner ?? s.partner,
+          }
+        : s
+    )
   )
 
   void mutate((key) => typeof key === 'string' && key.startsWith('/api/streaks/'), undefined, {
@@ -309,13 +309,10 @@ function patchStreaksCacheMeet(update: StreakMeetPayload): void {
 }
 
 function patchStreaksCacheBurn(update: StreakBurnedPayload): void {
-  void mutate<StreakListItem[]>(
-    SWR_KEYS.streaks,
-    (current = []) =>
-      current.map((s) =>
-        s.id === update.streakId ? { ...s, count: update.count, lastMetDate: null } : s
-      ),
-    { revalidate: false }
+  mutateStreaks((current) =>
+    current.map((s) =>
+      s.id === update.streakId ? { ...s, count: update.count, lastMetDate: null } : s
+    )
   )
 
   void mutate((key) => typeof key === 'string' && key.startsWith('/api/streaks/'), undefined, {
