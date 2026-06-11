@@ -240,11 +240,7 @@ pub async fn upload_avatar(
         return Err(ApiError::new(400, codes::INVALID_PHOTO, None));
     }
 
-    let avatar_url = streakmeet_media::save_avatar_base64_as_avif(
-        pool,
-        photo_base64,
-        &format!("avatar_{user_id}_{}", chrono::Utc::now().timestamp_millis()),
-    )
+    let avatar_url = streakmeet_media::save_avatar_base64_as_avif(pool, user_id, photo_base64)
     .await
     .map_err(|_| ApiError::new(500, codes::AVATAR_SAVE_FAILED, None))?;
 

@@ -11,7 +11,7 @@ use streakmeet_auth::config_from_env;
 use streakmeet_db::connect_from_env;
 use streakmeet_nats::connect_from_env as connect_nats;
 use streakmeet_sync::{OutboxPublisher, run_outbox_worker};
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing_subscriber::EnvFilter;
 
 #[derive(Clone)]
@@ -20,6 +20,41 @@ pub struct AppState {
     pub auth_config: streakmeet_auth::AuthConfig,
     pub outbox: OutboxPublisher,
     pub idempotency: middleware::idempotency::IdempotencyStore,
+    pub rate_limit: middleware::rate_limit::RateLimitStore,
+}
+
+fn build_cors_layer() -> CorsLayer {
+    let raw = std::env::var("CORS_ORIGINS").unwrap_or_default();
+    let origins: Vec<axum::http::HeaderValue> = raw
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty() && *s != "*")
+        .filter_map(|s| s.parse().ok())
+        .collect();
+
+    if origins.is_empty() {
+        tracing::warn!("CORS_ORIGINS unset — allowing any origin (set explicit origins in production)");
+        CorsLayer::new()
+            .allow_origin(tower_http::cors::Any)
+            .allow_methods(tower_http::cors::Any)
+            .allow_headers(tower_http::cors::Any)
+    } else {
+        tracing::info!(count = origins.len(), "CORS restricted to configured origins");
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(origins))
+            .allow_methods([
+                axum::http::Method::GET,
+                axum::http::Method::POST,
+                axum::http::Method::PATCH,
+                axum::http::Method::DELETE,
+                axum::http::Method::OPTIONS,
+            ])
+            .allow_headers([
+                axum::http::header::AUTHORIZATION,
+                axum::http::header::CONTENT_TYPE,
+                axum::http::HeaderName::from_static("idempotency-key"),
+            ])
+    }
 }
 
 #[tokio::main]
@@ -50,10 +85,8 @@ async fn main() -> anyhow::Result<()> {
     streakmeet_media::ensure_media_schema(&pool).await?;
     let idempotency = middleware::idempotency::IdempotencyStore::connect_from_env().await;
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let cors = build_cors_layer();
+    let rate_limit = middleware::rate_limit::RateLimitStore::new();
 
     // Axum default is 2MB; photo uploads are base64 JSON and need more headroom.
     let max_body: usize = std::env::var("API_MAX_BODY_BYTES")
@@ -67,6 +100,7 @@ async fn main() -> anyhow::Result<()> {
         auth_config,
         outbox,
         idempotency,
+        rate_limit,
     };
 
     let app = Router::new()
@@ -264,6 +298,13 @@ async fn main() -> anyhow::Result<()> {
             state.clone(),
             middleware::idempotency::idempotency_middleware,
         ))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            middleware::rate_limit::rate_limit_middleware,
+        ))
+        .layer(axum::middleware::from_fn(
+            middleware::security_headers::security_headers_middleware,
+        ))
         .with_state(state)
         .layer(DefaultBodyLimit::max(max_body))
         .layer(cors);
@@ -275,7 +316,11 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::info!(%port, "api-gateway listening");
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
 
     Ok(())
 }

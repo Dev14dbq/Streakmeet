@@ -36,6 +36,7 @@ if [ -f backend/.env ]; then
   sync_env_key FACE_MODEL_TAG
   sync_env_key FACE_MATCH_THRESHOLD_SELF
   sync_env_key FACE_MATCH_THRESHOLD_PARTNER
+  sync_env_key CORS_ORIGINS
 fi
 
 echo "==> SQL migrations (idempotent)..."
@@ -44,7 +45,7 @@ if [ -f backend-rust/.env ]; then
   # shellcheck disable=SC1091
   source backend-rust/.env
   set +a
-  for f in backend-rust/migrations/001_sync_outbox.sql backend-rust/migrations/002_media_objects.sql; do
+  for f in backend-rust/migrations/001_sync_outbox.sql backend-rust/migrations/002_media_objects.sql backend-rust/migrations/003_media_uploaded_by.sql; do
     [ -f "$f" ] || continue
     psql "$DATABASE_URL" -f "$f" 2>/dev/null || true
   done

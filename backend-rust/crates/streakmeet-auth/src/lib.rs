@@ -118,9 +118,14 @@ pub async fn login_proto(
 }
 
 pub fn config_from_env() -> AuthConfig {
+    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| {
+        panic!("JWT_SECRET environment variable is required");
+    });
+    if jwt_secret.is_empty() || jwt_secret == "change_me_in_production" {
+        panic!("JWT_SECRET must be set to a strong random value (not the placeholder)");
+    }
     AuthConfig {
-        jwt_secret: std::env::var("JWT_SECRET")
-            .unwrap_or_else(|_| "change_me_in_production".into()),
+        jwt_secret,
         jwt_expires_in: std::env::var("JWT_EXPIRES_IN").unwrap_or_else(|_| "7d".into()),
     }
 }

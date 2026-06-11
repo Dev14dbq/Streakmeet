@@ -207,13 +207,9 @@ pub async fn init_remote_selfie(
         return Err(ApiError::new(409, codes::REMOTE_SELFIE_PENDING, None));
     }
 
-    let saved_photo_url = streakmeet_media::save_base64_image_as_avif(
-        pool,
-        photo_base64,
-        &format!("remote_selfie_{}_{user_id}", Utc::now().timestamp_millis()),
-    )
-    .await
-    .map_err(|_| ApiError::new(500, codes::IMAGE_SAVE_FAILED, None))?;
+    let saved_photo_url = streakmeet_media::save_base64_image_as_avif(pool, user_id, photo_base64)
+        .await
+        .map_err(|_| ApiError::new(500, codes::IMAGE_SAVE_FAILED, None))?;
 
     let request_id = streakmeet_types::new_cuid()?;
     let row = sqlx::query_as::<_, RemoteSelfieRow>(
@@ -360,9 +356,9 @@ pub async fn reply_remote_selfie(
 
     let combined_url = match streakmeet_media::combine_remote_selfie_images(
         pool,
+        user_id,
         &request.sender_photo_url,
         photo_base64,
-        &format!("combined_{}_{streak_id}", Utc::now().timestamp_millis()),
     )
     .await
     {

@@ -290,18 +290,17 @@ pub async fn record_meet_upload(
     }
 
     let photo_url = if let Some(url) = photo_url.filter(|u| !u.is_empty()) {
+        streakmeet_media::assert_media_owned_by(pool, url, user_id)
+            .await
+            .map_err(|_| ApiError::new(400, codes::INVALID_PHOTO, None))?;
         url.to_string()
     } else {
         let photo_base64 = photo_base64
             .filter(|s| !s.is_empty())
             .ok_or_else(|| ApiError::new(400, codes::MAGIC_MEET_PHOTO_REQUIRED, None))?;
-        streakmeet_media::save_base64_image_as_avif(
-            pool,
-            photo_base64,
-            &format!("{}_{user_id}", Utc::now().timestamp_millis()),
-        )
-        .await
-        .map_err(|_| ApiError::new(500, codes::IMAGE_SAVE_FAILED, None))?
+        streakmeet_media::save_base64_image_as_avif(pool, user_id, photo_base64)
+            .await
+            .map_err(|_| ApiError::new(500, codes::IMAGE_SAVE_FAILED, None))?
     };
 
     let photo_hash = if let Some(photo_base64) = photo_base64.filter(|s| !s.is_empty()) {

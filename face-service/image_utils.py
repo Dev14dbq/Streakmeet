@@ -10,6 +10,11 @@ from fastapi import HTTPException
 
 log = logging.getLogger("face-service")
 
+# ~5 MB base64 payload cap per image (before decode).
+MAX_IMAGE_BASE64_BYTES = 5 * 1024 * 1024
+# Reject decompression bombs after decode (~16 MP RGB).
+MAX_DECODED_PIXELS = 16_000_000
+
 # Minimum dimensions before upscaling (mobile WebView previews are often small).
 MIN_WIDTH = 320
 MIN_HEIGHT = 240
@@ -84,15 +89,23 @@ def face_box_px(bbox: np.ndarray) -> float:
 
 def decode_image(image_base64: str) -> np.ndarray:
     raw = image_base64.split(",", 1)[-1]
+    if len(raw) > MAX_IMAGE_BASE64_BYTES:
+        raise HTTPException(status_code=413, detail="Image too large")
     try:
         data = base64.b64decode(raw)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid base64 image") from exc
 
+    if len(data) > MAX_IMAGE_BASE64_BYTES:
+        raise HTTPException(status_code=413, detail="Image too large")
+
     arr = np.frombuffer(data, dtype=np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
         raise HTTPException(status_code=400, detail="Could not decode image")
+    h, w = img.shape[:2]
+    if h * w > MAX_DECODED_PIXELS:
+        raise HTTPException(status_code=413, detail="Image resolution too large")
     return img
 
 

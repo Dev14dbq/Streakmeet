@@ -136,9 +136,9 @@ pub async fn get_object_buffer(pool: &PgPool, relative_url: &str) -> Result<Vec<
 
 pub async fn combine_remote_selfie_images(
     pool: &PgPool,
+    user_id: &str,
     photo_url_a: &str,
     photo_base64_b: &str,
-    name_without_ext: &str,
 ) -> Result<String> {
     use image::RgbaImage;
     use image::imageops::FilterType;
@@ -164,21 +164,26 @@ pub async fn combine_remote_selfie_images(
     let rgb = image::DynamicImage::ImageRgba8(canvas).to_rgb8();
     let encoded = encode_rgb_as_avif(&rgb, SaveImageOptions::default_meet())?;
 
-    let file_name = format!("{name_without_ext}.avif");
+    let file_name = format!("{}.avif", random_media_basename());
     let relative_url = format!("/uploads/{file_name}");
-    super::storage::upload_avif(pool, &relative_url, &encoded.avif_file).await?;
+    super::storage::upload_avif(pool, &relative_url, &encoded.avif_file, Some(user_id)).await?;
     Ok(relative_url)
+}
+
+fn random_media_basename() -> String {
+    uuid::Uuid::new_v4().to_string()
 }
 
 pub async fn save_base64_image_as_avif(
     pool: &PgPool,
+    user_id: &str,
     photo_base64: &str,
-    name_without_ext: &str,
 ) -> Result<String> {
     save_base64_image_as_avif_with_opts(
         pool,
+        user_id,
         photo_base64,
-        name_without_ext,
+        &random_media_basename(),
         SaveImageOptions::default_meet(),
     )
     .await
@@ -186,13 +191,14 @@ pub async fn save_base64_image_as_avif(
 
 pub async fn save_avatar_base64_as_avif(
     pool: &PgPool,
+    user_id: &str,
     photo_base64: &str,
-    name_without_ext: &str,
 ) -> Result<String> {
     save_base64_image_as_avif_with_opts(
         pool,
+        user_id,
         photo_base64,
-        name_without_ext,
+        &random_media_basename(),
         SaveImageOptions::avatar(),
     )
     .await
@@ -200,18 +206,20 @@ pub async fn save_avatar_base64_as_avif(
 
 pub async fn save_base64_image_as_avif_with_opts(
     pool: &PgPool,
+    user_id: &str,
     photo_base64: &str,
     name_without_ext: &str,
     opts: SaveImageOptions,
 ) -> Result<String> {
     let photo_base64 = photo_base64.to_string();
     let name_without_ext = name_without_ext.to_string();
+    let user_id = user_id.to_string();
     let (relative_url, bytes) = tokio::task::spawn_blocking(move || {
         save_base64_image_as_avif_sync(&photo_base64, &name_without_ext, opts)
     })
     .await
     .context("image encode task cancelled")??;
 
-    super::storage::upload_avif(pool, &relative_url, &bytes).await?;
+    super::storage::upload_avif(pool, &relative_url, &bytes, Some(&user_id)).await?;
     Ok(relative_url)
 }

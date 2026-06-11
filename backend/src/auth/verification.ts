@@ -74,7 +74,7 @@ export async function forgotPassword(email: unknown): Promise<{ success: true }>
   const normalizedEmail = email.toLowerCase().trim()
   const user = await findUserByEmail(normalizedEmail)
   if (!user || user.deletedAt) return { success: true }
-  if (!user.passwordHash) throw new AuthServiceError(400, ErrorCodes.OAUTH_ACCOUNT_NO_PASSWORD)
+  if (!user.passwordHash) return { success: true }
 
   const token = generateToken()
   const expires = new Date(Date.now() + 3_600_000)

@@ -267,13 +267,9 @@ async fn persist_matches(
         let today = instant_meet_streak_day(&entry.streak.timezone, Utc::now());
         if saved_photo_url.is_none() {
             saved_photo_url = Some(
-                streakmeet_media::save_base64_image_as_avif(
-                    pool,
-                    best_photo_base64,
-                    &format!("{}_{user_id}", Utc::now().timestamp_millis()),
-                )
-                .await
-                .map_err(|_| ApiError::new(500, codes::IMAGE_SAVE_FAILED, None))?,
+                streakmeet_media::save_base64_image_as_avif(pool, user_id, best_photo_base64)
+                    .await
+                    .map_err(|_| ApiError::new(500, codes::IMAGE_SAVE_FAILED, None))?,
             );
         }
         let photo_url = saved_photo_url.as_ref().unwrap();

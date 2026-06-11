@@ -10,12 +10,16 @@ pub fn is_media_url(path: &str) -> bool {
 }
 
 pub async fn ensure_media_schema(pool: &PgPool) -> Result<()> {
-    let sql = include_str!("../../../migrations/002_media_objects.sql");
-    for statement in sql.split(';').map(str::trim).filter(|s| !s.is_empty()) {
-        sqlx::query(statement)
-            .execute(pool)
-            .await
-            .context("apply media_objects migration")?;
+    for migration in [
+        include_str!("../../../migrations/002_media_objects.sql"),
+        include_str!("../../../migrations/003_media_uploaded_by.sql"),
+    ] {
+        for statement in migration.split(';').map(str::trim).filter(|s| !s.is_empty()) {
+            sqlx::query(statement)
+                .execute(pool)
+                .await
+                .with_context(|| format!("apply media migration: {statement}"))?;
+        }
     }
     import_legacy_disk_uploads(pool).await?;
     Ok(())
@@ -85,7 +89,12 @@ async fn import_legacy_disk_uploads(pool: &PgPool) -> Result<()> {
     Ok(())
 }
 
-pub async fn upload_avif(pool: &PgPool, relative_url: &str, buffer: &[u8]) -> Result<()> {
+pub async fn upload_avif(
+    pool: &PgPool,
+    relative_url: &str,
+    buffer: &[u8],
+    uploaded_by: Option<&str>,
+) -> Result<()> {
     let key = url_to_key(relative_url);
     if key.is_empty() || key.contains("..") {
         return Err(anyhow::anyhow!("invalid media key"));
@@ -93,21 +102,57 @@ pub async fn upload_avif(pool: &PgPool, relative_url: &str, buffer: &[u8]) -> Re
 
     sqlx::query(
         r#"
-        INSERT INTO media_objects (key, data, content_type)
-        VALUES ($1, $2, 'image/avif')
+        INSERT INTO media_objects (key, data, content_type, uploaded_by)
+        VALUES ($1, $2, 'image/avif', $3)
         ON CONFLICT (key) DO UPDATE
         SET data = EXCLUDED.data,
             content_type = EXCLUDED.content_type,
+            uploaded_by = COALESCE(EXCLUDED.uploaded_by, media_objects.uploaded_by),
             created_at = NOW()
         "#,
     )
     .bind(&key)
     .bind(buffer)
+    .bind(uploaded_by)
     .execute(pool)
     .await
     .context("store media object")?;
 
     Ok(())
+}
+
+/// Ensures `relative_url` is a stored upload owned by `user_id` (or legacy row with user id in key).
+pub async fn assert_media_owned_by(
+    pool: &PgPool,
+    relative_url: &str,
+    user_id: &str,
+) -> Result<(), anyhow::Error> {
+    if !is_media_url(relative_url) {
+        return Err(anyhow::anyhow!("not a media url"));
+    }
+
+    let key = url_to_key(relative_url);
+    let row: Option<(Option<String>,)> =
+        sqlx::query_as(r#"SELECT uploaded_by FROM media_objects WHERE key = $1"#)
+            .bind(&key)
+            .fetch_optional(pool)
+            .await
+            .context("lookup media owner")?;
+
+    let Some((uploaded_by,)) = row else {
+        return Err(anyhow::anyhow!("media not found"));
+    };
+
+    if uploaded_by.as_deref() == Some(user_id) {
+        return Ok(());
+    }
+
+    // Legacy rows imported before uploaded_by existed.
+    if uploaded_by.is_none() && key.contains(user_id) {
+        return Ok(());
+    }
+
+    Err(anyhow::anyhow!("media not owned by user"))
 }
 
 pub async fn get_object_buffer(pool: &PgPool, relative_url: &str) -> Result<Vec<u8>> {

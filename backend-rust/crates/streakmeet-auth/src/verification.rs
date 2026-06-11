@@ -164,7 +164,8 @@ pub async fn forgot_password(pool: &PgPool, email: &str) -> Result<serde_json::V
     }
 
     if user.password_hash.is_empty() {
-        return Err(ApiError::new(400, codes::OAUTH_ACCOUNT_NO_PASSWORD, None));
+        // Same response as unknown email — avoid account-type enumeration.
+        return Ok(serde_json::json!({ "success": true }));
     }
 
     let token = generate_token();
