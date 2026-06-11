@@ -60,7 +60,7 @@ impl RateLimitStore {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum LimitClass {
     Global,
     Auth,
@@ -149,7 +149,6 @@ fn rate_limited_response() -> Response {
 
 pub async fn rate_limit_middleware(
     State(state): State<AppState>,
-    connect: Option<ConnectInfo<SocketAddr>>,
     request: Request<Body>,
     next: Next,
 ) -> Response {
@@ -157,9 +156,13 @@ pub async fn rate_limit_middleware(
         state.rate_limit.purge_stale();
     }
 
+    let connect = request
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|info| info.0);
     let path = request.uri().path().to_string();
     let method = request.method().as_str().to_string();
-    let ip = client_ip(&request, connect.map(|c| c.0));
+    let ip = client_ip(&request, connect);
 
     let mut classes = vec![LimitClass::Global];
     if let Some(extra) = limit_class(&path, &method)

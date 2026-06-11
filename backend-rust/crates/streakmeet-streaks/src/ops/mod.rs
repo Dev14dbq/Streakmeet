@@ -1,3 +1,4 @@
+pub mod lifecycle;
 pub mod magic_meet;
 pub mod meet;
 pub mod remote_selfie;

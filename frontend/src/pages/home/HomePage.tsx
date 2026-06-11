@@ -11,6 +11,7 @@ import { formatNickname } from '../../lib/displayUser'
 import ConnectionErrorState from '../../components/ConnectionErrorState'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { isStreakMetToday } from '../../lib/streakCalendar'
+import { isStreakActive, isStreakDead } from '../../lib/streakLifecycle'
 import { useFriendSearch } from '../../hooks/useFriendSearch'
 import type { StreakListItem, FriendListItem } from '@streakmeet/api-spec'
 import { syncStreakWidget } from '../../lib/widgetSync'
@@ -85,17 +86,32 @@ export default function HomePage({ user }: Props) {
   const streakPartnerIds = new Set(streaks.map((s) => s.partner.id))
   const canStartStreak = accepted.filter((f) => !streakPartnerIds.has(f.friend.id))
 
-  const needsMeetToday = streaks.filter((s) => !isStreakMetToday(s))
+  const aliveStreaks = streaks.filter((s) => isStreakActive(s.lifecycle))
+  const deadStreaks = streaks.filter((s) => isStreakDead(s.lifecycle))
+  const needsMeetToday = aliveStreaks.filter((s) => !isStreakMetToday(s))
 
-  function StreakCard({ s, urgent }: { s: StreakListItem; urgent?: boolean }) {
+  function StreakCard({
+    s,
+    urgent,
+    dead,
+  }: {
+    s: StreakListItem
+    urgent?: boolean
+    dead?: boolean
+  }) {
     return (
       <Link
         to={`/streaks/${s.partner.nickname}`}
         className={`glass-card rounded-3xl p-5 flex flex-col relative overflow-hidden transition active:scale-[0.98] shadow-[0_10px_30px_rgba(0,0,0,0.4)] ${
           urgent ? 'ring-1 ring-[var(--color-brand-primary)]/40' : ''
-        }`}
+        } ${dead ? 'ring-1 ring-amber-500/30' : ''}`}
       >
-        {s.count > 0 && (
+        {dead && (
+          <span className="absolute top-3 left-3 z-10 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            {s.lifecycle === 'DEAD_FINAL' ? t('streak.deadFinalBadge') : t('streak.deadBadge')}
+          </span>
+        )}
+        {s.count > 0 && !dead && (
           <div className="absolute top-0 right-0 -mr-8 -mt-8 w-36 h-36 bg-[var(--color-brand-primary)] opacity-10 blur-3xl rounded-full pointer-events-none" />
         )}
         <div className="flex items-center justify-between relative z-10">
@@ -110,19 +126,23 @@ export default function HomePage({ user }: Props) {
           <div className="flex items-center gap-1 shrink-0 ml-2">
             <span
               className={`text-3xl font-extrabold tracking-tighter ${
-                s.count > 0
-                  ? 'text-[var(--color-brand-primary)]'
-                  : 'text-[var(--color-on-surface-variant)]'
+                dead
+                  ? 'text-amber-400/90'
+                  : s.count > 0
+                    ? 'text-[var(--color-brand-primary)]'
+                    : 'text-[var(--color-on-surface-variant)]'
               }`}
             >
-              {s.count}
+              {dead ? (s.countAtDeath ?? 0) : s.count}
             </span>
             <Flame
               size={24}
               className={
-                s.count > 0
-                  ? 'text-[var(--color-brand-primary)]'
-                  : 'text-[var(--color-on-surface-variant)]'
+                dead
+                  ? 'text-amber-400/70'
+                  : s.count > 0
+                    ? 'text-[var(--color-brand-primary)]'
+                    : 'text-[var(--color-on-surface-variant)]'
               }
               fill="currentColor"
             />
@@ -134,16 +154,8 @@ export default function HomePage({ user }: Props) {
 
   return (
     <div className="flex flex-col px-6 pt-4 pb-6 min-h-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-on-surface tracking-tight">{t('home.title')}</h1>
-        <div className="flex items-center gap-2 bg-[var(--color-surface-container-high)] px-4 py-2 rounded-full">
-          <span className="text-[var(--color-brand-primary)] font-extrabold text-sm">
-            {user.gemsBalance ?? 0}
-          </span>
-          <span className="text-[10px] text-[var(--color-on-surface-variant)] font-bold tracking-wider uppercase">
-            {t('common.gems')}
-          </span>
-        </div>
       </div>
 
       {/* Добавить человека */}
@@ -299,13 +311,26 @@ export default function HomePage({ user }: Props) {
             </section>
           )}
 
-          {streaks.length > 0 && (
+          {deadStreaks.length > 0 && (
+            <section className="mb-6">
+              <h2 className="text-xs font-bold text-amber-400/90 uppercase tracking-widest mb-3">
+                {t('home.deadStreaks')}
+              </h2>
+              <div className="flex flex-col gap-3">
+                {deadStreaks.map((s: StreakListItem) => (
+                  <StreakCard key={s.id} s={s} dead />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {aliveStreaks.filter((s) => isStreakMetToday(s)).length > 0 && (
             <section className="mb-6">
               <h2 className="text-xs font-bold text-[var(--color-on-surface-variant)] uppercase tracking-widest mb-3">
                 {t('home.streaks')}
               </h2>
               <div className="flex flex-col gap-3">
-                {streaks
+                {aliveStreaks
                   .filter((s) => isStreakMetToday(s))
                   .map((s: StreakListItem) => (
                     <StreakCard key={s.id} s={s} />

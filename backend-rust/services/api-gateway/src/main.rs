@@ -83,6 +83,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     streakmeet_media::ensure_media_schema(&pool).await?;
+    streakmeet_streaks::ensure_streak_lifecycle_schema(&pool).await?;
     let idempotency = middleware::idempotency::IdempotencyStore::connect_from_env().await;
 
     let cors = build_cors_layer();
@@ -299,15 +300,23 @@ async fn main() -> anyhow::Result<()> {
             patch(handlers::data::streaks::update_streak_pet_handler),
         )
         .route(
-            "/api/streaks/{streak_id}",
-            delete(handlers::data::streaks::delete_streak_handler),
+            "/api/streaks/{id}/restore",
+            post(handlers::data::streaks::restore_streak_handler),
         )
         .route(
-            "/api/streaks/{partner_nickname}/remind",
+            "/api/streaks/{id}/restart",
+            post(handlers::data::streaks::restart_streak_handler),
+        )
+        .route(
+            "/api/streaks/{id}/remind",
             post(handlers::data::streaks::remind_partner_handler),
         )
         .route(
-            "/api/streaks/{partner_nickname}",
+            "/api/streaks/{id}",
+            delete(handlers::data::streaks::delete_streak_handler),
+        )
+        .route(
+            "/api/streaks/{id}",
             get(handlers::data::streaks::get_streak_detail_handler),
         )
         .layer(axum::middleware::from_fn_with_state(

@@ -4,12 +4,13 @@ use chrono::Utc;
 use prost::Message;
 use sqlx::PgPool;
 use streakmeet_sync::{
-    OutboxPublisher, enqueue_outbox, notification_envelope, streak_burned_envelope,
+    OutboxPublisher, enqueue_outbox, notification_envelope,
 };
 
 use crate::core::calendar::{
     add_days_to_date_string, get_local_date_string, get_local_time_parts, normalize_timezone,
 };
+use crate::ops::lifecycle::{StreakBurnInput, apply_streak_burn};
 use crate::ops::service::StreakRow;
 
 #[derive(Clone, Copy)]
@@ -46,7 +47,7 @@ pub async fn process_streak_burns(
     pool: &PgPool,
     publisher: &OutboxPublisher,
 ) -> Result<usize, anyhow::Error> {
-    let rows = sqlx::query_as::<_, StreakRow>(
+    let rows = sqlx::query_as::<_, StreakBurnInput>(
         r#"
         SELECT
             s.id,
@@ -55,14 +56,12 @@ pub async fn process_streak_burns(
             s.count,
             s."lastMetDate" AS last_met_date,
             s.timezone,
-            ua.nickname AS user_a_nickname,
-            ua."avatarUrl" AS user_a_avatar_url,
-            ub.nickname AS user_b_nickname,
-            ub."avatarUrl" AS user_b_avatar_url
+            s."restoresMonthKey" AS restores_month_key,
+            s."restoresUsedMonth" AS restores_used_month
         FROM streaks s
-        JOIN users ua ON ua.id = s."userAId"
-        JOIN users ub ON ub.id = s."userBId"
-        WHERE s.active = true AND s.count > 0
+        WHERE s.active = true
+          AND s.lifecycle = 'ACTIVE'
+          AND s.count > 0
         "#,
     )
     .fetch_all(pool)
@@ -84,33 +83,7 @@ pub async fn process_streak_burns(
             continue;
         }
 
-        let mut tx = pool.begin().await?;
-        sqlx::query(r#"UPDATE streaks SET count = 0, "updatedAt" = NOW() WHERE id = $1"#)
-            .bind(&streak.id)
-            .execute(&mut *tx)
-            .await?;
-
-        let mut envelopes = Vec::with_capacity(2);
-        for viewer_id in [&streak.user_a_id, &streak.user_b_id] {
-            let envelope = streak_burned_envelope("system", &streak.id, 0);
-            let bytes = streakmeet_proto::SyncEnvelope::encode_to_vec(&envelope);
-            enqueue_outbox(
-                &mut tx,
-                viewer_id,
-                "streaks.burned",
-                &envelope.event_id,
-                &bytes,
-            )
-            .await?;
-            envelopes.push((viewer_id.clone(), envelope));
-        }
-        tx.commit().await?;
-
-        for (viewer_id, envelope) in envelopes {
-            if let Err(err) = publisher.publish_inline(&viewer_id, &envelope).await {
-                tracing::warn!(error = %err, recipient = %viewer_id, "streak burn publish failed");
-            }
-        }
+        apply_streak_burn(pool, publisher, &streak).await?;
         burned += 1;
     }
 
@@ -131,6 +104,10 @@ pub async fn process_streak_warnings(
             s.count,
             s."lastMetDate" AS last_met_date,
             s.timezone,
+            s.lifecycle::text AS lifecycle,
+            s."countAtDeath" AS count_at_death,
+            s."restoresMonthKey" AS restores_month_key,
+            s."restoresUsedMonth" AS restores_used_month,
             ua.nickname AS user_a_nickname,
             ua."avatarUrl" AS user_a_avatar_url,
             ub.nickname AS user_b_nickname,
@@ -138,7 +115,7 @@ pub async fn process_streak_warnings(
         FROM streaks s
         JOIN users ua ON ua.id = s."userAId"
         JOIN users ub ON ub.id = s."userBId"
-        WHERE s.active = true AND s.count > 0
+        WHERE s.active = true AND s.lifecycle = 'ACTIVE' AND s.count > 0
         "#,
     )
     .fetch_all(pool)

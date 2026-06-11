@@ -17,9 +17,13 @@ import {
   deleteStreak,
   initRemoteSelfie,
   replyRemoteSelfie,
+  restartStreak,
+  restoreStreak,
   updateStreakPet,
   getApiErrorMessage,
 } from '../../lib/api'
+import { showRewardedAdForStreakRestore } from '../../lib/rewardedAd'
+import { isStreakActive, isStreakDead, isStreakDeadFinal } from '../../lib/streakLifecycle'
 import { migratedApi } from '../../lib/api/migratedClient'
 import { useSyncModeReady } from '../../hooks/useSyncModeReady'
 import CachedImage from '../../components/CachedImage'
@@ -76,6 +80,9 @@ interface StreakDetailPage {
     points: number
     completed: boolean
   }[]
+  lifecycle?: string
+  countAtDeath?: number | null
+  restoresLeft?: number
   userA: StreakPartner
   userB: StreakPartner
   remoteSelfies?: {
@@ -258,6 +265,8 @@ export default function StreakDetailsPage() {
   const [remoteSelfieUploading, setRemoteSelfieUploading] = useState(false)
   const [remoteSelfieMode, setRemoteSelfieMode] = useState<'init' | 'reply'>('init')
   const [replyingToRequest, setReplyingToRequest] = useState<string | null>(null)
+  const [restoreBusy, setRestoreBusy] = useState(false)
+  const [restartBusy, setRestartBusy] = useState(false)
 
   const groupedByMonth = useMemo(() => {
     const map = new Map<string, StreakDay[]>()
@@ -371,6 +380,38 @@ export default function StreakDetailsPage() {
     }
   }
 
+  async function handleRestoreStreak() {
+    if (!partnerSlug || restoreBusy) return
+    setRestoreBusy(true)
+    try {
+      await showRewardedAdForStreakRestore()
+      await restoreStreak(partnerSlug)
+      toastSuccess(t('streak.restoreSuccess'))
+      void mutate()
+    } catch (e) {
+      const msg = getApiErrorMessage(e, t('streak.restoreFailed'))
+      if (msg.includes('ADS_CLOSED')) toastError(t('streak.adClosed'))
+      else if (msg.includes('ADS_')) toastError(t('streak.adFailed'))
+      else toastError(msg)
+    } finally {
+      setRestoreBusy(false)
+    }
+  }
+
+  async function handleRestartStreak() {
+    if (!partnerSlug || restartBusy) return
+    setRestartBusy(true)
+    try {
+      await restartStreak(partnerSlug)
+      toastSuccess(t('streak.restartSuccess'))
+      void mutate()
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('streak.restoreFailed')))
+    } finally {
+      setRestartBusy(false)
+    }
+  }
+
   if (!me) return null
 
   if (!syncReady || (loading && !streakMeta)) {
@@ -390,8 +431,12 @@ export default function StreakDetailsPage() {
   }
 
   const partner = streakMeta.userA.id === me.id ? streakMeta.userB : streakMeta.userA
-  const metToday = isStreakMetToday(streakMeta)
-  const count = streakMeta.count
+  const lifecycle = streakMeta.lifecycle ?? 'ACTIVE'
+  const streakDead = isStreakDead(lifecycle)
+  const streakDeadFinal = isStreakDeadFinal(lifecycle)
+  const metToday = isStreakActive(lifecycle) && isStreakMetToday(streakMeta)
+  const count = streakDead ? (streakMeta.countAtDeath ?? 0) : streakMeta.count
+  const restoresLeft = streakMeta.restoresLeft ?? 0
   const petName = streakMeta.petName || DEFAULT_PET_NAME
   const progress = streakMeta.petProgress ?? {
     points: 0,
@@ -513,64 +558,105 @@ export default function StreakDetailsPage() {
         </div>
       </section>
 
-      <main className="px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-        <section>
-          <h2 className="text-2xl font-black tracking-tight text-on-surface">
-            {t('streak.growTitle')}
-          </h2>
-          <div className="mt-4 flex flex-col gap-3">
-            {dailyTasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex items-center gap-3 rounded-3xl bg-[var(--color-surface-container)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.14)] border border-white/5"
+      {streakDead && (
+        <section className="px-4 -mt-2 relative z-10">
+          <div className="glass-card rounded-3xl p-5 border border-amber-500/25 bg-amber-500/5">
+            <h2 className="text-lg font-black text-amber-200 mb-2">
+              {streakDeadFinal ? t('streak.deadFinalTitle') : t('streak.deadTitle')}
+            </h2>
+            <p className="text-sm text-[var(--color-on-surface-variant)] leading-relaxed mb-4">
+              {streakDeadFinal ? t('streak.deadFinalBody') : t('streak.deadBody', { count })}
+            </p>
+            {streakDeadFinal ? (
+              <button
+                type="button"
+                disabled={restartBusy}
+                onClick={() => void handleRestartStreak()}
+                className="btn btn--lg w-full bg-gradient-to-r from-amber-500 to-orange-600 text-black font-black"
               >
-                <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)]">
-                  <CheckCircle2 size={21} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-on-surface">{t(task.titleKey)}</p>
-                  <p className="text-xs font-semibold text-[var(--color-on-surface-variant)]">
-                    {t('streak.taskRefreshesDaily')}
-                  </p>
-                </div>
-                <span className="rounded-full bg-[var(--color-brand-primary)]/16 px-3 py-1 text-sm font-black text-[var(--color-brand-primary)]">
-                  {t('streak.taskPoints', { count: task.points })}
-                </span>
-              </div>
-            ))}
+                {restartBusy ? t('common.loading') : t('streak.restartSeries')}
+              </button>
+            ) : (
+              <>
+                <p className="text-xs text-amber-200/80 mb-3 font-semibold">
+                  {t('streak.restoreLeft', { left: restoresLeft })}
+                </p>
+                <button
+                  type="button"
+                  disabled={restoreBusy || restoresLeft <= 0}
+                  onClick={() => void handleRestoreStreak()}
+                  className="btn btn--lg w-full bg-gradient-to-r from-amber-500 to-orange-600 text-black font-black disabled:opacity-50"
+                >
+                  {restoreBusy ? t('common.loading') : t('streak.restoreViaAd')}
+                </button>
+              </>
+            )}
           </div>
         </section>
+      )}
 
-        <section className="mt-6">
-          {pendingRemoteSelfie && !isMyRequest ? (
-            <button
-              type="button"
-              onClick={() => openRemoteSelfieReply(pendingRemoteSelfie.id)}
-              className="btn btn--lg w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-on-surface shadow-[0_8px_30px_rgba(139,92,246,0.4)]"
-            >
-              <Camera size={20} />
-              {t('camera.sendReply')}{' '}
-              {formatNickname(
-                pendingRemoteSelfie.sender?.nickname ?? partner.nickname,
-                t('common.unknownUser')
-              )}
-            </button>
-          ) : pendingRemoteSelfie && isMyRequest ? (
-            <div className="w-full rounded-full py-4 bg-white/5 border border-white/10 text-[var(--color-on-surface-variant)] font-medium text-sm text-center flex items-center justify-center gap-2">
-              <Smartphone size={18} />
-              {t('common.loading')} {formatNickname(partner.nickname, t('common.unknownUser'))}...
+      <main className="px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        {!streakDead && (
+          <section>
+            <h2 className="text-2xl font-black tracking-tight text-on-surface">
+              {t('streak.growTitle')}
+            </h2>
+            <div className="mt-4 flex flex-col gap-3">
+              {dailyTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center gap-3 rounded-3xl bg-[var(--color-surface-container)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.14)] border border-white/5"
+                >
+                  <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)]">
+                    <CheckCircle2 size={21} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-on-surface">{t(task.titleKey)}</p>
+                    <p className="text-xs font-semibold text-[var(--color-on-surface-variant)]">
+                      {t('streak.taskRefreshesDaily')}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[var(--color-brand-primary)]/16 px-3 py-1 text-sm font-black text-[var(--color-brand-primary)]">
+                    {t('streak.taskPoints', { count: task.points })}
+                  </span>
+                </div>
+              ))}
             </div>
-          ) : !metToday ? (
-            <button
-              type="button"
-              onClick={openRemoteSelfieInit}
-              className="btn btn--secondary btn--lg w-full"
-            >
-              <Smartphone size={18} />
-              {t('camera.meetPhoto')}
-            </button>
-          ) : null}
-        </section>
+          </section>
+        )}
+
+        {!streakDead && (
+          <section className="mt-6">
+            {pendingRemoteSelfie && !isMyRequest ? (
+              <button
+                type="button"
+                onClick={() => openRemoteSelfieReply(pendingRemoteSelfie.id)}
+                className="btn btn--lg w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-on-surface shadow-[0_8px_30px_rgba(139,92,246,0.4)]"
+              >
+                <Camera size={20} />
+                {t('camera.sendReply')}{' '}
+                {formatNickname(
+                  pendingRemoteSelfie.sender?.nickname ?? partner.nickname,
+                  t('common.unknownUser')
+                )}
+              </button>
+            ) : pendingRemoteSelfie && isMyRequest ? (
+              <div className="w-full rounded-full py-4 bg-white/5 border border-white/10 text-[var(--color-on-surface-variant)] font-medium text-sm text-center flex items-center justify-center gap-2">
+                <Smartphone size={18} />
+                {t('common.loading')} {formatNickname(partner.nickname, t('common.unknownUser'))}...
+              </div>
+            ) : !metToday ? (
+              <button
+                type="button"
+                onClick={openRemoteSelfieInit}
+                className="btn btn--secondary btn--lg w-full"
+              >
+                <Smartphone size={18} />
+                {t('camera.meetPhoto')}
+              </button>
+            ) : null}
+          </section>
+        )}
 
         <section className="mt-8">
           {streakDays.length === 0 ? (

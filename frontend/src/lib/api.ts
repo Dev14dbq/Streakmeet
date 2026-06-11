@@ -76,6 +76,8 @@ export {
   remindStreak,
   replyRemoteSelfie,
   updateStreakPet,
+  restoreStreak,
+  restartStreak,
 } from './api/streaks'
 
 export {

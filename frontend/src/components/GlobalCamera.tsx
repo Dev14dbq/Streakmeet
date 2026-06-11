@@ -16,6 +16,7 @@ import CachedImage from './CachedImage'
 import { useAuth } from '../context/AuthContext'
 import { getNotificationPrefs } from '../lib/userPreferences'
 import { prepareImageDataUrlForUpload } from '../lib/prepareImageUpload'
+import { preloadInterstitialAfterPhoto, showInterstitialAfterPhoto } from '../lib/interstitialAd'
 
 function logCapture(step: string, detail?: unknown) {
   if (import.meta.env.DEV) {
@@ -123,6 +124,7 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
     setProcessingLabel('')
     resetRemoteState()
     setCameraOpen(true)
+    preloadInterstitialAfterPhoto()
     logCapture('camera opened')
   }
 
@@ -142,22 +144,26 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
           return false
         }
 
+        setProcessingLabel(t('camera.showingAd'))
+        await showInterstitialAfterPhoto()
+
         setProcessingLabel(
           remoteTarget.mode === 'reply' ? t('camera.sending') : t('camera.processing')
         )
 
         try {
+          const prepared = await prepareImageDataUrlForUpload(imageSrc)
           if (remoteTarget.mode === 'reply' && remoteTarget.requestId) {
             const { data } = await replyRemoteSelfie(
               remoteTarget.streakId,
               remoteTarget.requestId,
-              imageSrc
+              prepared
             )
             if (data.success) {
               toastSuccess(t('streak.selfieMerged'))
             }
           } else {
-            await initRemoteSelfie(remoteTarget.streakId, imageSrc)
+            await initRemoteSelfie(remoteTarget.streakId, prepared)
             toastSuccess(t('streak.selfieRequestSent'))
           }
           void mutateStreaks()
@@ -171,6 +177,9 @@ export default function GlobalCamera({ variant = 'side' }: Props) {
           setProcessing(false)
         }
       }
+
+      setProcessingLabel(t('camera.showingAd'))
+      await showInterstitialAfterPhoto()
 
       let location: { lat: number; lng: number } | undefined
       const geoEnabled = getNotificationPrefs().geoOnPhotos

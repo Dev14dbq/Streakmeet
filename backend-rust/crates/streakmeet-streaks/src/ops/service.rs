@@ -12,6 +12,7 @@ use streakmeet_types::{ApiError, codes};
 
 use crate::core::calendar::{generous_streak_timezone, get_local_date_string, normalize_timezone};
 use crate::core::helpers::partner_of;
+use crate::ops::lifecycle::restores_left as calc_restores_left;
 use crate::models::{
     StreakDetailDayJson, StreakDetailJson, StreakListItemJson, StreakPartnerJson,
     StreakPetProgressJson, StreakRecordJson, StreakTaskJson, UpdateStreakPetJson,
@@ -27,10 +28,25 @@ pub struct StreakRow {
     pub pet_points: i32,
     pub last_met_date: Option<String>,
     pub timezone: String,
+    pub lifecycle: String,
+    pub count_at_death: Option<i32>,
+    pub restores_month_key: Option<String>,
+    pub restores_used_month: i32,
     pub user_a_nickname: String,
     pub user_a_avatar_url: Option<String>,
     pub user_b_nickname: String,
     pub user_b_avatar_url: Option<String>,
+}
+
+fn restores_left_for_row(row: &StreakRow) -> i32 {
+    let key = get_local_date_string(&normalize_timezone(Some(&row.timezone), "UTC"), Utc::now());
+    let month = &key[..7];
+    let used = if row.restores_month_key.as_deref() == Some(month) {
+        row.restores_used_month
+    } else {
+        0
+    };
+    calc_restores_left(used)
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -155,6 +171,9 @@ fn row_to_list_item(row: &StreakRow, viewer_id: &str) -> StreakListItemJson {
         count: row.count,
         last_met_date: row.last_met_date.clone(),
         timezone: row.timezone.clone(),
+        lifecycle: row.lifecycle.clone(),
+        count_at_death: row.count_at_death,
+        restores_left: restores_left_for_row(row),
         partner: partner_of(
             &row.user_a_id,
             &row.user_b_id,
@@ -231,7 +250,7 @@ async fn partner_timezones(
     ))
 }
 
-async fn enqueue_streak_created(
+pub(crate) async fn enqueue_streak_created(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     actor_id: &str,
     row: &StreakRow,
@@ -249,7 +268,7 @@ async fn enqueue_streak_created(
     Ok(envelopes)
 }
 
-async fn publish_envelopes(
+pub(crate) async fn publish_envelopes(
     publisher: &OutboxPublisher,
     row: &StreakRow,
     envelopes: Vec<streakmeet_proto::SyncEnvelope>,
@@ -262,7 +281,7 @@ async fn publish_envelopes(
     Ok(())
 }
 
-const STREAK_LIST_SQL: &str = r#"
+pub(crate) const STREAK_LIST_SQL: &str = r#"
     SELECT
         s.id,
         s."userAId" AS user_a_id,
@@ -272,6 +291,10 @@ const STREAK_LIST_SQL: &str = r#"
         COALESCE(s."petPoints", 0) AS pet_points,
         s."lastMetDate" AS last_met_date,
         s.timezone,
+        s.lifecycle::text AS lifecycle,
+        s."countAtDeath" AS count_at_death,
+        s."restoresMonthKey" AS restores_month_key,
+        s."restoresUsedMonth" AS restores_used_month,
         ua.nickname AS user_a_nickname,
         ua."avatarUrl" AS user_a_avatar_url,
         ub.nickname AS user_b_nickname,
@@ -427,8 +450,7 @@ pub async fn get_streak_detail(
         let meta = sqlx::query_as::<_, StreakIdRow>(
             r#"
             SELECT id FROM streaks
-            WHERE active = true
-              AND (
+            WHERE (
                 ("userAId" = $1 AND "userBId" = $2)
                 OR ("userAId" = $2 AND "userBId" = $1)
               )
@@ -478,6 +500,7 @@ pub async fn get_streak_detail(
     .await
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
+    let restores_left = restores_left_for_row(&streak);
     Ok(StreakDetailJson {
         id: streak.id.clone(),
         pet_name: streak.pet_name.clone(),
@@ -486,6 +509,9 @@ pub async fn get_streak_detail(
         timezone: streak.timezone.clone(),
         pet_progress: pet_progress(streak.pet_points),
         daily_tasks: daily_tasks(&streak.id, &streak.timezone),
+        lifecycle: streak.lifecycle,
+        count_at_death: streak.count_at_death,
+        restores_left,
         user_a: StreakPartnerJson {
             id: streak.user_a_id.clone(),
             nickname: streak.user_a_nickname.clone(),
@@ -623,6 +649,7 @@ pub async fn remind_partner(
         SELECT s."lastMetDate" AS last_met_date, s.timezone
         FROM streaks s
         WHERE s.active = true
+          AND s.lifecycle = 'ACTIVE'
           AND (
             (s."userAId" = $1 AND s."userBId" = $2)
             OR (s."userAId" = $2 AND s."userBId" = $1)

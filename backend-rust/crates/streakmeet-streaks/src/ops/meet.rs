@@ -35,6 +35,7 @@ pub struct RecordMeetInput<'a> {
 #[derive(Debug, sqlx::FromRow)]
 struct StreakMetaRow {
     last_met_date: Option<String>,
+    lifecycle: String,
     user_a_id: String,
     user_b_id: String,
     count: i32,
@@ -55,6 +56,7 @@ async fn load_streak_row(pool: &PgPool, streak_id: &str) -> Result<StreakMetaRow
         r#"
         SELECT
             s."lastMetDate" AS last_met_date,
+            s.lifecycle::text AS lifecycle,
             s."userAId" AS user_a_id,
             s."userBId" AS user_b_id,
             s.count,
@@ -101,6 +103,9 @@ pub async fn record_meet_for_streak(
     input: RecordMeetInput<'_>,
 ) -> Result<RecordMeetResultJson, ApiError> {
     let streak = load_streak_row(pool, input.streak_id).await?;
+    if streak.lifecycle != "ACTIVE" {
+        return Err(ApiError::new(400, codes::STREAK_DEAD_FINAL, None));
+    }
 
     let mut streak_day = sqlx::query_as::<_, StreakDayIdRow>(
         r#"
@@ -182,17 +187,6 @@ pub async fn record_meet_for_streak(
         )
         .bind(input.streak_id)
         .bind(input.calendar_date)
-        .execute(&mut *tx)
-        .await
-        .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
-
-        sqlx::query(
-            r#"
-            UPDATE users SET "gemsBalance" = "gemsBalance" + 1
-            WHERE id = ANY($1)
-            "#,
-        )
-        .bind(&[streak.user_a_id.clone(), streak.user_b_id.clone()])
         .execute(&mut *tx)
         .await
         .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;

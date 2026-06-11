@@ -6,7 +6,7 @@ use serde::Deserialize;
 use streakmeet_streaks::{
     MagicMeetInput, create_streak, delete_streak, get_streak_detail, init_remote_selfie,
     list_streaks, process_magic_meet, record_meet_upload, remind_partner, reply_remote_selfie,
-    update_streak_pet_name,
+    restart_streak, restore_streak_after_ad, update_streak_pet_name,
 };
 
 use crate::AppState;
@@ -197,7 +197,7 @@ pub async fn reply_remote_selfie_handler(
 pub async fn get_streak_detail_handler(
     State(state): State<AppState>,
     auth: AuthUser,
-    Path(partner_nickname): Path<String>,
+    Path(id): Path<String>,
     Query(query): Query<StreakDetailQuery>,
 ) -> Result<
     Json<streakmeet_streaks::StreakDetailJson>,
@@ -206,7 +206,7 @@ pub async fn get_streak_detail_handler(
     let auth = require_email_verified(State(state.clone()), auth).await?;
     let page = query.page.unwrap_or(1);
     let limit = query.limit.unwrap_or(10);
-    get_streak_detail(&state.pool, &auth.user_id, &partner_nickname, page, limit)
+    get_streak_detail(&state.pool, &auth.user_id, &id, page, limit)
         .await
         .map(Json)
         .map_err(api_error_response)
@@ -231,26 +231,60 @@ pub async fn update_streak_pet_handler(
 pub async fn delete_streak_handler(
     State(state): State<AppState>,
     auth: AuthUser,
-    Path(streak_id): Path<String>,
+    Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     let auth = require_email_verified(State(state.clone()), auth).await?;
-    delete_streak(&state.pool, &auth.user_id, &streak_id)
+    delete_streak(&state.pool, &auth.user_id, &id)
         .await
         .map(|()| Json(serde_json::json!({ "ok": true })))
         .map_err(api_error_response)
 }
 
+pub async fn restore_streak_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    let auth = require_email_verified(State(state.clone()), auth).await?;
+    restore_streak_after_ad(
+        &state.pool,
+        &state.outbox,
+        &auth.user_id,
+        &id.to_lowercase(),
+    )
+    .await
+    .map(Json)
+    .map_err(api_error_response)
+}
+
+pub async fn restart_streak_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    let auth = require_email_verified(State(state.clone()), auth).await?;
+    restart_streak(
+        &state.pool,
+        &state.outbox,
+        &auth.user_id,
+        &id.to_lowercase(),
+    )
+    .await
+    .map(Json)
+    .map_err(api_error_response)
+}
+
 pub async fn remind_partner_handler(
     State(state): State<AppState>,
     auth: AuthUser,
-    Path(partner_nickname): Path<String>,
+    Path(id): Path<String>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     let auth = require_email_verified(State(state.clone()), auth).await?;
     remind_partner(
         &state.pool,
         &state.outbox,
         &auth.user_id,
-        &partner_nickname.to_lowercase(),
+        &id.to_lowercase(),
     )
     .await
     .map(Json)

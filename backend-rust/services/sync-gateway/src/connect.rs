@@ -234,6 +234,20 @@ pub fn envelope_to_connect_json(envelope: &SyncEnvelope) -> Option<String> {
                 serde_json::json!({
                     "streakId": ev.streak_id,
                     "count": ev.count,
+                    "lifecycle": null_if_empty_str(&ev.lifecycle),
+                    "countAtDeath": ev.count_at_death,
+                    "restoresLeft": ev.restores_left,
+                }),
+            );
+        }
+        Some(streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakRestored(ev)) => {
+            root.insert(
+                "streakRestored".into(),
+                serde_json::json!({
+                    "streakId": ev.streak_id,
+                    "count": ev.count,
+                    "lastMetDate": null_if_empty_str(&ev.last_met_date),
+                    "restoresLeft": ev.restores_left,
                 }),
             );
         }

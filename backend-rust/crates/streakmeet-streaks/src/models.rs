@@ -17,6 +17,10 @@ pub struct StreakListItemJson {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_met_date: Option<String>,
     pub timezone: String,
+    pub lifecycle: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub count_at_death: Option<i32>,
+    pub restores_left: i32,
     pub partner: StreakPartnerJson,
 }
 
@@ -71,6 +75,10 @@ pub struct StreakDetailJson {
     pub timezone: String,
     pub pet_progress: StreakPetProgressJson,
     pub daily_tasks: Vec<StreakTaskJson>,
+    pub lifecycle: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub count_at_death: Option<i32>,
+    pub restores_left: i32,
     pub user_a: StreakPartnerJson,
     pub user_b: StreakPartnerJson,
     #[serde(skip_serializing_if = "Option::is_none")]

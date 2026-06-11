@@ -24,4 +24,7 @@ pub use ops::service::{
     create_streak, delete_streak, find_streak_for_user, get_streak_detail, list_streaks,
     list_streaks_proto, remind_partner, streak_record_proto, update_streak_pet_name,
 };
+pub use ops::lifecycle::{
+    ensure_streak_lifecycle_schema, restart_streak, restore_streak_after_ad, MAX_RESTORES_PER_MONTH,
+};
 pub use ops::worker;

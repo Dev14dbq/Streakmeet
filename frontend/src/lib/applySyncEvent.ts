@@ -51,6 +51,16 @@ export interface StreakMeetPayload {
 export interface StreakBurnedPayload {
   streakId: string
   count: number
+  lifecycle?: string
+  countAtDeath?: number
+  restoresLeft?: number
+}
+
+export interface StreakRestoredPayload {
+  streakId: string
+  count: number
+  lastMetDate?: string | null
+  restoresLeft?: number
 }
 
 export interface LocationUpdatedPayload {
@@ -101,6 +111,9 @@ export function applySyncEvent(env: SyncEnvelope): void {
       break
     case 'streakBurned':
       patchStreaksCacheBurn(env.payload.value)
+      break
+    case 'streakRestored':
+      patchStreaksCacheRestored(env.payload.value)
       break
     case 'locationUpdated':
       patchFriendLocationsCache(env.payload.value)
@@ -311,7 +324,37 @@ function patchStreaksCacheMeet(update: StreakMeetPayload): void {
 function patchStreaksCacheBurn(update: StreakBurnedPayload): void {
   mutateStreaks((current) =>
     current.map((s) =>
-      s.id === update.streakId ? { ...s, count: update.count, lastMetDate: null } : s
+      s.id === update.streakId
+        ? {
+            ...s,
+            count: update.count,
+            lastMetDate: null,
+            lifecycle: (update.lifecycle as StreakListItem['lifecycle']) ?? 'DEAD',
+            countAtDeath: update.countAtDeath ?? s.countAtDeath,
+            restoresLeft: update.restoresLeft ?? s.restoresLeft ?? 0,
+          }
+        : s
+    )
+  )
+
+  void mutate((key) => typeof key === 'string' && key.startsWith('/api/streaks/'), undefined, {
+    revalidate: true,
+  })
+}
+
+function patchStreaksCacheRestored(update: StreakRestoredPayload): void {
+  mutateStreaks((current) =>
+    current.map((s) =>
+      s.id === update.streakId
+        ? {
+            ...s,
+            count: update.count,
+            lastMetDate: update.lastMetDate ?? s.lastMetDate,
+            lifecycle: 'ACTIVE',
+            countAtDeath: null,
+            restoresLeft: update.restoresLeft ?? s.restoresLeft,
+          }
+        : s
     )
   )
 

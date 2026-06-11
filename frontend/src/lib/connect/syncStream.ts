@@ -15,6 +15,7 @@ import type {
   RemoteSelfieClearedPayload,
   RemoteSelfiePendingPayload,
   StreakBurnedPayload,
+  StreakRestoredPayload,
   StreakCreatedPayload,
   StreakEventPayload,
   StreakMeetPayload,
@@ -29,6 +30,7 @@ export type SyncEnvelopePayload =
   | { case: 'streakEvent'; value: StreakEventPayload }
   | { case: 'streakMeet'; value: StreakMeetPayload }
   | { case: 'streakBurned'; value: StreakBurnedPayload }
+  | { case: 'streakRestored'; value: StreakRestoredPayload }
   | { case: 'locationUpdated'; value: LocationUpdatedPayload }
   | { case: 'locationRemoved'; value: LocationRemovedPayload }
   | { case: 'profileUpdated'; value: ProfileUpdatedPayload }
@@ -165,11 +167,31 @@ function parseStreakListItem(raw: Record<string, unknown>) {
   if (!id || !partnerRaw || typeof partnerRaw !== 'object') return null
   const partner = partnerRaw as Record<string, unknown>
   if (typeof partner.id !== 'string' || typeof partner.nickname !== 'string') return null
+  const lifecycleRaw = raw.lifecycle
+  const lifecycle =
+    lifecycleRaw === 'DEAD' || lifecycleRaw === 'DEAD_FINAL' || lifecycleRaw === 'ACTIVE'
+      ? lifecycleRaw
+      : 'ACTIVE'
+  const countAtDeath =
+    typeof raw.countAtDeath === 'number'
+      ? raw.countAtDeath
+      : typeof raw.count_at_death === 'number'
+        ? raw.count_at_death
+        : null
+  const restoresLeft =
+    typeof raw.restoresLeft === 'number'
+      ? raw.restoresLeft
+      : typeof raw.restores_left === 'number'
+        ? raw.restores_left
+        : 3
   return {
     id,
     count,
     timezone,
     lastMetDate,
+    lifecycle,
+    countAtDeath,
+    restoresLeft,
     partner: {
       id: partner.id,
       nickname: partner.nickname,
@@ -304,11 +326,61 @@ function parseEnvelope(raw: unknown): SyncEnvelope | null {
           ? sb.streak_id
           : ''
     const count = typeof sb.count === 'number' ? sb.count : 0
+    const lifecycle = typeof sb.lifecycle === 'string' ? sb.lifecycle : 'DEAD'
+    const countAtDeath =
+      typeof sb.countAtDeath === 'number'
+        ? sb.countAtDeath
+        : typeof sb.count_at_death === 'number'
+          ? sb.count_at_death
+          : undefined
+    const restoresLeft =
+      typeof sb.restoresLeft === 'number'
+        ? sb.restoresLeft
+        : typeof sb.restores_left === 'number'
+          ? sb.restores_left
+          : undefined
     if (streakId) {
       return {
         eventId,
         sequence,
-        payload: { case: 'streakBurned', value: { streakId, count } },
+        payload: {
+          case: 'streakBurned',
+          value: { streakId, count, lifecycle, countAtDeath, restoresLeft },
+        },
+      }
+    }
+  }
+
+  const streakRestoredRaw = obj.streakRestored ?? obj.streak_restored
+  if (streakRestoredRaw && typeof streakRestoredRaw === 'object') {
+    const sr = streakRestoredRaw as Record<string, unknown>
+    const streakId =
+      typeof sr.streakId === 'string'
+        ? sr.streakId
+        : typeof sr.streak_id === 'string'
+          ? sr.streak_id
+          : ''
+    const count = typeof sr.count === 'number' ? sr.count : 0
+    const lastMetDate =
+      typeof sr.lastMetDate === 'string'
+        ? sr.lastMetDate
+        : typeof sr.last_met_date === 'string'
+          ? sr.last_met_date
+          : null
+    const restoresLeft =
+      typeof sr.restoresLeft === 'number'
+        ? sr.restoresLeft
+        : typeof sr.restores_left === 'number'
+          ? sr.restores_left
+          : undefined
+    if (streakId) {
+      return {
+        eventId,
+        sequence,
+        payload: {
+          case: 'streakRestored',
+          value: { streakId, count, lastMetDate, restoresLeft },
+        },
       }
     }
   }

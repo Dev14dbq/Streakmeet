@@ -9,7 +9,7 @@ use prost_types::Timestamp;
 use streakmeet_proto::{
     FriendEvent, FriendListItem, LocationRemoved, LocationUpdated, Notification, ProfileUpdated,
     RemoteSelfieCleared, RemoteSelfiePending, RemoteSelfiePendingInfo, StreakBurned, StreakCreated,
-    StreakListItem, StreakMeetUpdated, StreakPhotoAdded, SyncEnvelope, UserSummary,
+    StreakListItem, StreakMeetUpdated, StreakPhotoAdded, StreakRestored, SyncEnvelope, UserSummary,
 };
 use uuid::Uuid;
 
@@ -94,13 +94,43 @@ pub fn notification_envelope(
     )
 }
 
-pub fn streak_burned_envelope(actor_id: &str, streak_id: &str, count: i32) -> SyncEnvelope {
+pub fn streak_burned_envelope(
+    actor_id: &str,
+    streak_id: &str,
+    count: i32,
+    lifecycle: &str,
+    count_at_death: i32,
+    restores_left: i32,
+) -> SyncEnvelope {
     new_sync_envelope(
         actor_id,
         streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakBurned(StreakBurned {
             streak_id: streak_id.to_string(),
             count,
+            lifecycle: lifecycle.to_string(),
+            count_at_death,
+            restores_left,
         }),
+    )
+}
+
+pub fn streak_restored_envelope(
+    actor_id: &str,
+    streak_id: &str,
+    count: i32,
+    last_met_date: &str,
+    restores_left: i32,
+) -> SyncEnvelope {
+    new_sync_envelope(
+        actor_id,
+        streakmeet_proto::streakmeet::v1::sync_envelope::Payload::StreakRestored(
+            streakmeet_proto::streakmeet::v1::StreakRestored {
+                streak_id: streak_id.to_string(),
+                count,
+                last_met_date: last_met_date.to_string(),
+                restores_left,
+            },
+        ),
     )
 }
 

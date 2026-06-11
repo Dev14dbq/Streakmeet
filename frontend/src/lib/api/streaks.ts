@@ -1,4 +1,10 @@
-import type { MagicMeetResponse, StreakDetail, StreakListItem } from '@streakmeet/api-spec'
+import type {
+  MagicMeetResponse,
+  RestartStreakResponse,
+  RestoreStreakResponse,
+  StreakDetail,
+  StreakListItem,
+} from '@streakmeet/api-spec'
 import { migratedApi } from './migratedClient'
 
 const streaksApi = () => migratedApi()
@@ -19,6 +25,16 @@ export const deleteStreak = (streakId: string) =>
 export const remindStreak = (partnerNickname: string) =>
   streaksApi().post<{ ok: true }>(
     `/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}/remind`
+  )
+
+export const restoreStreak = (partnerNickname: string) =>
+  streaksApi().post<RestoreStreakResponse>(
+    `/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}/restore`
+  )
+
+export const restartStreak = (partnerNickname: string) =>
+  streaksApi().post<RestartStreakResponse>(
+    `/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}/restart`
   )
 
 export const initRemoteSelfie = (streakId: string, photoBase64: string) =>

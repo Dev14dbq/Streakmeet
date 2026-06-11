@@ -28,6 +28,7 @@
     "@capacitor/local-notifications": "^8.2.0",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/share": "^8.0.1",
+    "@capgo/capacitor-admob": "^8.1.5",
     "@capgo/capacitor-social-login": "^8.3.22",
     "@connectrpc/connect": "^2.1.1",
     "@connectrpc/connect-web": "^2.1.1",

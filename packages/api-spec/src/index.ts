@@ -45,8 +45,11 @@ export type FriendshipStatus = Schemas['FriendshipStatus']
 
 // ─── Streaks ─────────────────────────────────────────────────────────────────
 
+export type StreakLifecycle = Schemas['Streaks.StreakLifecycle']
 export type StreakListItem = Schemas['Streaks.StreakListItem']
 export type StreakDetail = Schemas['Streaks.StreakDetail']
+export type RestoreStreakResponse = Schemas['Streaks.RestoreStreakResponse']
+export type RestartStreakResponse = Schemas['Streaks.RestartStreakResponse']
 export type MagicMeetPartner = Schemas['Streaks.MagicMeetPartner']
 export type MagicMeetResponse = Schemas['Streaks.MagicMeetResponse']
 export type RemoteSelfieRequest = Schemas['Streaks.RemoteSelfieRequest']

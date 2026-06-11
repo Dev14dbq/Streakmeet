@@ -8,11 +8,20 @@ model StreakPartner extends UserRef {
   avatarUrl?: string | null;
 }
 
+enum StreakLifecycle {
+  ACTIVE: "ACTIVE",
+  DEAD: "DEAD",
+  DEAD_FINAL: "DEAD_FINAL",
+}
+
 model StreakListItem {
   id: string;
   count: int32;
   lastMetDate?: string | null;
   timezone: string;
+  lifecycle: StreakLifecycle;
+  countAtDeath?: int32 | null;
+  restoresLeft: int32;
   partner: StreakPartner;
 }
 
@@ -127,10 +136,26 @@ model StreakDetail {
   timezone: string;
   petProgress: StreakPetProgress;
   dailyTasks: StreakDailyTask[];
+  lifecycle: StreakLifecycle;
+  countAtDeath?: int32 | null;
+  restoresLeft: int32;
   userA: StreakPartner;
   userB: StreakPartner;
   remoteSelfies?: RemoteSelfiePending[];
   streakDays?: StreakDetailDay[];
+}
+
+model RestoreStreakResponse {
+  ok: true;
+  count: int32;
+  lifecycle: StreakLifecycle;
+  restoresLeft: int32;
+}
+
+model RestartStreakResponse {
+  ok: true;
+  count: int32;
+  lifecycle: StreakLifecycle;
 }
 
 @route("/api/streaks")
@@ -149,6 +174,16 @@ interface StreaksRoutes {
   @route("/magic-meet")
   @useAuth(TypeSpec.Http.BearerAuth)
   magicMeet(@body body: MagicMeetRequest): MagicMeetResponse;
+
+  @post
+  @route("/{partnerNickname}/restore")
+  @useAuth(TypeSpec.Http.BearerAuth)
+  restoreStreak(@path partnerNickname: string): RestoreStreakResponse;
+
+  @post
+  @route("/{partnerNickname}/restart")
+  @useAuth(TypeSpec.Http.BearerAuth)
+  restartStreak(@path partnerNickname: string): RestartStreakResponse;
 
   @post
   @route("/{partnerNickname}/remind")
