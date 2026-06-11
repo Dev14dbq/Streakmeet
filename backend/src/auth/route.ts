@@ -103,20 +103,27 @@ router.post(
 router.post(
   '/google',
   asyncHandler(async (req, res) => {
-    const { accessToken, idToken, timezone } = req.body as {
+    const { accessToken, idToken, code, codeVerifier, redirectUri, timezone } = req.body as {
       accessToken?: string
       idToken?: string
+      code?: string
+      codeVerifier?: string
+      redirectUri?: string
       timezone?: string
     }
-    res.json(await googleLogin({ accessToken, idToken, timezone }))
+    res.json(await googleLogin({ accessToken, idToken, code, codeVerifier, redirectUri, timezone }))
   })
 )
 
 router.post(
   '/apple',
   asyncHandler(async (req, res) => {
-    const { idToken, timezone } = req.body as { idToken?: string; timezone?: string }
-    res.json(await appleLogin({ idToken, timezone }))
+    const { idToken, sessionToken, timezone } = req.body as {
+      idToken?: string
+      sessionToken?: string
+      timezone?: string
+    }
+    res.json(await appleLogin({ idToken, sessionToken, timezone }))
   })
 )
 

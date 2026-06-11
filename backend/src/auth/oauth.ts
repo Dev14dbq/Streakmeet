@@ -80,21 +80,50 @@ async function runOAuthLogin({
   }
 }
 
+async function exchangeGoogleCode(
+  code: string,
+  codeVerifier: string,
+  redirectUri: string
+): Promise<{ accessToken?: string; idToken?: string }> {
+  const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
+  const { tokens } = await client.getToken({
+    code,
+    codeVerifier,
+    redirect_uri: redirectUri,
+  })
+  return {
+    accessToken: tokens.access_token ?? undefined,
+    idToken: tokens.id_token ?? undefined,
+  }
+}
+
 export async function googleLogin(input: {
   accessToken?: string
   idToken?: string
+  code?: string
+  codeVerifier?: string
+  redirectUri?: string
   timezone?: string
 }): Promise<AuthResponse> {
-  if (!input.accessToken && !input.idToken)
-    throw new AuthServiceError(400, ErrorCodes.MISSING_FIELD)
+  let accessToken = input.accessToken
+  let idToken = input.idToken
+
+  if (input.code) {
+    if (!input.codeVerifier || !input.redirectUri) {
+      throw new AuthServiceError(400, ErrorCodes.MISSING_FIELD)
+    }
+    const exchanged = await exchangeGoogleCode(input.code, input.codeVerifier, input.redirectUri)
+    accessToken = exchanged.accessToken
+    idToken = exchanged.idToken
+  }
+
+  if (!accessToken && !idToken) throw new AuthServiceError(400, ErrorCodes.MISSING_FIELD)
+
   return runOAuthLogin({
     configEnvVar: process.env.GOOGLE_CLIENT_ID,
     timezone: input.timezone,
     resolveProfile: async () => {
-      const info = await resolveGoogleProfile({
-        accessToken: input.accessToken,
-        idToken: input.idToken,
-      })
+      const info = await resolveGoogleProfile({ accessToken, idToken })
       return { email: info.email, displayName: info.name, provider: 'google' }
     },
   })
@@ -102,8 +131,12 @@ export async function googleLogin(input: {
 
 export async function appleLogin(input: {
   idToken?: string
+  sessionToken?: string
   timezone?: string
 }): Promise<AuthResponse> {
+  if (input.sessionToken) {
+    throw new AuthServiceError(503, ErrorCodes.OAUTH_NOT_CONFIGURED)
+  }
   if (!input.idToken) throw new AuthServiceError(400, ErrorCodes.MISSING_FIELD)
   return runOAuthLogin({
     configEnvVar: process.env.APPLE_CLIENT_ID,

@@ -15,15 +15,18 @@ interface Props {
 }
 
 function restorePayload(restore: PendingRestore) {
-  if (restore.kind === 'google' && (restore.accessToken || restore.idToken)) {
+  if (restore.kind === 'google' && (restore.accessToken || restore.idToken || restore.code)) {
     return {
       provider: 'google' as const,
       accessToken: restore.accessToken,
       idToken: restore.idToken,
+      code: restore.code,
+      codeVerifier: restore.codeVerifier,
+      redirectUri: restore.redirectUri,
     }
   }
-  if (restore.kind === 'apple' && restore.idToken) {
-    return { provider: 'apple' as const, idToken: restore.idToken }
+  if (restore.kind === 'apple' && restore.sessionToken) {
+    return { provider: 'apple' as const, sessionToken: restore.sessionToken }
   }
   if (restore.kind === 'email' && restore.email && restore.password) {
     return { email: restore.email, password: restore.password }

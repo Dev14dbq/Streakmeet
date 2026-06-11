@@ -3,9 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { GoogleLogin } from '@react-oauth/google'
 import type { AuthUser } from '../../lib/api'
+import { completeAppleSignIn } from '../../lib/completeAppleSignIn'
 import { completeGoogleSignIn } from '../../lib/completeGoogleSignIn'
+import { getApiOrigin } from '../../lib/apiOrigin'
 import {
-  consumeGoogleRedirectTokens,
+  consumeGoogleRedirectCode,
   initGoogleAuth,
   isGoogleAuthCancelled,
   signInWithGoogleNative,
@@ -30,7 +32,29 @@ export default function AuthPage({ onAuth }: Props) {
   const returnTo = safeInternalPath((location.state as { returnTo?: string } | null)?.returnTo)
   const [googleLoading, setGoogleLoading] = useState(false)
 
-  async function finishGoogleSignIn(tokens: { accessToken?: string; idToken?: string }) {
+  async function finishAppleSignIn(sessionToken: string) {
+    const result = await completeAppleSignIn(sessionToken)
+    if (result.ok) {
+      onAuth(result.user, result.accessToken, false, returnTo ?? undefined)
+      return
+    }
+    if (result.deleted) {
+      setPendingRestore({
+        kind: 'apple',
+        sessionToken: result.sessionToken,
+        email: result.deleted.email,
+        daysRemaining: result.deleted.daysRemaining,
+      })
+      navigate('/account-deleted', {
+        replace: true,
+        state: { email: result.deleted.email, daysRemaining: result.deleted.daysRemaining },
+      })
+      return
+    }
+    toastError(result.errorMessage)
+  }
+
+  async function finishGoogleSignIn(tokens: GoogleSignInTokens) {
     const result = await completeGoogleSignIn(tokens)
     if (result.ok) {
       onAuth(result.user, result.accessToken, false, returnTo ?? undefined)
@@ -58,13 +82,24 @@ export default function AuthPage({ onAuth }: Props) {
   }, [])
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const appleSession = params.get('apple_session')
+    if (appleSession) {
+      params.delete('apple_session')
+      const qs = params.toString()
+      window.history.replaceState({}, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+      setGoogleLoading(true)
+      void finishAppleSignIn(appleSession).finally(() => setGoogleLoading(false))
+      return
+    }
+
     if (!useGoogleRedirectFlow()) return
-    const tokens = consumeGoogleRedirectTokens()
+    const tokens = consumeGoogleRedirectCode()
     if (!tokens) return
 
     setGoogleLoading(true)
     void finishGoogleSignIn(tokens).finally(() => setGoogleLoading(false))
-  }, []) // legacy redirect return URL; new logins use GIS id_token
+  }, []) // mobile browser: PKCE code redirect; desktop uses GIS id_token
 
   // GIS id_token on all web browsers (desktop + mobile). Avoids redirect_uri_mismatch
   // from the legacy implicit redirect flow unless explicitly configured in Google Console.
@@ -106,24 +141,8 @@ export default function AuthPage({ onAuth }: Props) {
 
   // ─── Apple ───────────────────────────────────────────────────────────────────
   function handleApple() {
-    const clientId = import.meta.env.VITE_APPLE_CLIENT_ID
-    if (!clientId) {
-      toastInfo(t('auth.appleNotConfigured'))
-      return
-    }
-    const redirectUri = encodeURIComponent(`${window.location.origin}/login`)
-    const state = crypto.randomUUID()
-    sessionStorage.setItem('apple_state', state)
-    const url = [
-      'https://appleid.apple.com/auth/authorize',
-      `?client_id=${clientId}`,
-      `&redirect_uri=${redirectUri}`,
-      `&response_type=code id_token`,
-      `&scope=email name`,
-      `&response_mode=form_post`,
-      `&state=${state}`,
-    ].join('')
-    window.location.href = url
+    const returnTo = encodeURIComponent(window.location.origin)
+    window.location.href = `${getApiOrigin()}/api/auth/apple/start?return_to=${returnTo}`
   }
 
   return (

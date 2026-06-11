@@ -80,6 +80,8 @@ fn limit_class(path: &str, method: &str) -> Option<LimitClass> {
             | "/api/auth/check-email"
             | "/api/auth/google"
             | "/api/auth/apple"
+            | "/api/auth/apple/start"
+            | "/api/auth/apple/callback"
             | "/api/auth/restore-account"
     ) {
         return Some(LimitClass::Auth);

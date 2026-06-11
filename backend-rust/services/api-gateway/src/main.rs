@@ -123,6 +123,14 @@ async fn main() -> anyhow::Result<()> {
             post(handlers::auth::auth_routes::apple_login_handler),
         )
         .route(
+            "/api/auth/apple/start",
+            get(handlers::auth::auth_routes::apple_start_handler),
+        )
+        .route(
+            "/api/auth/apple/callback",
+            post(handlers::auth::auth_routes::apple_callback_handler),
+        )
+        .route(
             "/api/auth/forgot-password",
             post(handlers::auth::auth_routes::forgot_password_handler),
         )

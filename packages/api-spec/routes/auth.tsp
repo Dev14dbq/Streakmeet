@@ -29,11 +29,15 @@ model RegisterRequest {
 model GoogleAuthRequest {
   accessToken?: string;
   idToken?: string;
+  code?: string;
+  codeVerifier?: string;
+  redirectUri?: string;
   timezone?: string;
 }
 
 model AppleAuthRequest {
-  idToken: string;
+  idToken?: string;
+  sessionToken?: string;
   timezone?: string;
 }
 
@@ -46,11 +50,15 @@ model RestoreAccountGoogleRequest {
   provider: "google";
   accessToken?: string;
   idToken?: string;
+  code?: string;
+  codeVerifier?: string;
+  redirectUri?: string;
 }
 
 model RestoreAccountAppleRequest {
   provider: "apple";
-  idToken: string;
+  idToken?: string;
+  sessionToken?: string;
 }
 
 alias RestoreAccountRequest =

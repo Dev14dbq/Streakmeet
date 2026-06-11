@@ -1,5 +1,6 @@
 mod jwt;
 mod models;
+mod oauth_state;
 mod ops;
 mod token;
 mod verification;
@@ -11,7 +12,11 @@ pub use models::{
 pub use ops::account;
 pub use ops::credentials::{RegisterInput, check_email, register};
 pub use ops::face::enroll_face;
-pub use ops::oauth::{RestoreAccountInput, apple_login, google_login, restore_account};
+pub use ops::oauth::{
+    AppleCallbackInput, GoogleLoginInput, RestoreAccountInput, apple_login, apple_login_with_email,
+    build_apple_authorize_url, exchange_apple_session, google_login, process_apple_callback,
+    restore_account,
+};
 pub use token::{AuthTokenResult, build_auth_response, verify_auth_token};
 pub use verification::{
     EnrollFaceResult, forgot_password, issue_email_verification, resend_verification,

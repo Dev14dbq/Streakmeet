@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core'
 import { SocialLogin } from '@capgo/capacitor-social-login'
 import { isMobilePhone } from './device'
+import { generatePkce } from './pkce'
 
 function readEnv(name: string): string {
   const value = import.meta.env[name]
@@ -15,9 +16,16 @@ const REDIRECT_PENDING_KEY = 'streakmeet_google_redirect'
 export type GoogleSignInTokens = {
   accessToken?: string
   idToken?: string
+  code?: string
+  codeVerifier?: string
+  redirectUri?: string
 }
 
-type RedirectPending = { nonce: string }
+type RedirectPending = {
+  nonce: string
+  verifier: string
+  redirectUri: string
+}
 
 let initPromise: Promise<void> | null = null
 
@@ -65,21 +73,24 @@ export async function signInWithGoogleNative(): Promise<GoogleSignInTokens> {
   }
 }
 
-export function startGoogleRedirectLogin(): void {
+export async function startGoogleRedirectLogin(): Promise<void> {
   if (!GOOGLE_CLIENT_ID) throw new Error('no_client_id')
 
   const redirectUri = `${window.location.origin}/login`
+  const { verifier, challenge } = await generatePkce()
   const nonce = crypto.randomUUID()
-  const pending: RedirectPending = { nonce }
+  const pending: RedirectPending = { nonce, verifier, redirectUri }
   sessionStorage.setItem(REDIRECT_PENDING_KEY, JSON.stringify(pending))
 
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: redirectUri,
-    response_type: 'token id_token',
+    response_type: 'code',
     scope: 'openid email profile',
     include_granted_scopes: 'true',
     nonce,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
   })
 
   window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
@@ -95,52 +106,32 @@ function readRedirectPending(): RedirectPending | null {
   }
 }
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const payload = token.split('.')[1]
-    if (!payload) return null
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
-    return JSON.parse(json) as Record<string, unknown>
-  } catch {
-    return null
-  }
-}
-
-function idTokenNonceMatches(idToken: string, expectedNonce: string): boolean {
-  const payload = decodeJwtPayload(idToken)
-  return typeof payload?.nonce === 'string' && payload.nonce === expectedNonce
-}
-
-export function consumeGoogleRedirectTokens(): GoogleSignInTokens | null {
-  const pending = readRedirectPending()
-  if (!pending) return null
-
-  const hash = window.location.hash.startsWith('#')
-    ? window.location.hash.slice(1)
-    : window.location.hash
-  if (!hash) return null
-
-  const params = new URLSearchParams(hash)
-  if (params.get('error')) {
-    sessionStorage.removeItem(REDIRECT_PENDING_KEY)
-    window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
-    return null
-  }
-
-  const accessToken = params.get('access_token') ?? undefined
-  const idToken = params.get('id_token') ?? undefined
-  if (!accessToken && !idToken) return null
-
-  if (idToken && !idTokenNonceMatches(idToken, pending.nonce)) {
-    sessionStorage.removeItem(REDIRECT_PENDING_KEY)
-    window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
-    return null
-  }
-
+function clearRedirectPendingFromUrl(): void {
   sessionStorage.removeItem(REDIRECT_PENDING_KEY)
-  window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
+  window.history.replaceState({}, '', window.location.pathname)
+}
 
-  return { accessToken, idToken }
+/** Authorization code + PKCE return (mobile browser redirect flow). */
+export function consumeGoogleRedirectCode(): GoogleSignInTokens | null {
+  const pending = readRedirectPending()
+  if (!pending?.verifier) return null
+
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('error')) {
+    clearRedirectPendingFromUrl()
+    return null
+  }
+
+  const code = params.get('code')
+  if (!code) return null
+
+  clearRedirectPendingFromUrl()
+
+  return {
+    code,
+    codeVerifier: pending.verifier,
+    redirectUri: pending.redirectUri,
+  }
 }
 
 export function isGoogleAuthCancelled(error: unknown): boolean {

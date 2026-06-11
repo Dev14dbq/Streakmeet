@@ -11,7 +11,8 @@ export type GoogleSignInResult =
 export async function completeGoogleSignIn(
   tokens: GoogleSignInTokens
 ): Promise<GoogleSignInResult> {
-  if (!tokens.accessToken && !tokens.idToken) {
+  const hasCode = !!tokens.code && !!tokens.codeVerifier && !!tokens.redirectUri
+  if (!hasCode && !tokens.accessToken && !tokens.idToken) {
     return { ok: false, deleted: null, errorMessage: i18n.t('auth.googleTokenMissing') }
   }
 
@@ -21,6 +22,9 @@ export async function completeGoogleSignIn(
       {
         accessToken: tokens.accessToken,
         idToken: tokens.idToken,
+        code: tokens.code,
+        codeVerifier: tokens.codeVerifier,
+        redirectUri: tokens.redirectUri,
         timezone: getDeviceTimezone(),
       }
     )

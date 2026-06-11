@@ -4,10 +4,13 @@ export type PendingRestore =
       kind: 'google'
       accessToken?: string
       idToken?: string
+      code?: string
+      codeVerifier?: string
+      redirectUri?: string
       email?: string
       daysRemaining: number
     }
-  | { kind: 'apple'; idToken: string; daysRemaining: number }
+  | { kind: 'apple'; sessionToken: string; email?: string; daysRemaining: number }
 
 let pending: PendingRestore | null = null
 
