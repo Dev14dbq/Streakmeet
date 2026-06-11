@@ -2,14 +2,11 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { restoreAccount, getApiErrorMessage, type AuthUser } from '../../lib/api'
+import { takePendingRestore, type PendingRestore } from '../../lib/pendingRestore'
 import { toastError } from '../../lib/toast'
 
-interface LocationState {
+interface DisplayState {
   email?: string
-  password?: string
-  provider?: 'google' | 'apple'
-  accessToken?: string
-  idToken?: string
   daysRemaining?: number
 }
 
@@ -17,37 +14,54 @@ interface Props {
   onAuth: (user: AuthUser, token: string, fromSignup?: boolean) => void
 }
 
+function restorePayload(restore: PendingRestore) {
+  if (restore.kind === 'google' && (restore.accessToken || restore.idToken)) {
+    return {
+      provider: 'google' as const,
+      accessToken: restore.accessToken,
+      idToken: restore.idToken,
+    }
+  }
+  if (restore.kind === 'apple' && restore.idToken) {
+    return { provider: 'apple' as const, idToken: restore.idToken }
+  }
+  if (restore.kind === 'email' && restore.email && restore.password) {
+    return { email: restore.email, password: restore.password }
+  }
+  return null
+}
+
 export default function AccountDeletedPage({ onAuth }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const state = (location.state as LocationState | null) ?? {}
+  const display = (location.state as DisplayState | null) ?? {}
+  const [restore] = useState(() => takePendingRestore())
 
   const [loading, setLoading] = useState(false)
-  const daysRemaining = state.daysRemaining ?? 30
+  const daysRemaining = restore?.daysRemaining ?? display.daysRemaining ?? 30
+  const email =
+    (restore?.kind === 'email' ? restore.email : undefined) ??
+    (restore?.kind === 'google' ? restore.email : undefined) ??
+    display.email
 
   async function handleRestore() {
+    if (!restore) {
+      toastError(t('auth.restoreInsufficient'))
+      navigate('/login', { replace: true })
+      return
+    }
+
+    const payload = restorePayload(restore)
+    if (!payload) {
+      toastError(t('auth.restoreInsufficient'))
+      navigate('/login', { replace: true })
+      return
+    }
+
     setLoading(true)
     try {
-      let payload
-      if (state.provider === 'google' && (state.accessToken || state.idToken)) {
-        payload = {
-          provider: 'google' as const,
-          accessToken: state.accessToken,
-          idToken: state.idToken,
-        }
-      } else if (state.provider === 'apple' && state.idToken) {
-        payload = { provider: 'apple' as const, idToken: state.idToken }
-      } else if (state.email && state.password) {
-        payload = { email: state.email, password: state.password }
-      } else {
-        toastError(t('auth.restoreInsufficient'))
-        navigate('/login', { replace: true })
-        return
-      }
-
       const { data } = await restoreAccount(payload)
-      localStorage.setItem('accessToken', data.accessToken)
       onAuth(data.user, data.accessToken)
     } catch (err: unknown) {
       toastError(getApiErrorMessage(err, t('auth.restoreFailed')))
@@ -70,10 +84,8 @@ export default function AccountDeletedPage({ onAuth }: Props) {
           </span>{' '}
           {t('auth.accountDeletedDesc2')}
         </p>
-        {state.email && (
-          <p className="mt-3 text-xs text-[var(--color-on-surface-variant)] text-center">
-            {state.email}
-          </p>
+        {email && (
+          <p className="mt-3 text-xs text-[var(--color-on-surface-variant)] text-center">{email}</p>
         )}
         <p className="mt-6 text-sm text-[var(--color-on-surface-variant)] text-center">
           {t('auth.restorePrompt')}
@@ -84,7 +96,7 @@ export default function AccountDeletedPage({ onAuth }: Props) {
         <button
           type="button"
           onClick={handleRestore}
-          disabled={loading}
+          disabled={loading || !restore}
           className="btn btn--primary btn--lg w-full"
         >
           {loading ? t('auth.restoring') : t('auth.restoreAccount')}

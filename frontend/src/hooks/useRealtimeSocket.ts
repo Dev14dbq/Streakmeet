@@ -7,6 +7,7 @@ import {
   showInstantPushNotification,
   type AppNotificationPayload,
 } from '../lib/instantNotifications'
+import { safeInternalPath } from '../lib/safeNavigate'
 import { notify, toastLink } from '../lib/toast'
 import { isSyncStreamEnabled } from '../lib/connect/client'
 import { useSyncModeReady } from './useSyncModeReady'
@@ -32,8 +33,9 @@ export function useRealtimeSocket(
           void showInstantPushNotification(data)
           return
         }
-        if (data.route) {
-          toastLink(data.message, data.route, navigate)
+        const safeRoute = safeInternalPath(data.route)
+        if (safeRoute) {
+          toastLink(data.message, safeRoute, navigate)
         } else {
           notify(data.message)
         }

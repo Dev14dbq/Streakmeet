@@ -26,31 +26,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // -webkit-overflow-scrolling: touch in CSS.
         scrollView.bounces = true
         scrollView.alwaysBounceVertical = false
-
-        // Native pull-to-refresh at the top
-        if scrollView.refreshControl == nil {
-            let rc = UIRefreshControl()
-            rc.tintColor = UIColor.white
-            rc.addTarget(self, action: #selector(handlePullToRefresh(_:)), for: .valueChanged)
-            scrollView.refreshControl = rc
-        }
-    }
-
-    @objc private func handlePullToRefresh(_ sender: UIRefreshControl) {
-        guard let rootVC = window?.rootViewController,
-              let bridge = findBridgeViewController(in: rootVC),
-              let webView = bridge.webView else {
-            sender.endRefreshing()
-            return
-        }
-        // Dispatch a custom event so React can do an SWR soft-refresh
-        webView.evaluateJavaScript(
-            "window.dispatchEvent(new CustomEvent('app-pull-to-refresh'))"
-        ) { _, _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                sender.endRefreshing()
-            }
-        }
+        scrollView.refreshControl = nil
     }
 
     private func findBridgeViewController(in vc: UIViewController) -> CAPBridgeViewController? {

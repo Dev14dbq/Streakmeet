@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { getRealtimeServerUrl } from '../lib/api'
-import { getAccessToken } from '../context/AuthContext'
+import { getAccessToken } from '../lib/authStorage'
 
 let sharedSocket: Socket | null = null
 let refCount = 0

@@ -1,4 +1,5 @@
 import type { AuthUser } from '../../lib/api'
+import { setStoredUser } from '../../lib/authStorage'
 import { updatePreferences } from '../../lib/api'
 import { scheduleStreakNotifications } from '../../lib/streakNotifications'
 import { getNotificationPrefs, saveLocalStreakPref } from '../../lib/userPreferences'
@@ -39,6 +40,6 @@ export async function saveSettingsPatch(
   if (Object.keys(serverPatch).length === 0) return null
 
   const { data } = await updatePreferences(serverPatch)
-  localStorage.setItem('user', JSON.stringify(data))
+  setStoredUser(data)
   return data
 }

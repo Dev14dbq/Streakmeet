@@ -26,6 +26,7 @@
     "close": "Tutup",
     "retry": "Coba lagi",
     "unknown": "Tidak diketahui",
+    "unknownUser": "Pengguna tidak dikenal",
     "me": "Saya",
     "friend": "teman",
     "soon": "Segera hadir",
@@ -34,7 +35,8 @@
     "qr": "QR",
     "today": "Hari ini",
     "days_one": "{{count}} hari",
-    "days_other": "{{count}} hari"
+    "days_other": "{{count}} hari",
+    "change": "Change"
   },
   "time": {
     "justNow": "baru saja",

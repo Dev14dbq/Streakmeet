@@ -8,6 +8,8 @@ import {
   getApiErrorMessage,
   type AuthUser,
 } from '../../lib/api'
+import { setPendingRestore } from '../../lib/pendingRestore'
+import { safeInternalPath } from '../../lib/safeNavigate'
 
 type Step = 'email' | 'password'
 
@@ -20,7 +22,7 @@ export default function EmailAuthPage({ onAuth }: Props) {
   const navigate = useNavigate()
   const location = useLocation()
   const navState = location.state as { returnTo?: string; email?: string } | null
-  const returnTo = navState?.returnTo
+  const returnTo = safeInternalPath(navState?.returnTo)
   const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState(navState?.email?.trim() ?? '')
   const [password, setPassword] = useState('')
@@ -64,18 +66,19 @@ export default function EmailAuthPage({ onAuth }: Props) {
     setLoading(true)
     try {
       const { data } = await login(email.trim(), password)
-      localStorage.setItem('accessToken', data.accessToken)
-      onAuth(data.user, data.accessToken, false, returnTo)
+      onAuth(data.user, data.accessToken, false, returnTo ?? undefined)
     } catch (err) {
       const deleted = getDeletedAccountInfo(err)
       if (deleted) {
+        setPendingRestore({
+          kind: 'email',
+          email: email.trim(),
+          password,
+          daysRemaining: deleted.daysRemaining,
+        })
         navigate('/account-deleted', {
           replace: true,
-          state: {
-            email: email.trim(),
-            password,
-            daysRemaining: deleted.daysRemaining,
-          },
+          state: { email: email.trim(), daysRemaining: deleted.daysRemaining },
         })
         return
       }

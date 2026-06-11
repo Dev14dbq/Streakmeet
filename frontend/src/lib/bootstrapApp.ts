@@ -8,6 +8,7 @@ import {
   type AuthUser,
   type LegalConsentStatus,
 } from './api'
+import { clearSession, getAccessToken, getStoredUser, setStoredUser } from './authStorage'
 import { initGoogleAuth } from './googleAuth'
 import { pruneStaleImageCache } from './remoteImageCache'
 import { SWR_KEYS } from './swrKeys'
@@ -29,17 +30,8 @@ export interface BootstrapSessionResult {
   usedCachedSession?: boolean
 }
 
-function readCachedUser(): AuthUser | null {
-  try {
-    const stored = localStorage.getItem('user')
-    return stored ? (JSON.parse(stored) as AuthUser) : null
-  } catch {
-    return null
-  }
-}
-
 export async function bootstrapSession(): Promise<BootstrapSessionResult> {
-  const token = localStorage.getItem('accessToken')
+  const token = getAccessToken()
   if (!token) {
     return {
       user: null,
@@ -53,7 +45,7 @@ export async function bootstrapSession(): Promise<BootstrapSessionResult> {
   try {
     const dataApi = migratedApi()
     const { data: user } = await dataApi.get<AuthUser>(SWR_KEYS.me)
-    localStorage.setItem('user', JSON.stringify(user))
+    setStoredUser(user)
     void mutate(SWR_KEYS.me, user, { revalidate: false })
 
     const [streaks, friends, legal, location, friendLocations, photos] = await Promise.allSettled([
@@ -104,8 +96,7 @@ export async function bootstrapSession(): Promise<BootstrapSessionResult> {
   } catch (err) {
     const deleted = getDeletedAccountInfo(err)
     if (deleted) {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('user')
+      clearSession()
       return {
         user: null,
         legalStatus: null,
@@ -120,8 +111,7 @@ export async function bootstrapSession(): Promise<BootstrapSessionResult> {
 
     const status = isAxiosError(err) ? err.response?.status : undefined
     if (status === 401) {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('user')
+      clearSession()
       return {
         user: null,
         legalStatus: null,
@@ -131,7 +121,7 @@ export async function bootstrapSession(): Promise<BootstrapSessionResult> {
       }
     }
 
-    const cachedUser = readCachedUser()
+    const cachedUser = getStoredUser()
     if (cachedUser && (isNetworkError(err) || (status != null && status >= 500))) {
       return {
         user: cachedUser,
@@ -143,8 +133,7 @@ export async function bootstrapSession(): Promise<BootstrapSessionResult> {
       }
     }
 
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('user')
+    clearSession()
     return {
       user: null,
       legalStatus: null,

@@ -5,6 +5,7 @@ import { getStreaks } from './api'
 import { isStreakMetToday, streakToday } from './streakCalendar'
 import { addDaysToDateString, getDeviceTimezone, localTimeInZoneToDate } from './timezone'
 
+import { safeInternalPath } from './safeNavigate'
 import { getNotificationPrefs } from './userPreferences'
 
 export const NOTIFICATION_CHANNEL_ID = 'streakmeet'
@@ -142,8 +143,10 @@ export function registerNotificationTapHandler(onNavigate: (route: string) => vo
   if (!Capacitor.isNativePlatform()) return () => {}
 
   const sub = LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
-    const route = event.notification.extra?.route
-    if (typeof route === 'string') onNavigate(route)
+    const route = safeInternalPath(
+      typeof event.notification.extra?.route === 'string' ? event.notification.extra.route : null
+    )
+    if (route) onNavigate(route)
   })
 
   return () => {

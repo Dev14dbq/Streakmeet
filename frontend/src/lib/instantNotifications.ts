@@ -3,6 +3,7 @@ import { LocalNotifications } from '@capacitor/local-notifications'
 import { ensureNotificationPermission, NOTIFICATION_CHANNEL_ID } from './streakNotifications'
 import { translateNotification } from './translateNotification'
 
+import { safeInternalPath } from './safeNavigate'
 import { getNotificationPrefs } from './userPreferences'
 
 export interface AppNotificationPayload {
@@ -56,7 +57,7 @@ export async function showInstantPushNotification(data: AppNotificationPayload):
         body: translateNotification(data),
         schedule: { at: new Date(Date.now() + 100) },
         channelId: NOTIFICATION_CHANNEL_ID,
-        extra: { route: data.route ?? '/' },
+        extra: { route: safeInternalPath(data.route) ?? '/' },
         sound: 'default',
         iconColor: '#FF1A4F',
       },

@@ -11,13 +11,23 @@ import {
 import { useNavigate } from 'react-router-dom'
 import type { AuthUser } from '../lib/api'
 import { setUnauthorizedHandler } from '../lib/api'
+import {
+  clearSession,
+  getStoredUser,
+  hasAuthSession,
+  setSession,
+  setStoredUser,
+} from '../lib/authStorage'
 import { initSyncMode } from '../lib/connect/client'
 import { bootstrapSession } from '../lib/bootstrapApp'
 import { clearFaceEnrollmentDefer, isFaceEnrollmentDeferred } from '../lib/faceEnrollmentDefer'
 import { stopLocationSharing } from '../lib/locationSharing'
+import { safeInternalPath } from '../lib/safeNavigate'
 import { clearStreakWidget } from '../lib/widgetSync'
 
 export type BootstrapPhase = 'hidden' | 'loading' | 'leaving'
+
+export { getAccessToken, getStoredUser } from '../lib/authStorage'
 
 interface PendingNavigation {
   fromSignup?: boolean
@@ -26,21 +36,8 @@ interface PendingNavigation {
 }
 
 function initialBootstrapPhase(): BootstrapPhase {
-  if (!localStorage.getItem('accessToken')) return 'hidden'
+  if (!hasAuthSession()) return 'hidden'
   return getStoredUser() ? 'hidden' : 'loading'
-}
-
-export function getStoredUser(): AuthUser | null {
-  try {
-    const stored = localStorage.getItem('user')
-    return stored ? (JSON.parse(stored) as AuthUser) : null
-  } catch {
-    return null
-  }
-}
-
-export function getAccessToken(): string | null {
-  return localStorage.getItem('accessToken')
 }
 
 export function getAuthenticatedHomePath(
@@ -85,8 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate('/verify-email', { replace: true })
         return
       }
-      if (pending.returnTo && authUser.faceEnrolled) {
-        navigate(pending.returnTo, { replace: true })
+      const safeReturn = safeInternalPath(pending.returnTo)
+      if (safeReturn && authUser.faceEnrolled) {
+        navigate(safeReturn, { replace: true })
         return
       }
       if (authUser.faceEnrolled) {
@@ -108,8 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await stopLocationSharing().catch(() => {})
       await clearStreakWidget().catch(() => {})
       clearFaceEnrollmentDefer()
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('user')
+      clearSession()
       setUser(null)
       setBootstrapPhase('hidden')
       navigate('/login', { replace: true })
@@ -120,12 +117,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleAuth = useCallback(
     (authUser: AuthUser, token: string, fromSignup = false, returnTo?: string) => {
-      localStorage.setItem('accessToken', token)
-      localStorage.setItem('user', JSON.stringify(authUser))
+      setSession(token, authUser)
       setUser(authUser)
       pendingNavRef.current = {
         fromSignup,
-        returnTo,
+        returnTo: safeInternalPath(returnTo) ?? undefined,
         faceEnrolled: authUser.faceEnrolled,
       }
       setBootstrapVersion((v) => v + 1)
@@ -139,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false
-    const hasToken = !!localStorage.getItem('accessToken')
+    const hasToken = hasAuthSession()
 
     if (!hasToken) {
       setBootstrapPhase('hidden')
@@ -186,8 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [bootstrapVersion, applyPendingNavigation])
 
   useEffect(() => {
-    if (user) localStorage.setItem('user', JSON.stringify(user))
-    else localStorage.removeItem('user')
+    if (user) setStoredUser(user)
+    else if (!hasAuthSession()) clearSession()
   }, [user])
 
   useEffect(() => {

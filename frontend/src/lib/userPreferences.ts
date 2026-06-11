@@ -1,4 +1,4 @@
-import { getStoredUser } from '../context/AuthContext'
+import { getStoredUser } from './authStorage'
 
 const SETTINGS_KEY = 'streakmeet_settings'
 

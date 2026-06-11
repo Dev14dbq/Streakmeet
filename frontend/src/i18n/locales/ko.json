@@ -34,7 +34,9 @@
     "qr": "QR",
     "today": "오늘",
     "days_one": "{{count}}일",
-    "days_other": "{{count}}일"
+    "days_other": "{{count}}일",
+    "change": "Change",
+    "unknownUser": "Unknown user"
   },
   "time": {
     "justNow": "방금",

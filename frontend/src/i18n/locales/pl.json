@@ -26,6 +26,7 @@
     "close": "Zamknij",
     "retry": "Ponów",
     "unknown": "Nieznany",
+    "unknownUser": "Nieznany użytkownik",
     "me": "Ja",
     "friend": "znajomy",
     "soon": "Wkrótce",
@@ -34,7 +35,8 @@
     "qr": "QR",
     "today": "Dziś",
     "days_one": "{{count}} dzień",
-    "days_other": "{{count}} dni"
+    "days_other": "{{count}} dni",
+    "change": "Change"
   },
   "time": {
     "justNow": "przed chwilą",

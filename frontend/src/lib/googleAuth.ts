@@ -2,14 +2,22 @@ import { Capacitor } from '@capacitor/core'
 import { SocialLogin } from '@capgo/capacitor-social-login'
 import { isMobilePhone } from './device'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
-const GOOGLE_IOS_CLIENT_ID = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID ?? GOOGLE_CLIENT_ID
+function readEnv(name: string): string {
+  const value = import.meta.env[name]
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+const GOOGLE_CLIENT_ID = readEnv('VITE_GOOGLE_CLIENT_ID')
+// Empty VITE_GOOGLE_IOS_CLIENT_ID in .env must not override the web client id.
+const GOOGLE_IOS_CLIENT_ID = readEnv('VITE_GOOGLE_IOS_CLIENT_ID') || GOOGLE_CLIENT_ID
 const REDIRECT_PENDING_KEY = 'streakmeet_google_redirect'
 
 export type GoogleSignInTokens = {
   accessToken?: string
   idToken?: string
 }
+
+type RedirectPending = { nonce: string }
 
 let initPromise: Promise<void> | null = null
 
@@ -40,6 +48,7 @@ export function initGoogleAuth(): Promise<void> {
 }
 
 export async function signInWithGoogleNative(): Promise<GoogleSignInTokens> {
+  if (!GOOGLE_IOS_CLIENT_ID) throw new Error('no_client_id')
   await initGoogleAuth()
   const response = await SocialLogin.login({
     provider: 'google',
@@ -60,8 +69,9 @@ export function startGoogleRedirectLogin(): void {
   if (!GOOGLE_CLIENT_ID) throw new Error('no_client_id')
 
   const redirectUri = `${window.location.origin}/login`
-  const nonce = Math.random().toString(36).slice(2)
-  sessionStorage.setItem(REDIRECT_PENDING_KEY, nonce)
+  const nonce = crypto.randomUUID()
+  const pending: RedirectPending = { nonce }
+  sessionStorage.setItem(REDIRECT_PENDING_KEY, JSON.stringify(pending))
 
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -75,8 +85,35 @@ export function startGoogleRedirectLogin(): void {
   window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
 }
 
+function readRedirectPending(): RedirectPending | null {
+  const raw = sessionStorage.getItem(REDIRECT_PENDING_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as RedirectPending
+  } catch {
+    return null
+  }
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return null
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+    return JSON.parse(json) as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+function idTokenNonceMatches(idToken: string, expectedNonce: string): boolean {
+  const payload = decodeJwtPayload(idToken)
+  return typeof payload?.nonce === 'string' && payload.nonce === expectedNonce
+}
+
 export function consumeGoogleRedirectTokens(): GoogleSignInTokens | null {
-  if (!sessionStorage.getItem(REDIRECT_PENDING_KEY)) return null
+  const pending = readRedirectPending()
+  if (!pending) return null
 
   const hash = window.location.hash.startsWith('#')
     ? window.location.hash.slice(1)
@@ -93,6 +130,12 @@ export function consumeGoogleRedirectTokens(): GoogleSignInTokens | null {
   const accessToken = params.get('access_token') ?? undefined
   const idToken = params.get('id_token') ?? undefined
   if (!accessToken && !idToken) return null
+
+  if (idToken && !idTokenNonceMatches(idToken, pending.nonce)) {
+    sessionStorage.removeItem(REDIRECT_PENDING_KEY)
+    window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
+    return null
+  }
 
   sessionStorage.removeItem(REDIRECT_PENDING_KEY)
   window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)

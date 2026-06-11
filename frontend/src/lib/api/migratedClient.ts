@@ -1,7 +1,8 @@
 import axios, { type AxiosInstance } from 'axios'
+import { clearSession, getAccessToken, hasAuthSession } from '../authStorage'
 import { getRustGatewayUrl, isSyncStreamEnabled } from '../connect/client'
 import { invalidateAfterMutation } from '../swrInvalidation'
-import { api, getNodeApiUrl, setUnauthorizedHandler, hasAuthSession } from './client'
+import { api, getNodeApiUrl, setUnauthorizedHandler } from './client'
 
 let rustApi: AxiosInstance | null = null
 let nodeApiClient: AxiosInstance | null = null
@@ -19,7 +20,7 @@ export function isNodeOnlyApiPath(path: string): boolean {
 
 function attachAuthInterceptors(client: AxiosInstance): void {
   client.interceptors.request.use((config) => {
-    const token = localStorage.getItem('accessToken')
+    const token = getAccessToken()
     if (token) config.headers.Authorization = `Bearer ${token}`
     return config
   })
@@ -34,8 +35,7 @@ function attachAuthInterceptors(client: AxiosInstance): void {
       const code = error.response?.data?.code
       if (status === 401 && code !== 'ACCOUNT_DELETED') {
         const hadSession = hasAuthSession()
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('user')
+        clearSession()
         if (hadSession && !sessionClearInProgress) {
           sessionClearInProgress = true
           try {
@@ -94,7 +94,36 @@ export function apiClientForPath(path: string): AxiosInstance {
   return migratedApi()
 }
 
+const LIST_PATHS = new Set(['/api/friends', '/api/streaks', '/api/location/friends'])
+
+function normalizeFetcherPath(url: string): string {
+  const path = (url.startsWith('/') ? url : `/${url}`).split('?')[0] ?? url
+  if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1)
+  return path
+}
+
+function expectsArrayResponse(url: string): boolean {
+  return LIST_PATHS.has(normalizeFetcherPath(url))
+}
+
+/** Thrown when the server responded but list payload is not an array (misconfigured API URL, etc.). */
+function rejectBadListResponse(): never {
+  throw new axios.AxiosError(
+    'Invalid list response',
+    axios.AxiosError.ERR_NETWORK,
+    undefined,
+    undefined,
+    undefined
+  )
+}
+
 export const fetcher = (url: string) =>
   apiClientForPath(url)
     .get(url)
-    .then((res) => res.data)
+    .then((res) => {
+      const data = res.data
+      if (expectsArrayResponse(url) && !Array.isArray(data)) {
+        rejectBadListResponse()
+      }
+      return data
+    })

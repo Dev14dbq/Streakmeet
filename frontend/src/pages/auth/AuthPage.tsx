@@ -16,6 +16,8 @@ import {
 import { Flame } from 'lucide-react'
 import { toastError, toastInfo } from '../../lib/toast'
 import { getApiErrorMessage } from '../../lib/api'
+import { setPendingRestore } from '../../lib/pendingRestore'
+import { safeInternalPath } from '../../lib/safeNavigate'
 
 interface Props {
   onAuth: (user: AuthUser, token: string, fromSignup?: boolean, returnTo?: string) => void
@@ -25,26 +27,26 @@ export default function AuthPage({ onAuth }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo
+  const returnTo = safeInternalPath((location.state as { returnTo?: string } | null)?.returnTo)
   const [googleLoading, setGoogleLoading] = useState(false)
 
   async function finishGoogleSignIn(tokens: { accessToken?: string; idToken?: string }) {
     const result = await completeGoogleSignIn(tokens)
     if (result.ok) {
-      localStorage.setItem('accessToken', result.accessToken)
-      onAuth(result.user, result.accessToken, false, returnTo)
+      onAuth(result.user, result.accessToken, false, returnTo ?? undefined)
       return
     }
     if (result.deleted) {
+      setPendingRestore({
+        kind: 'google',
+        accessToken: result.tokens.accessToken,
+        idToken: result.tokens.idToken,
+        email: result.deleted.email,
+        daysRemaining: result.deleted.daysRemaining,
+      })
       navigate('/account-deleted', {
         replace: true,
-        state: {
-          provider: 'google',
-          accessToken: result.tokens.accessToken,
-          idToken: result.tokens.idToken,
-          email: result.deleted.email,
-          daysRemaining: result.deleted.daysRemaining,
-        },
+        state: { email: result.deleted.email, daysRemaining: result.deleted.daysRemaining },
       })
       return
     }
@@ -110,7 +112,7 @@ export default function AuthPage({ onAuth }: Props) {
       return
     }
     const redirectUri = encodeURIComponent(`${window.location.origin}/login`)
-    const state = Math.random().toString(36).slice(2)
+    const state = crypto.randomUUID()
     sessionStorage.setItem('apple_state', state)
     const url = [
       'https://appleid.apple.com/auth/authorize',

@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { getLegalDocument, type LegalDocument } from '../../lib/api'
 import { getCurrentLocale } from '../../i18n'
 import { formatDate } from '../../i18n/format'
+import { sanitizeHtml } from '../../lib/sanitizeHtml'
 
 interface Props {
   slug: 'terms' | 'privacy'
@@ -54,7 +55,7 @@ export default function LegalDocumentPage({ slug, fallbackTitle }: Props) {
               {t('legal.versionUpdated', { version: data?.version, date: updatedAt })}
             </p>
           )}
-          <div dangerouslySetInnerHTML={{ __html: data?.content ?? '' }} />
+          <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(data?.content ?? '') }} />
         </div>
       )}
     </div>

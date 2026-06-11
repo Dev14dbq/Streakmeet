@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { createConnectTransport, type ConnectTransportOptions } from '@connectrpc/connect-web'
-import { getAccessToken } from '../../context/AuthContext'
+import { getAccessToken } from '../authStorage'
 import { getApiOrigin } from '../apiOrigin'
 export { initSyncMode, isSyncModeResolved, isSyncStreamEnabled, onSyncModeReady } from './syncMode'
 

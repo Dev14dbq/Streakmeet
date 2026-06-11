@@ -10,6 +10,7 @@ import {
   fetcher,
   getApiErrorMessage,
 } from '../lib/api'
+import { asArray } from '../lib/asArray'
 import { SWR_KEYS } from '../lib/swrKeys'
 import { toastError, toastLink } from '../lib/toast'
 import type { FriendListItem, AuthUser } from '@streakmeet/api-spec'
@@ -20,11 +21,12 @@ export interface FriendPartition {
   pendingOut: FriendListItem[]
 }
 
-export function partitionFriends(friends: FriendListItem[]): FriendPartition {
+export function partitionFriends(friends: unknown): FriendPartition {
+  const list = asArray<FriendListItem>(friends)
   return {
-    incoming: friends.filter((f) => f.isIncomingRequest),
-    accepted: friends.filter((f) => f.status === 'ACCEPTED'),
-    pendingOut: friends.filter((f) => f.status === 'PENDING' && !f.isIncomingRequest),
+    incoming: list.filter((f) => f.isIncomingRequest),
+    accepted: list.filter((f) => f.status === 'ACCEPTED'),
+    pendingOut: list.filter((f) => f.status === 'PENDING' && !f.isIncomingRequest),
   }
 }
 
@@ -35,7 +37,13 @@ export function useFriendSearch() {
   const [searchResults, setSearchResults] = useState<AuthUser[]>([])
   const [loadingSearch, setLoadingSearch] = useState(false)
 
-  const { data: friends = [] } = useSWR<FriendListItem[]>(SWR_KEYS.friends, fetcher)
+  const {
+    data: friendsData,
+    error: friendsError,
+    mutate: mutateFriends,
+  } = useSWR<FriendListItem[]>(SWR_KEYS.friends, fetcher)
+  const friends = asArray<FriendListItem>(friendsData)
+  const friendsInvalid = friendsData != null && !Array.isArray(friendsData)
 
   useEffect(() => {
     if (query.length < 3) {
@@ -88,6 +96,10 @@ export function useFriendSearch() {
     searchResults,
     loadingSearch,
     friends,
+    friendsData,
+    friendsError,
+    friendsInvalid,
+    mutateFriends,
     partition,
     handleAdd,
     handleAccept,

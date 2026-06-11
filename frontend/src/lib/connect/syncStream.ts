@@ -5,7 +5,7 @@
  */
 
 import { getConnectBaseUrl, persistLastEventId, readLastEventId } from './client'
-import { getAccessToken } from '../../context/AuthContext'
+import { getAccessToken } from '../authStorage'
 import type {
   FriendSyncPayload,
   LocationRemovedPayload,

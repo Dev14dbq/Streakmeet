@@ -19,6 +19,7 @@ import { deleteAccount, syncDeviceTimezone, type AuthUser } from '../../lib/api'
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { toastError } from '../../lib/toast'
 import { stopLocationSharing } from '../../lib/locationSharing'
+import { clearSession } from '../../lib/authStorage'
 import { useAuth } from '../../context/AuthContext'
 import { SettingsPageShell, SettingsRow, SettingsSection } from './settingsUi'
 
@@ -47,8 +48,7 @@ export default function SettingsPage({ user: initialUser }: Props) {
     try {
       await deleteAccount()
       await stopLocationSharing().catch(() => {})
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('user')
+      clearSession()
       window.location.href = '/login'
     } catch {
       toastError(t('settings.deleteFailed'))

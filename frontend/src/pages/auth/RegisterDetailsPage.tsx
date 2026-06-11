@@ -47,7 +47,6 @@ export default function RegisterDetailsPage({ onAuth }: Props) {
         username: normalizedUsername,
         timezone: getDeviceTimezone(),
       })
-      localStorage.setItem('accessToken', data.accessToken)
       onAuth(data.user, data.accessToken, true)
     } catch (err: unknown) {
       const resp = (err as { response?: { data?: { error?: string; code?: string } } })?.response

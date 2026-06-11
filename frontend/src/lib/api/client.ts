@@ -1,5 +1,6 @@
 import axios, { isAxiosError } from 'axios'
 import i18n from '../../i18n'
+import { clearSession, getAccessToken, hasAuthSession } from '../authStorage'
 import { invalidateAfterMutation } from '../swrInvalidation'
 
 /**
@@ -23,7 +24,7 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken')
+  const token = getAccessToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -31,9 +32,7 @@ api.interceptors.request.use((config) => {
 let onUnauthorized: (() => void) | null = null
 let sessionClearInProgress = false
 
-export function hasAuthSession(): boolean {
-  return !!localStorage.getItem('accessToken')
-}
+export { hasAuthSession }
 
 export function setUnauthorizedHandler(handler: () => void) {
   onUnauthorized = handler
@@ -49,8 +48,7 @@ api.interceptors.response.use(
     const code = error.response?.data?.code
     if (status === 401 && code !== 'ACCOUNT_DELETED') {
       const hadSession = hasAuthSession()
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('user')
+      clearSession()
       if (hadSession && !sessionClearInProgress) {
         sessionClearInProgress = true
         try {

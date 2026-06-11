@@ -34,7 +34,9 @@
     "qr": "QR",
     "today": "Aujourd'hui",
     "days_one": "{{count}} jour",
-    "days_other": "{{count}} jours"
+    "days_other": "{{count}} jours",
+    "change": "Change",
+    "unknownUser": "Unknown user"
   },
   "time": {
     "justNow": "à l'instant",

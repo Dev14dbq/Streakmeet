@@ -1,5 +1,6 @@
 import toast from 'react-hot-toast'
 import { ChevronRight } from 'lucide-react'
+import { safeInternalPath } from './safeNavigate'
 
 export const toastStyle = {
   borderRadius: '16px',
@@ -40,11 +41,14 @@ export function toastLink(
   navigate: (path: string) => void,
   icon = '🔔'
 ) {
+  const safeRoute = safeInternalPath(route)
+  if (!safeRoute) return notify(message)
+
   return toast(
     (t) => (
       <button
         onClick={() => {
-          navigate(route)
+          navigate(safeRoute)
           toast.dismiss(t.id)
         }}
         style={{

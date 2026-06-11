@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Mail, XCircle } from 'lucide-react'
 import { confirmEmailVerification, getApiErrorMessage } from '../../lib/api'
+import { hasAuthSession, setStoredUser } from '../../lib/authStorage'
 
 type Status = 'loading' | 'success' | 'error' | 'invalid'
 
@@ -29,12 +30,12 @@ export default function VerifyEmailConfirmPage() {
       .then(async () => {
         if (cancelled) return
         setStatus('success')
-        if (localStorage.getItem('accessToken')) {
+        if (hasAuthSession()) {
           try {
             const { migratedApi } = await import('../../lib/api')
             const { SWR_KEYS } = await import('../../lib/swrKeys')
             const { data } = await migratedApi().get(SWR_KEYS.me)
-            localStorage.setItem('user', JSON.stringify(data))
+            setStoredUser(data)
           } catch {
             /* ignore */
           }
@@ -57,7 +58,7 @@ export default function VerifyEmailConfirmPage() {
   }, [token, legacyVerified, legacyInvalid])
 
   function goNext() {
-    const hasToken = !!localStorage.getItem('accessToken')
+    const hasToken = hasAuthSession()
     if (hasToken) {
       navigate('/', { replace: true })
     } else {

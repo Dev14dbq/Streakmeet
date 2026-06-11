@@ -5,6 +5,7 @@ import { Mail, LogOut } from 'lucide-react'
 import type { AuthUser } from '../../lib/api'
 import { migratedApi, resendVerificationEmail } from '../../lib/api'
 import { SWR_KEYS } from '../../lib/swrKeys'
+import { setStoredUser } from '../../lib/authStorage'
 import { toastError, toastSuccess } from '../../lib/toast'
 
 interface Props {
@@ -28,7 +29,7 @@ export default function VerifyEmailPage({ user, onLogout, onUserUpdate }: Props)
       .get<AuthUser>(SWR_KEYS.me)
       .then(({ data }) => {
         onUserUpdate(data)
-        localStorage.setItem('user', JSON.stringify(data))
+        setStoredUser(data)
       })
   }, [verified, onUserUpdate])
 

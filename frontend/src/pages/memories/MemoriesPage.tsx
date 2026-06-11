@@ -17,6 +17,7 @@ import type { MemoryFeedItem, MemoryMeetItem, MemoryMilestoneItem } from '../../
 import { SWR_KEYS } from '../../lib/swrKeys'
 import { formatDate, formatMonthYear } from '../../i18n/format'
 import { useAuth } from '../../context/AuthContext'
+import { formatNickname } from '../../lib/displayUser'
 
 function monthLabel(key: string) {
   const [y, m] = key.split('-').map(Number)
@@ -51,6 +52,7 @@ function MilestoneCard({ item }: { item: MemoryMilestoneItem }) {
 }
 
 function MeetCard({ item, onOpen }: { item: MemoryMeetItem; onOpen: (photo: PhotoData) => void }) {
+  const { t } = useTranslation()
   const { user: me } = useAuth()
 
   return (
@@ -67,7 +69,9 @@ function MeetCard({ item, onOpen }: { item: MemoryMeetItem; onOpen: (photo: Phot
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent pointer-events-none" />
       <div className="absolute bottom-0 left-0 right-0 p-4">
-        <p className="text-sm font-semibold text-white truncate">@{item.partner.nickname}</p>
+        <p className="text-sm font-semibold text-white truncate">
+          {formatNickname(item.partner.nickname, t('common.unknownUser'))}
+        </p>
       </div>
     </button>
   )

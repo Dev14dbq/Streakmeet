@@ -34,7 +34,9 @@
     "qr": "QR",
     "today": "Bugün",
     "days_one": "{{count}} gün",
-    "days_other": "{{count}} gün"
+    "days_other": "{{count}} gün",
+    "change": "Change",
+    "unknownUser": "Unknown user"
   },
   "time": {
     "justNow": "az önce",

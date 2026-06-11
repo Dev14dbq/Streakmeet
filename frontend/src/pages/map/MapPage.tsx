@@ -8,7 +8,8 @@ import useSWR from 'swr'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Link } from 'react-router-dom'
-import CachedImage from '../../components/CachedImage'
+import Avatar from '../../components/Avatar'
+import { formatNickname } from '../../lib/displayUser'
 import { Locate, MapPin, Navigation, Radio, Smartphone, Users } from 'lucide-react'
 import {
   fetcher,
@@ -61,10 +62,11 @@ function userMarkerHtml(opts: {
   variant: 'self' | 'friend'
   selected?: boolean
 }): string {
-  const initial = opts.nickname.slice(0, 1).toUpperCase() || '?'
+  const cleaned = opts.nickname.replace(/^@/, '').trim()
+  const initial = cleaned ? cleaned.charAt(0).toUpperCase() : ''
   const avatar = opts.src
     ? `<img src="${opts.src}" alt="" loading="lazy" />`
-    : `<span>${initial}</span>`
+    : `<span class="${initial ? '' : 'map-user-marker__unknown'}">${initial}</span>`
   const classes = [
     'map-user-marker',
     opts.variant === 'self' ? 'map-user-marker--self' : 'map-user-marker--friend',
@@ -467,7 +469,7 @@ export default function MapPage() {
       await openNavigationRoute({
         lat: selected.latitude,
         lng: selected.longitude,
-        label: `@${selected.nickname}`,
+        label: formatNickname(selected.nickname, t('common.unknownUser')),
         originLat: selfPos?.lat,
         originLng: selfPos?.lng,
       })
@@ -519,21 +521,16 @@ export default function MapPage() {
               <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-overlay-scrim" />
 
               <div className="mb-4 flex items-center gap-3">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-[var(--color-surface-container-highest)] ring-2 ring-[var(--color-brand-primary)]">
-                  {selected.avatarUrl ? (
-                    <CachedImage
-                      path={selected.avatarUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xl font-bold text-on-surface">
-                      {selected.nickname.slice(0, 1).toUpperCase()}
-                    </div>
-                  )}
-                </div>
+                <Avatar
+                  path={selected.avatarUrl}
+                  name={selected.nickname}
+                  size="lg"
+                  className="ring-2 ring-[var(--color-brand-primary)]"
+                />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-lg font-bold text-on-surface">@{selected.nickname}</p>
+                  <p className="truncate text-lg font-bold text-on-surface">
+                    {formatNickname(selected.nickname, t('common.unknownUser'))}
+                  </p>
                   <p className="mt-0.5 text-xs text-[var(--color-on-surface-variant)]">
                     {formatRelativeTime(selected.updatedAt)}
                   </p>

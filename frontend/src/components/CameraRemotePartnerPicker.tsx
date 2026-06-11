@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import Avatar from './Avatar'
 import CachedImage from './CachedImage'
+import { formatNickname } from '../lib/displayUser'
 
 export interface StreakPartnerOption {
   streakId: string
@@ -68,7 +69,10 @@ export default function CameraRemotePartnerPicker({ streaks, onSelect }: Props) 
                   )}
                 </div>
                 <span className="fullscreen-camera__picker-name">
-                  @{streak.pendingRemoteSelfie?.senderNickname ?? streak.partner.nickname}
+                  {formatNickname(
+                    streak.pendingRemoteSelfie?.senderNickname ?? streak.partner.nickname,
+                    t('common.unknownUser')
+                  )}
                 </span>
               </button>
             ))}
@@ -88,7 +92,9 @@ export default function CameraRemotePartnerPicker({ streaks, onSelect }: Props) 
                 onClick={() => onSelect(streak, 'init')}
               >
                 <Avatar path={streak.partner.avatarUrl} name={streak.partner.nickname} size="lg" />
-                <span className="fullscreen-camera__picker-name">@{streak.partner.nickname}</span>
+                <span className="fullscreen-camera__picker-name">
+                  {formatNickname(streak.partner.nickname, t('common.unknownUser'))}
+                </span>
               </button>
             ))}
           </div>
