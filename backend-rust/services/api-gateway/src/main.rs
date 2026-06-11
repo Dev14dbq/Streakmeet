@@ -295,6 +295,14 @@ async fn main() -> anyhow::Result<()> {
             post(handlers::data::streaks::reply_remote_selfie_handler),
         )
         .route(
+            "/api/streaks/{streak_id}/pet",
+            patch(handlers::data::streaks::update_streak_pet_handler),
+        )
+        .route(
+            "/api/streaks/{streak_id}",
+            delete(handlers::data::streaks::delete_streak_handler),
+        )
+        .route(
             "/api/streaks/{partner_nickname}/remind",
             post(handlers::data::streaks::remind_partner_handler),
         )

@@ -1,6 +1,8 @@
 use chrono::Utc;
 use prost::Message;
 use sqlx::PgPool;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use streakmeet_proto::{ListStreaksResponse, StreakListItem, StreakRecord};
 use streakmeet_sync::{
     OutboxPublisher, enqueue_outbox, notification_envelope, streak_created_envelope,
@@ -11,7 +13,8 @@ use streakmeet_types::{ApiError, codes};
 use crate::core::calendar::{generous_streak_timezone, get_local_date_string, normalize_timezone};
 use crate::core::helpers::partner_of;
 use crate::models::{
-    StreakDetailDayJson, StreakDetailJson, StreakListItemJson, StreakPartnerJson, StreakRecordJson,
+    StreakDetailDayJson, StreakDetailJson, StreakListItemJson, StreakPartnerJson,
+    StreakPetProgressJson, StreakRecordJson, StreakTaskJson, UpdateStreakPetJson,
 };
 
 #[derive(Debug, sqlx::FromRow)]
@@ -20,6 +23,8 @@ pub struct StreakRow {
     pub user_a_id: String,
     pub user_b_id: String,
     pub count: i32,
+    pub pet_name: String,
+    pub pet_points: i32,
     pub last_met_date: Option<String>,
     pub timezone: String,
     pub user_a_nickname: String,
@@ -59,6 +64,81 @@ struct StreakDayRow {
     id: String,
     date: String,
     status: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TaskTemplate {
+    id: &'static str,
+    title_key: &'static str,
+    points: i32,
+}
+
+const DEFAULT_PET_NAME: &str = "Серийчик";
+const LEVEL_POINTS: i32 = 100;
+const DAILY_TASKS: [TaskTemplate; 6] = [
+    TaskTemplate {
+        id: "meet_today",
+        title_key: "streak.taskMeetToday",
+        points: 35,
+    },
+    TaskTemplate {
+        id: "send_selfie",
+        title_key: "streak.taskSendSelfie",
+        points: 25,
+    },
+    TaskTemplate {
+        id: "remind_friend",
+        title_key: "streak.taskRemindFriend",
+        points: 15,
+    },
+    TaskTemplate {
+        id: "open_memories",
+        title_key: "streak.taskOpenMemories",
+        points: 20,
+    },
+    TaskTemplate {
+        id: "check_map",
+        title_key: "streak.taskCheckMap",
+        points: 15,
+    },
+    TaskTemplate {
+        id: "keep_alive",
+        title_key: "streak.taskKeepAlive",
+        points: 30,
+    },
+];
+
+fn pet_progress(points: i32) -> StreakPetProgressJson {
+    let points = points.max(0);
+    let level = (points / LEVEL_POINTS) + 1;
+    let points_in_level = points % LEVEL_POINTS;
+    StreakPetProgressJson {
+        points,
+        level,
+        points_in_level,
+        next_level_points: LEVEL_POINTS,
+        points_to_next_level: LEVEL_POINTS - points_in_level,
+    }
+}
+
+fn daily_tasks(streak_id: &str, timezone: &str) -> Vec<StreakTaskJson> {
+    let today = get_local_date_string(timezone, Utc::now());
+    let mut hasher = DefaultHasher::new();
+    streak_id.hash(&mut hasher);
+    today.hash(&mut hasher);
+    let seed = hasher.finish() as usize;
+
+    (0..3)
+        .map(|index| {
+            let template = DAILY_TASKS[(seed + index * 2) % DAILY_TASKS.len()];
+            StreakTaskJson {
+                id: format!("{}-{today}", template.id),
+                title_key: template.title_key.to_string(),
+                points: template.points,
+                completed: false,
+            }
+        })
+        .collect()
 }
 
 /// CUID streak/user ids (Node: `/^c[a-z0-9]{20,}$/i`).
@@ -188,6 +268,8 @@ const STREAK_LIST_SQL: &str = r#"
         s."userAId" AS user_a_id,
         s."userBId" AS user_b_id,
         s.count,
+        COALESCE(s."petName", 'Серийчик') AS pet_name,
+        COALESCE(s."petPoints", 0) AS pet_points,
         s."lastMetDate" AS last_met_date,
         s.timezone,
         ua.nickname AS user_a_nickname,
@@ -275,21 +357,22 @@ pub async fn create_streak(
 
     let created = sqlx::query_as::<_, StreakIdRow>(
         r#"
-        INSERT INTO streaks ("userAId", "userBId", count, timezone, active, "updatedAt")
-        VALUES ($1, $2, 0, $3, true, NOW())
+        INSERT INTO streaks ("userAId", "userBId", count, timezone, active, "petName", "petPoints", "updatedAt")
+        VALUES ($1, $2, 0, $3, true, $4, 0, NOW())
         RETURNING id
         "#,
     )
     .bind(user_id)
     .bind(partner_id)
     .bind(&timezone)
+    .bind(DEFAULT_PET_NAME)
     .fetch_one(&mut *tx)
     .await
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     let sql = format!(
         r#"{STREAK_LIST_SQL}
-        WHERE s.id = $1
+        WHERE s.id = $1 AND s.active = true
         "#
     );
     let with_users = sqlx::query_as::<_, StreakRow>(&sql)
@@ -365,7 +448,7 @@ pub async fn get_streak_detail(
 
     let sql = format!(
         r#"{STREAK_LIST_SQL}
-        WHERE s.id = $1
+        WHERE s.id = $1 AND s.active = true
         "#
     );
     let streak = sqlx::query_as::<_, StreakRow>(&sql)
@@ -396,10 +479,13 @@ pub async fn get_streak_detail(
     .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?;
 
     Ok(StreakDetailJson {
-        id: streak.id,
+        id: streak.id.clone(),
+        pet_name: streak.pet_name.clone(),
         count: streak.count,
         last_met_date: streak.last_met_date,
-        timezone: streak.timezone,
+        timezone: streak.timezone.clone(),
+        pet_progress: pet_progress(streak.pet_points),
+        daily_tasks: daily_tasks(&streak.id, &streak.timezone),
         user_a: StreakPartnerJson {
             id: streak.user_a_id.clone(),
             nickname: streak.user_a_nickname.clone(),
@@ -420,6 +506,67 @@ pub async fn get_streak_detail(
                 .collect(),
         ),
     })
+}
+
+pub async fn update_streak_pet_name(
+    pool: &PgPool,
+    user_id: &str,
+    streak_id: &str,
+    pet_name: Option<&str>,
+) -> Result<UpdateStreakPetJson, ApiError> {
+    let pet_name = pet_name
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| ApiError::new(400, codes::MISSING_FIELD, None))?;
+
+    if pet_name.chars().count() > 24 {
+        return Err(ApiError::new(400, codes::INVALID_USERNAME, None));
+    }
+
+    let row = sqlx::query_as::<_, StreakIdRow>(
+        r#"
+        UPDATE streaks
+        SET "petName" = $3, "updatedAt" = NOW()
+        WHERE id = $1
+          AND active = true
+          AND ("userAId" = $2 OR "userBId" = $2)
+        RETURNING id
+        "#,
+    )
+    .bind(streak_id)
+    .bind(user_id)
+    .bind(pet_name)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+    .ok_or_else(|| ApiError::new(404, codes::STREAK_NOT_FOUND, None))?;
+
+    Ok(UpdateStreakPetJson {
+        id: row.id,
+        pet_name: pet_name.to_string(),
+    })
+}
+
+pub async fn delete_streak(pool: &PgPool, user_id: &str, streak_id: &str) -> Result<(), ApiError> {
+    let row = sqlx::query_as::<_, StreakIdRow>(
+        r#"
+        UPDATE streaks
+        SET active = false, "updatedAt" = NOW()
+        WHERE id = $1
+          AND active = true
+          AND ("userAId" = $2 OR "userBId" = $2)
+        RETURNING id
+        "#,
+    )
+    .bind(streak_id)
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| ApiError::new(500, codes::INTERNAL_ERROR, None))?
+    .ok_or_else(|| ApiError::new(404, codes::STREAK_NOT_FOUND, None))?;
+
+    let _ = row;
+    Ok(())
 }
 
 pub async fn list_streaks_proto(

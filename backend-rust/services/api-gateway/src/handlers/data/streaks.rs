@@ -4,8 +4,9 @@ use axum::{
 };
 use serde::Deserialize;
 use streakmeet_streaks::{
-    MagicMeetInput, create_streak, get_streak_detail, init_remote_selfie, list_streaks,
-    process_magic_meet, record_meet_upload, remind_partner, reply_remote_selfie,
+    MagicMeetInput, create_streak, delete_streak, get_streak_detail, init_remote_selfie,
+    list_streaks, process_magic_meet, record_meet_upload, remind_partner, reply_remote_selfie,
+    update_streak_pet_name,
 };
 
 use crate::AppState;
@@ -22,6 +23,12 @@ pub struct CreateStreakBody {
 pub struct StreakDetailQuery {
     pub page: Option<i32>,
     pub limit: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateStreakPetBody {
+    pub pet_name: Option<String>,
 }
 
 pub async fn list_streaks_handler(
@@ -202,6 +209,34 @@ pub async fn get_streak_detail_handler(
     get_streak_detail(&state.pool, &auth.user_id, &partner_nickname, page, limit)
         .await
         .map(Json)
+        .map_err(api_error_response)
+}
+
+pub async fn update_streak_pet_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(streak_id): Path<String>,
+    Json(body): Json<UpdateStreakPetBody>,
+) -> Result<
+    Json<streakmeet_streaks::UpdateStreakPetJson>,
+    (axum::http::StatusCode, Json<serde_json::Value>),
+> {
+    let auth = require_email_verified(State(state.clone()), auth).await?;
+    update_streak_pet_name(&state.pool, &auth.user_id, &streak_id, body.pet_name.as_deref())
+        .await
+        .map(Json)
+        .map_err(api_error_response)
+}
+
+pub async fn delete_streak_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(streak_id): Path<String>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    let auth = require_email_verified(State(state.clone()), auth).await?;
+    delete_streak(&state.pool, &auth.user_id, &streak_id)
+        .await
+        .map(|()| Json(serde_json::json!({ "ok": true })))
         .map_err(api_error_response)
 }
 

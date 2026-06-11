@@ -30,6 +30,30 @@ model StreakRecord {
   timezone?: string;
 }
 
+model UpdateStreakPetRequest {
+  petName: string;
+}
+
+model UpdateStreakPetResponse {
+  id: string;
+  petName: string;
+}
+
+model StreakPetProgress {
+  points: int32;
+  level: int32;
+  pointsInLevel: int32;
+  nextLevelPoints: int32;
+  pointsToNextLevel: int32;
+}
+
+model StreakDailyTask {
+  id: string;
+  titleKey: string;
+  points: int32;
+  completed: boolean;
+}
+
 model MagicMeetLocation {
   lat: float64;
   lng: float64;
@@ -97,9 +121,12 @@ model RemoteSelfiePending extends RemoteSelfieRequest {
 
 model StreakDetail {
   id: string;
+  petName: string;
   count: int32;
   lastMetDate?: string | null;
   timezone: string;
+  petProgress: StreakPetProgress;
+  dailyTasks: StreakDailyTask[];
   userA: StreakPartner;
   userB: StreakPartner;
   remoteSelfies?: RemoteSelfiePending[];
@@ -136,6 +163,19 @@ interface StreaksRoutes {
     @query page?: int32,
     @query limit?: int32,
   ): StreakDetail;
+
+  @patch
+  @route("/{streakId}/pet")
+  @useAuth(TypeSpec.Http.BearerAuth)
+  updateStreakPet(
+    @path streakId: string,
+    @body body: UpdateStreakPetRequest,
+  ): UpdateStreakPetResponse;
+
+  @delete
+  @route("/{streakId}")
+  @useAuth(TypeSpec.Http.BearerAuth)
+  deleteStreak(@path streakId: string): OkResponse;
 
   @post
   @route("/{streakId}/remote-selfie/init")

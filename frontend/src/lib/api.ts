@@ -68,12 +68,14 @@ export {
 
 export {
   createStreak,
+  deleteStreak,
   getStreak,
   getStreaks,
   initRemoteSelfie,
   magicMeet,
   remindStreak,
   replyRemoteSelfie,
+  updateStreakPet,
 } from './api/streaks'
 
 export {

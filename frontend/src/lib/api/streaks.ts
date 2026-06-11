@@ -9,6 +9,13 @@ export const getStreak = (partnerNickname: string) =>
     `/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}`
   )
 export const createStreak = (partnerId: string) => streaksApi().post('/api/streaks', { partnerId })
+export const updateStreakPet = (streakId: string, petName: string) =>
+  streaksApi().patch<{ id: string; petName: string }>(
+    `/api/streaks/${encodeURIComponent(streakId)}/pet`,
+    { petName }
+  )
+export const deleteStreak = (streakId: string) =>
+  streaksApi().delete<{ ok: true }>(`/api/streaks/${encodeURIComponent(streakId)}`)
 export const remindStreak = (partnerNickname: string) =>
   streaksApi().post<{ ok: true }>(
     `/api/streaks/${encodeURIComponent(partnerNickname.toLowerCase())}/remind`

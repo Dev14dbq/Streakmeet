@@ -43,14 +43,43 @@ pub struct StreakDetailDayJson {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct StreakTaskJson {
+    pub id: String,
+    pub title_key: String,
+    pub points: i32,
+    pub completed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StreakPetProgressJson {
+    pub points: i32,
+    pub level: i32,
+    pub points_in_level: i32,
+    pub next_level_points: i32,
+    pub points_to_next_level: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StreakDetailJson {
     pub id: String,
+    pub pet_name: String,
     pub count: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_met_date: Option<String>,
     pub timezone: String,
+    pub pet_progress: StreakPetProgressJson,
+    pub daily_tasks: Vec<StreakTaskJson>,
     pub user_a: StreakPartnerJson,
     pub user_b: StreakPartnerJson,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub streak_days: Option<Vec<StreakDetailDayJson>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateStreakPetJson {
+    pub id: String,
+    pub pet_name: String,
 }

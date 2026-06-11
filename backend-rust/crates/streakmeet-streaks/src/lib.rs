@@ -9,7 +9,9 @@ pub use core::calendar::{
     instant_meet_streak_day, is_valid_timezone, normalize_timezone, remote_selfie_streak_day,
 };
 pub use core::helpers::{pair_where_sql, partner_of, streak_for_user_where_sql};
-pub use models::{StreakDetailJson, StreakListItemJson, StreakPartnerJson, StreakRecordJson};
+pub use models::{
+    StreakDetailJson, StreakListItemJson, StreakPartnerJson, StreakRecordJson, UpdateStreakPetJson,
+};
 pub use ops::magic_meet::{
     MagicMeetInput, MagicMeetPartnerJson, MagicMeetResultJson, process_magic_meet,
 };
@@ -19,7 +21,7 @@ pub use ops::remote_selfie::{
     expire_stale_remote_selfie_requests, init_remote_selfie, reply_remote_selfie,
 };
 pub use ops::service::{
-    create_streak, find_streak_for_user, get_streak_detail, list_streaks, list_streaks_proto,
-    remind_partner, streak_record_proto,
+    create_streak, delete_streak, find_streak_for_user, get_streak_detail, list_streaks,
+    list_streaks_proto, remind_partner, streak_record_proto, update_streak_pet_name,
 };
 pub use ops::worker;

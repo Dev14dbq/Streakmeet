@@ -1,12 +1,23 @@
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Flame, ArrowLeft, Bell, Camera, Image as ImageIcon, Smartphone, User } from 'lucide-react'
+import {
+  Camera,
+  CheckCircle2,
+  Image as ImageIcon,
+  MoreHorizontal,
+  Pencil,
+  Smartphone,
+  Trash2,
+  User,
+  X,
+} from 'lucide-react'
 import useSWRInfinite from 'swr/infinite'
 import {
-  remindStreak,
+  deleteStreak,
   initRemoteSelfie,
   replyRemoteSelfie,
+  updateStreakPet,
   getApiErrorMessage,
 } from '../../lib/api'
 import { migratedApi } from '../../lib/api/migratedClient'
@@ -17,21 +28,13 @@ import { formatNickname } from '../../lib/displayUser'
 import { useCachedImageSrc } from '../../lib/useCachedImageSrc'
 import PhotoViewerModal, { type PhotoData } from '../../components/PhotoViewerModal'
 import RemoteSelfieCameraModal from '../../components/RemoteSelfieCameraModal'
-import { vibrateRemind } from '../../lib/haptics'
 import { isStreakMetToday } from '../../lib/streakCalendar'
 import { formatDate, formatMonthYear } from '../../i18n/format'
 import { toastError, toastSuccess } from '../../lib/toast'
 import { prepareImageDataUrlForUpload } from '../../lib/prepareImageUpload'
 import { useAuth } from '../../context/AuthContext'
 
-const PARTICLE_EMOJIS = ['🔔', '🔥', '⚡', '💥', '📣', '👋', '❗', '💫']
-
-interface Particle {
-  id: number
-  x: number
-  emoji: string
-  spin: number
-}
+const DEFAULT_PET_NAME = 'Серийчик'
 
 interface MeetProof {
   id: string
@@ -56,9 +59,23 @@ interface StreakPartner {
 
 interface StreakDetailPage {
   id: string
+  petName?: string
   count: number
   lastMetDate?: string | null
   timezone: string
+  petProgress?: {
+    points: number
+    level: number
+    pointsInLevel: number
+    nextLevelPoints: number
+    pointsToNextLevel: number
+  }
+  dailyTasks?: {
+    id: string
+    titleKey: string
+    points: number
+    completed: boolean
+  }[]
   userA: StreakPartner
   userB: StreakPartner
   remoteSelfies?: {
@@ -70,14 +87,6 @@ interface StreakDetailPage {
     sender?: { id: string; nickname: string }
   }[]
   streakDays?: StreakDay[]
-}
-
-function getRemindLabel(combo: number, t: (key: string) => string) {
-  if (combo >= 20) return t('streak.spam')
-  if (combo >= 12) return t('streak.pingPing')
-  if (combo >= 6) return t('streak.remindMore')
-  if (combo >= 3) return `${t('streak.remind')}!`
-  return t('streak.remind')
 }
 
 function monthLabel(key: string) {
@@ -93,12 +102,10 @@ function DuoAvatar({
   path,
   name,
   label,
-  onClick,
 }: {
   path?: string | null
   name?: string | null
   label?: string
-  onClick?: () => void
 }) {
   const [imgFailed, setImgFailed] = useState(false)
   const initial = avatarInitial(name)
@@ -125,23 +132,83 @@ function DuoAvatar({
       <User size={28} className="text-[var(--color-on-surface-variant)] opacity-70" aria-hidden />
     )
 
-  const cls =
-    'relative w-[72px] h-[72px] rounded-full border-[3px] border-black/80 overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_8px_24px_rgba(0,0,0,0.45)]'
+  return (
+    <div
+      className="relative w-14 h-14 rounded-full border-[3px] border-white/70 overflow-hidden bg-white/15 shadow-[0_10px_28px_rgba(0,0,0,0.28)]"
+      aria-label={label}
+    >
+      {inner}
+    </div>
+  )
+}
 
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={`${cls} active:scale-95 transition`}
-        aria-label={label}
-      >
-        {inner}
-      </button>
-    )
-  }
-
-  return <div className={cls}>{inner}</div>
+function SeriychikSvg() {
+  return (
+    <svg
+      viewBox="0 0 220 260"
+      className="w-[184px] max-w-full drop-shadow-[0_28px_40px_rgba(116,35,7,0.36)]"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id="seriychikFlame" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#fff176" />
+          <stop offset="42%" stopColor="#ff9f1c" />
+          <stop offset="100%" stopColor="#ff1a4f" />
+        </linearGradient>
+        <linearGradient id="seriychikBelly" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fff7ad" />
+          <stop offset="100%" stopColor="#ffbf3f" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M112 12c18 38-17 49 12 82 13-23 38-31 41-67 40 42 47 92 25 132-16 30-46 48-80 48-50 0-87-31-87-76 0-43 33-65 44-96 13 23 30 28 45-23Z"
+        fill="url(#seriychikFlame)"
+      />
+      <path
+        d="M112 83c17 27-16 38 5 62 10-17 27-22 29-47 27 29 33 64 17 91-11 20-31 31-54 31-35 0-61-21-61-52 0-30 23-45 31-67 9 16 21 20 33-18Z"
+        fill="url(#seriychikBelly)"
+      />
+      <path
+        d="M48 150c-26 3-38 21-36 39"
+        fill="none"
+        stroke="#8f2b17"
+        strokeWidth="12"
+        strokeLinecap="round"
+      />
+      <path
+        d="M171 150c26 3 38 21 36 39"
+        fill="none"
+        stroke="#8f2b17"
+        strokeWidth="12"
+        strokeLinecap="round"
+      />
+      <circle cx="86" cy="134" r="9" fill="#4b1d12" />
+      <circle cx="134" cy="134" r="9" fill="#4b1d12" />
+      <path
+        d="M91 165c13 12 27 12 40 0"
+        fill="none"
+        stroke="#4b1d12"
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
+      <ellipse cx="73" cy="153" rx="12" ry="7" fill="#ff6b73" opacity="0.55" />
+      <ellipse cx="147" cy="153" rx="12" ry="7" fill="#ff6b73" opacity="0.55" />
+      <path
+        d="M82 215c-9 13-9 22 4 27"
+        fill="none"
+        stroke="#4b1d12"
+        strokeWidth="13"
+        strokeLinecap="round"
+      />
+      <path
+        d="M137 215c9 13 9 22-4 27"
+        fill="none"
+        stroke="#4b1d12"
+        strokeWidth="13"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
 }
 
 export default function StreakDetailsPage() {
@@ -179,22 +246,18 @@ export default function StreakDetailsPage() {
   const streakMeta = data?.[0]
   const streakDays: StreakDay[] = data ? data.flatMap((page) => page.streakDays ?? []) : []
   const isReachingEnd = data != null && (data[data.length - 1]?.streakDays?.length ?? 0) < 10
-  const coverPhoto = streakDays[0]?.meetProofs?.[0]?.photoUrl ?? null
 
-  const [combo, setCombo] = useState(0)
-  const [totalPings, setTotalPings] = useState(0)
-  const [particles, setParticles] = useState<Particle[]>([])
-  const [pulseKey, setPulseKey] = useState(0)
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoData | null>(null)
-
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [draftName, setDraftName] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [showRemoteSelfieCamera, setShowRemoteSelfieCamera] = useState(false)
   const [remoteSelfieUploading, setRemoteSelfieUploading] = useState(false)
   const [remoteSelfieMode, setRemoteSelfieMode] = useState<'init' | 'reply'>('init')
   const [replyingToRequest, setReplyingToRequest] = useState<string | null>(null)
-
-  const comboTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const particleId = useRef(0)
-  const pageRef = useRef<HTMLDivElement>(null)
 
   const groupedByMonth = useMemo(() => {
     const map = new Map<string, StreakDay[]>()
@@ -225,53 +288,6 @@ export default function StreakDetailsPage() {
       navigate(`/streaks/${partner.nickname}`, { replace: true })
     }
   }, [streakMeta, nickname, navigate, me])
-
-  const spawnParticles = useCallback((count: number) => {
-    const next: Particle[] = []
-    for (let i = 0; i < count; i++) {
-      next.push({
-        id: particleId.current++,
-        x: 15 + Math.random() * 70,
-        emoji: PARTICLE_EMOJIS[Math.floor(Math.random() * PARTICLE_EMOJIS.length)]!,
-        spin: -30 + Math.random() * 60,
-      })
-    }
-    setParticles((prev) => [...prev, ...next].slice(-40))
-    setTimeout(() => {
-      setParticles((prev) => prev.filter((p) => !next.some((n) => n.id === p.id)))
-    }, 950)
-  }, [])
-
-  const triggerScreenShake = useCallback(() => {
-    const el = pageRef.current
-    if (!el) return
-    el.classList.remove('screen-shake')
-    void el.offsetHeight
-    el.classList.add('screen-shake')
-  }, [])
-
-  const handleRemind = useCallback(async () => {
-    if (!partnerSlug) return
-
-    setCombo((c) => {
-      const next = c + 1
-      spawnParticles(next >= 10 ? 6 : next >= 5 ? 4 : 2)
-      vibrateRemind(next)
-      return next
-    })
-    setTotalPings((n) => n + 1)
-    triggerScreenShake()
-    setPulseKey((k) => k + 1)
-
-    if (comboTimer.current) clearTimeout(comboTimer.current)
-    comboTimer.current = setTimeout(() => setCombo(0), 1800)
-
-    try {
-      await remindStreak(partnerSlug)
-    } catch {
-      /* визуал работает даже если офлайн */
-    }
-  }, [partnerSlug, spawnParticles, triggerScreenShake])
 
   const handleSendRemoteSelfie = useCallback(
     async (photoBase64: string): Promise<boolean> => {
@@ -316,6 +332,45 @@ export default function StreakDetailsPage() {
     setShowRemoteSelfieCamera(true)
   }
 
+  function openRename() {
+    setDraftName(streakMeta?.petName || DEFAULT_PET_NAME)
+    setRenameOpen(true)
+    setMenuOpen(false)
+  }
+
+  async function saveName() {
+    if (!streakMeta) return
+    const nextName = draftName.trim()
+    if (!nextName) return
+
+    setSavingName(true)
+    try {
+      await updateStreakPet(streakMeta.id, nextName)
+      await mutate()
+      setRenameOpen(false)
+      toastSuccess(t('streak.petNameSaved'))
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('streak.petNameSaveFailed')))
+    } finally {
+      setSavingName(false)
+    }
+  }
+
+  async function confirmDelete() {
+    if (!streakMeta) return
+
+    setDeleting(true)
+    try {
+      await deleteStreak(streakMeta.id)
+      toastSuccess(t('streak.deleted'))
+      navigate('/')
+    } catch (e) {
+      toastError(getApiErrorMessage(e, t('streak.deleteFailed')))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (!me) return null
 
   if (!syncReady || (loading && !streakMeta)) {
@@ -337,243 +392,321 @@ export default function StreakDetailsPage() {
   const partner = streakMeta.userA.id === me.id ? streakMeta.userB : streakMeta.userA
   const metToday = isStreakMetToday(streakMeta)
   const count = streakMeta.count
+  const petName = streakMeta.petName || DEFAULT_PET_NAME
+  const progress = streakMeta.petProgress ?? {
+    points: 0,
+    level: 1,
+    pointsInLevel: 0,
+    nextLevelPoints: 100,
+    pointsToNextLevel: 100,
+  }
+  const progressPercent = Math.min(
+    100,
+    Math.round((progress.pointsInLevel / Math.max(progress.nextLevelPoints, 1)) * 100)
+  )
+  const dailyTasks = streakMeta.dailyTasks ?? []
 
   const pendingRemoteSelfie = streakMeta?.remoteSelfies?.[0]
   const isMyRequest = pendingRemoteSelfie?.senderId === me.id
 
   return (
-    <div ref={pageRef} className="flex flex-col min-h-full pt-4">
-      {/* Duo hero */}
-      <section className="relative mx-4 mt-2 rounded-[28px] overflow-hidden border border-white/[0.06] shadow-[0_20px_60px_rgba(0,0,0,0.55)]">
-        <div className="absolute inset-0">
-          {coverPhoto ? (
-            <>
-              <CachedImage
-                path={coverPhoto}
-                alt=""
-                fallback="empty"
-                className="w-full h-full object-cover scale-110 blur-2xl opacity-50"
-              />
-              <CachedImage
-                path={coverPhoto}
-                alt=""
-                fallback="empty"
-                className="absolute inset-0 w-full h-full object-cover opacity-30"
-              />
-            </>
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[#2a0812] via-[#121317] to-[#121317]" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/50 to-[#121317]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,26,79,0.18)_0%,transparent_65%)]" />
-        </div>
+    <div className="flex flex-col min-h-full bg-[var(--color-background)]">
+      <section className="relative overflow-hidden rounded-b-[36px] px-4 pt-4 pb-8 text-white shadow-[0_24px_70px_rgba(86,28,3,0.42)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.32),transparent_24%),radial-gradient(circle_at_78%_20%,rgba(255,226,128,0.42),transparent_24%),linear-gradient(145deg,#ff9f1c_0%,#ff4d32_42%,#8b1d73_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/20 to-transparent" />
 
-        <div className="relative px-5 pt-6 pb-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="relative">
+          <div className="flex items-start justify-between">
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="btn btn--icon bg-black/40 text-on-surface backdrop-blur-md border border-white/10"
-              aria-label={t('common.back')}
+              className="grid h-11 w-11 place-items-center rounded-full bg-black/22 text-white backdrop-blur-md border border-white/20 active:scale-95"
+              aria-label={t('streak.exit')}
             >
-              <ArrowLeft size={20} />
+              <X size={22} />
             </button>
-            <Link
-              to={`/${partner.nickname}`}
-              className="btn btn--sm bg-black/40 text-on-surface/90 backdrop-blur-md border border-white/10 hover:text-[var(--color-brand-primary)]"
-            >
-              {formatNickname(partner.nickname, t('common.unknownUser'))}
-            </Link>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((open) => !open)}
+                className="grid h-11 w-11 place-items-center rounded-full bg-black/22 text-white backdrop-blur-md border border-white/20 active:scale-95"
+                aria-label={t('streak.moreActions')}
+              >
+                <MoreHorizontal size={24} />
+              </button>
+              {menuOpen && (
+                <div className="absolute right-0 top-13 z-20 w-56 overflow-hidden rounded-2xl bg-[var(--color-surface-container-high)] text-on-surface shadow-[0_18px_46px_rgba(0,0,0,0.45)] border border-white/10">
+                  <button
+                    type="button"
+                    onClick={openRename}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold active:bg-white/5"
+                  >
+                    <Pencil size={17} />
+                    {t('streak.changePetName')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      setDeleteConfirmOpen(true)
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold text-red-300 active:bg-red-500/10"
+                  >
+                    <Trash2 size={17} />
+                    {t('streak.killStreak')}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Duo row */}
-          <div className="flex items-center justify-center gap-3 mb-5">
-            <DuoAvatar
-              path={me.avatarUrl}
-              name={me.nickname}
-              label={t('streak.myProfile')}
-              onClick={() => navigate('/profile')}
-            />
-            <div className="flex flex-col items-center min-w-[88px]">
-              <div className="flex items-center gap-1 leading-none">
-                <span className="text-5xl font-black text-on-surface tracking-tighter tabular-nums">
+          <div className="mt-2 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[13px] font-black uppercase tracking-[0.2em] text-white/76">
+                {t('streak.streakDaysLabel')}
+              </p>
+              <div className="mt-1 flex items-center gap-3">
+                <span className="text-6xl font-black leading-none tracking-[-0.08em] tabular-nums">
                   {count}
                 </span>
-                <Flame
-                  size={32}
-                  className="text-[var(--color-brand-primary)] drop-shadow-[0_0_16px_rgba(255,26,79,0.7)] -mt-1"
-                  fill="currentColor"
+                <DuoAvatar
+                  path={partner.avatarUrl}
+                  name={partner.nickname}
+                  label={t('streak.partnerProfile', { nickname: partner.nickname })}
                 />
               </div>
+              <p className="mt-2 max-w-[150px] truncate text-xs font-bold text-white/72">
+                @{formatNickname(partner.nickname, t('common.unknownUser'))}
+              </p>
             </div>
-            <DuoAvatar
-              path={partner.avatarUrl}
-              name={partner.nickname}
-              label={t('streak.partnerProfile', { nickname: partner.nickname })}
-              onClick={() => navigate(`/${partner.nickname}`)}
-            />
+          </div>
+
+          <div className="mt-2 flex flex-col items-center text-center">
+            <SeriychikSvg />
+            <div className="mt-[-8px] flex items-center justify-center gap-2">
+              <h1 className="text-3xl font-black tracking-tight">{petName}</h1>
+              <button
+                type="button"
+                onClick={openRename}
+                className="grid h-8 w-8 place-items-center rounded-full bg-white/18 text-white backdrop-blur-md active:scale-95"
+                aria-label={t('streak.changePetName')}
+              >
+                <Pencil size={15} />
+              </button>
+            </div>
+            <div className="mt-4 w-full rounded-full bg-white/22 p-1 shadow-inner">
+              <div
+                className="h-4 rounded-full bg-white shadow-[0_0_18px_rgba(255,255,255,0.55)] transition-all"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <div className="mt-2 flex w-full items-center justify-between text-xs font-black text-white/82">
+              <span>{t('streak.level', { level: progress.level })}</span>
+              <span>
+                {progress.pointsInLevel}/{progress.nextLevelPoints}
+              </span>
+            </div>
+            <p className="mt-1 text-sm font-semibold text-white/78">
+              {t('streak.pointsToNextLevel', { count: progress.pointsToNextLevel })}
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Remind */}
-      {!metToday && (
-        <div className="px-4 mt-5 relative z-10">
-          {combo >= 3 && (
-            <div
-              key={combo}
-              className="remind-combo-badge absolute -top-3 left-1/2 -translate-x-1/2 z-20 px-4 py-1 rounded-full bg-[var(--color-brand-primary)] text-white text-xs font-black tracking-wider shadow-[0_4px_20px_rgba(255,26,79,0.5)]"
+      <main className="px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <section>
+          <h2 className="text-2xl font-black tracking-tight text-on-surface">
+            {t('streak.growTitle')}
+          </h2>
+          <div className="mt-4 flex flex-col gap-3">
+            {dailyTasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center gap-3 rounded-3xl bg-[var(--color-surface-container)] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.14)] border border-white/5"
+              >
+                <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--color-brand-primary)]/15 text-[var(--color-brand-primary)]">
+                  <CheckCircle2 size={21} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-on-surface">{t(task.titleKey)}</p>
+                  <p className="text-xs font-semibold text-[var(--color-on-surface-variant)]">
+                    {t('streak.taskRefreshesDaily')}
+                  </p>
+                </div>
+                <span className="rounded-full bg-[var(--color-brand-primary)]/16 px-3 py-1 text-sm font-black text-[var(--color-brand-primary)]">
+                  {t('streak.taskPoints', { count: task.points })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-6">
+          {pendingRemoteSelfie && !isMyRequest ? (
+            <button
+              type="button"
+              onClick={() => openRemoteSelfieReply(pendingRemoteSelfie.id)}
+              className="btn btn--lg w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-on-surface shadow-[0_8px_30px_rgba(139,92,246,0.4)]"
             >
-              x{combo}
+              <Camera size={20} />
+              {t('camera.sendReply')}{' '}
+              {formatNickname(
+                pendingRemoteSelfie.sender?.nickname ?? partner.nickname,
+                t('common.unknownUser')
+              )}
+            </button>
+          ) : pendingRemoteSelfie && isMyRequest ? (
+            <div className="w-full rounded-full py-4 bg-white/5 border border-white/10 text-[var(--color-on-surface-variant)] font-medium text-sm text-center flex items-center justify-center gap-2">
+              <Smartphone size={18} />
+              {t('common.loading')} {formatNickname(partner.nickname, t('common.unknownUser'))}...
+            </div>
+          ) : !metToday ? (
+            <button
+              type="button"
+              onClick={openRemoteSelfieInit}
+              className="btn btn--secondary btn--lg w-full"
+            >
+              <Smartphone size={18} />
+              {t('camera.meetPhoto')}
+            </button>
+          ) : null}
+        </section>
+
+        <section className="mt-8">
+          {streakDays.length === 0 ? (
+            <div className="glass-card rounded-3xl p-10 flex flex-col items-center text-center border border-white/5">
+              <Camera
+                size={36}
+                className="text-[var(--color-on-surface-variant)] opacity-40 mb-4"
+              />
+              <p className="text-on-surface font-semibold">{t('home.noResults')}</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-8">
+              {groupedByMonth.map(([key, days]) => (
+                <section key={key}>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-on-surface-variant)] mb-4 capitalize">
+                    {monthLabel(key)}
+                  </p>
+                  <div className="flex flex-col gap-6">
+                    {days.map((day) => (
+                      <div key={day.id}>
+                        <p className="text-sm font-semibold text-on-surface/80 mb-3 capitalize">
+                          {formatDate(day.date + 'T12:00:00', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                          {(day.meetProofs ?? []).map((proof) => (
+                            <button
+                              key={proof.id}
+                              type="button"
+                              onClick={() =>
+                                setSelectedPhoto({
+                                  ...proof,
+                                  streakDay: {
+                                    streak: {
+                                      userA: streakMeta.userA,
+                                      userB: streakMeta.userB,
+                                    },
+                                  },
+                                } as PhotoData)
+                              }
+                              className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_10px_30px_rgba(0,0,0,0.35)] group text-left"
+                            >
+                              <CachedImage
+                                path={proof.photoUrl}
+                                alt=""
+                                className="w-full h-full object-cover transition duration-500 group-active:scale-[1.02]"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+
+              {!isReachingEnd && (
+                <button
+                  type="button"
+                  onClick={() => setSize(size + 1)}
+                  className="btn btn--secondary btn--lg w-full"
+                >
+                  <ImageIcon size={18} />
+                  {t('common.retry')}
+                </button>
+              )}
             </div>
           )}
+        </section>
+      </main>
 
-          <button
-            type="button"
-            onClick={handleRemind}
-            className={`relative w-full overflow-hidden rounded-full py-[18px] font-black text-lg tracking-wide transition active:scale-[0.96] select-none ${
-              combo >= 10
-                ? 'bg-gradient-to-r from-[#ff0040] via-[#ff1a4f] to-[#ff6b00] text-on-surface shadow-[0_0_40px_rgba(255,26,79,0.6)]'
-                : combo >= 5
-                  ? 'bg-[var(--color-brand-primary)] text-white shadow-[0_8px_30px_rgba(255,26,79,0.45)]'
-                  : 'bg-[var(--color-brand-primary)]/20 text-[var(--color-brand-primary)] border border-[var(--color-brand-primary)]/40'
-            }`}
-          >
-            <span key={pulseKey} className="remind-pulse-ring" />
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              <Bell size={22} className={combo >= 5 ? 'animate-bounce' : ''} />
-              {getRemindLabel(combo, t)}
-            </span>
-
-            {particles.map((p) => (
-              <span
-                key={p.id}
-                className="remind-particle"
-                style={
-                  {
-                    left: `${p.x}%`,
-                    bottom: '50%',
-                    '--spin': `${p.spin}deg`,
-                  } as React.CSSProperties
-                }
+      {renameOpen && (
+        <div className="fixed inset-0 z-40 flex items-end bg-black/58 px-4 pb-4 pt-10 backdrop-blur-sm">
+          <div className="w-full rounded-[28px] bg-[var(--color-surface-container-high)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+            <h2 className="text-xl font-black text-on-surface">{t('streak.changePetName')}</h2>
+            <input
+              value={draftName}
+              onChange={(event) => setDraftName(event.target.value)}
+              maxLength={24}
+              className="mt-4 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-on-surface outline-none focus:border-[var(--color-brand-primary)]"
+              placeholder={DEFAULT_PET_NAME}
+              autoFocus
+            />
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRenameOpen(false)}
+                className="btn btn--secondary btn--lg"
               >
-                {p.emoji}
-              </span>
-            ))}
-          </button>
-
-          {totalPings > 0 && (
-            <p className="text-center text-[11px] text-[var(--color-on-surface-variant)] mt-2 opacity-80">
-              {totalPings}
-              {combo >= 8 ? t('streak.monster') : ''}
-            </p>
-          )}
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={saveName}
+                disabled={savingName || !draftName.trim()}
+                className="btn btn--primary btn--lg disabled:opacity-50"
+              >
+                {savingName ? t('common.saving') : t('common.change')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Remote Selfie Section */}
-      <div className="px-4 mt-4 relative z-10">
-        {pendingRemoteSelfie && !isMyRequest ? (
-          <button
-            type="button"
-            onClick={() => openRemoteSelfieReply(pendingRemoteSelfie.id)}
-            className="btn btn--lg w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-on-surface shadow-[0_8px_30px_rgba(139,92,246,0.4)]"
-          >
-            <Camera size={20} />
-            {t('camera.sendReply')}{' '}
-            {formatNickname(
-              pendingRemoteSelfie.sender?.nickname ?? partner.nickname,
-              t('common.unknownUser')
-            )}
-          </button>
-        ) : pendingRemoteSelfie && isMyRequest ? (
-          <div className="w-full rounded-full py-4 bg-white/5 border border-white/10 text-[var(--color-on-surface-variant)] font-medium text-sm text-center flex items-center justify-center gap-2">
-            <Smartphone size={18} />
-            {t('common.loading')} {formatNickname(partner.nickname, t('common.unknownUser'))}...
-          </div>
-        ) : !metToday ? (
-          <button
-            type="button"
-            onClick={openRemoteSelfieInit}
-            className="btn btn--secondary btn--lg w-full"
-          >
-            <Smartphone size={18} />
-            {t('camera.meetPhoto')}
-          </button>
-        ) : null}
-      </div>
-
-      {/* Gallery */}
-      <div className="px-4 mt-8 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-        {streakDays.length === 0 ? (
-          <div className="glass-card rounded-3xl p-10 flex flex-col items-center text-center border border-white/5">
-            <Camera size={36} className="text-[var(--color-on-surface-variant)] opacity-40 mb-4" />
-            <p className="text-on-surface font-semibold">{t('home.noResults')}</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-8">
-            {groupedByMonth.map(([key, days]) => (
-              <section key={key}>
-                <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--color-on-surface-variant)] mb-4 capitalize">
-                  {monthLabel(key)}
-                </p>
-                <div className="flex flex-col gap-6">
-                  {days.map((day) => (
-                    <div key={day.id}>
-                      <p className="text-sm font-semibold text-on-surface/80 mb-3 capitalize">
-                        {formatDate(day.date + 'T12:00:00', {
-                          weekday: 'short',
-                          day: 'numeric',
-                          month: 'short',
-                        })}
-                      </p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {(day.meetProofs ?? []).map((proof) => (
-                          <button
-                            key={proof.id}
-                            type="button"
-                            onClick={() =>
-                              setSelectedPhoto({
-                                ...proof,
-                                streakDay: {
-                                  streak: {
-                                    userA: streakMeta.userA,
-                                    userB: streakMeta.userB,
-                                  },
-                                },
-                              } as PhotoData)
-                            }
-                            className="relative aspect-[3/4] rounded-3xl overflow-hidden bg-[var(--color-surface-container-high)] shadow-[0_10px_30px_rgba(0,0,0,0.35)] group text-left"
-                          >
-                            <CachedImage
-                              path={proof.photoUrl}
-                              alt=""
-                              className="w-full h-full object-cover transition duration-500 group-active:scale-[1.02]"
-                              loading="lazy"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))}
-
-            {!isReachingEnd && (
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-40 flex items-end bg-black/62 px-4 pb-4 pt-10 backdrop-blur-sm">
+          <div className="w-full rounded-[28px] bg-[var(--color-surface-container-high)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
+            <h2 className="text-xl font-black text-on-surface">{t('streak.killStreak')}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[var(--color-on-surface-variant)]">
+              {t('streak.killConfirm')}
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setSize(size + 1)}
-                className="btn btn--secondary btn--lg w-full"
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="btn btn--secondary btn--lg"
               >
-                <ImageIcon size={18} />
-                {t('common.retry')}
+                {t('common.cancel')}
               </button>
-            )}
+              <button
+                type="button"
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="btn btn--lg bg-red-500 text-white disabled:opacity-50"
+              >
+                {deleting ? t('common.loading') : t('streak.killConfirmButton')}
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {selectedPhoto && (
         <PhotoViewerModal photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
